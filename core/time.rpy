@@ -142,8 +142,7 @@ init python in v1FNaSR:
 
         @property
         def progress(self):
-            hour_time = self._hour_time * self.current_refresh_time
-            return self._accumulated_time / float(hour_time)
+            return self._accumulated_time / self.hour_time
 
         @property
         def timers(self):
@@ -152,6 +151,10 @@ init python in v1FNaSR:
         @property
         def total_hours(self):
             return self._total_hours
+
+        @property
+        def hour_time(self):
+            return float(self._hour_time * self.current_refresh_time)
 
         def set_time(self, hour, minutes=0):
             if not is_integer(hour):
@@ -165,16 +168,14 @@ init python in v1FNaSR:
             final_hour = (hour + int(extra_hours)) % 24
 
             self._clock.set_hour(final_hour)
-            hour_time = self._hour_time * self.current_refresh_time
-            self._accumulated_time = (float(remaining_minutes) / 60.0) * hour_time
+            self._accumulated_time = (float(remaining_minutes) / 60.0) * self.hour_time
         
         def get_time(self):
             minutes = self.get_minutes()
             return "{:02d}:{:02d}".format(self._clock.hour, minutes)
 
         def get_minutes(self, step=1):
-            hour_time = self._hour_time * self.current_refresh_time
-            minutes = self._accumulated_time * 60 / hour_time
+            minutes = self._accumulated_time * 60 / self.hour_time
             if step > 1:
                 minutes = int(minutes // step * step)
             return int(minutes)
@@ -217,12 +218,7 @@ init python in v1FNaSR:
             new_status = False
             self._accumulated_time += dt
 
-            hour_time = self._hour_time * self.current_refresh_time
-
-            log("---"*10)
-            log("accumulated_time: {}".format(self._accumulated_time))
-            log("hour_time: {}".format(hour_time))
-            log("---"*10)
+            hour_time = self.hour_time
 
             while self._accumulated_time >= hour_time:
                 self._accumulated_time -= hour_time
@@ -255,6 +251,7 @@ init python in v1FNaSR:
         DebugText(lambda context: "Сломанных таймеров: {}".format(len(context.gt.error_timers)), order=2),
         DebugText(lambda context: "Прогресс часа: {:.1f}".format(context.gt.progress), order=3),
         DebugText(lambda context: "Всего часов: {}".format(context.gt.total_hours), order=4),
+        DebugText(lambda context: "Продолжительность часа: {}".format(context.gt.hour_time), order=5),
     order=1)
 
     _dst.context.gt = require_system("time")

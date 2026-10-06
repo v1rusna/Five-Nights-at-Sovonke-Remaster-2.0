@@ -38,7 +38,6 @@ init -10 python in v1FNaSR:
         def __bool__(self):
             return False
 
-        # Python 2
         __nonzero__ = __bool__
 
     MISSING = _MissingType()
@@ -47,10 +46,6 @@ init -10 python in v1FNaSR:
         def __init__(self, **kwargs):
             object.__setattr__(self, "_v1data", {})
             self.update(kwargs)
-
-        # ---------------------------------------------------------
-        # Attribute access
-        # ---------------------------------------------------------
 
         def __setattr__(self, name, value):
             name = to_text(name)
@@ -81,10 +76,6 @@ init -10 python in v1FNaSR:
                     "Атрибут {0!r} не существует.".format(name)
                 )
 
-        # ---------------------------------------------------------
-        # Dict-style access
-        # ---------------------------------------------------------
-
         def __getitem__(self, key):
             return self._v1data[key]
 
@@ -102,10 +93,6 @@ init -10 python in v1FNaSR:
 
         def __len__(self):
             return len(self._v1data)
-
-        # ---------------------------------------------------------
-        # Dict API
-        # ---------------------------------------------------------
 
         def get(self, key, default=None):
             return self._v1data.get(key, default)
@@ -134,7 +121,6 @@ init -10 python in v1FNaSR:
         def items(self):
             return self._v1data.items()
 
-        # Python 2
         def iterkeys(self):
             return iter_keys(self._v1data)
 
@@ -143,10 +129,6 @@ init -10 python in v1FNaSR:
 
         def iteritems(self):
             return iter_items(self._v1data)
-
-        # ---------------------------------------------------------
-        # Helpers
-        # ---------------------------------------------------------
 
         def copy(self):
             return self.__class__(**self._v1data)

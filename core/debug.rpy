@@ -135,7 +135,7 @@ init -1 python in v1FNaSR:
 
         @property
         def is_enabled(self):
-            return self._enable # Наверное нужно переназвать на self._error и хранить там текст ошибки, self._enable как раз создавался на случа ошибки чтобы сломанный элемент был отключен
+            return self._enable
 
         @property
         def order(self):
@@ -912,6 +912,7 @@ init python in v1FNaSR:
         expanded=True
     ))
 
+    @main_thread_only
     def _v1_debug_screen_callback(screen_names, state, **kwargs):
         if state == "show" and is_debug():
             for screen_name in screen_names:
@@ -947,7 +948,6 @@ screen V1DebugScreenFNaSR(target_cps=15, elements_in_row=4, max_len_name_group=1
             vbox:
                 spacing 2
 
-                # Вкладки групп
                 for groups in v1FNaSR.debug.get_group_rows(elements_in_row):
                     hbox:
                         for group in groups:
@@ -957,7 +957,6 @@ screen V1DebugScreenFNaSR(target_cps=15, elements_in_row=4, max_len_name_group=1
                                 xalign 0.0
                                 action Function(v1FNaSR.debug.toggle_group, group.name)
 
-                # Поиск (по всем группам) и режим вкладок Solo/Multi
                 if show_search:
                     hbox:
                         spacing 8

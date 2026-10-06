@@ -490,9 +490,15 @@ init python in v1FNaSR:
                 text=to_text(self._camera.num),
                 size=int(viewport.scale_scalar(11)),
                 font=resources.fonts["FiveFontsatFreddy's-Regular"],
-                xalign=0.28 if len(self._camera.num) == 2 else 0.23,
+                xalign=0.27 if len(self._camera.num) == 2 else 0.22,
                 yalign=1.0
             )
+
+            def _action():
+                if tablet.selected != self._id:
+                    tablet.select(self._id)
+                    tablet.safe_discharge(1)
+                    play(resources.sounds.sfx["blip3"], "sound")
 
             cam_button = renpy.store.Button(
                 child=cam_text,
@@ -501,7 +507,7 @@ init python in v1FNaSR:
                 align=(self._camera.align[0], self._camera.align[1]),
                 xsize=int(viewport.scale_scalar(70)),
                 ysize=int(viewport.scale_scalar(50)),
-                action=(renpy.store.Function(tablet.select, self._id), renpy.store.Function(tablet.safe_discharge, 1))
+                action=renpy.store.Function(_action)
             )
 
             if self._camera.rotate:

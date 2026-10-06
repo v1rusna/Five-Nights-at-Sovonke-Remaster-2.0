@@ -6,10 +6,10 @@ init python in v1FNaSR:
         def __init__(self, name="", parent=None):
             self._name = name
             self._parent = parent
-            self._files = {}          # local files only
-            self._folders = {}        # name -> folder
-            self._cache_files_flat = {}    # recursive file cache
-            self._cache_folders_flat = {}  # recursive folder cache
+            self._files = {}
+            self._folders = {}
+            self._cache_files_flat = {}
+            self._cache_folders_flat = {}
 
         def add_file(self, name, full_path):
             self._files[name] = full_path
@@ -41,17 +41,13 @@ init python in v1FNaSR:
             for folder_name, folder in self._folders.items():
                 folder.build_cache()
 
-                # cache subfolders
                 self._cache_folders_flat[folder_name] = folder
                 self._cache_folders_flat.update(folder._cache_folders_flat)
 
-                # cache files
                 self._cache_files_flat.update(folder._cache_files_flat)
 
-        # быстрый поиск файла по имени
         def find_file(self, name, default=None):
             return self._cache_files_flat.get(name, default)
-
 
         def tree(self, indent=""):
             """Печатает древовидную структуру папок/файлов."""

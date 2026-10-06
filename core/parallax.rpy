@@ -53,8 +53,6 @@ init python in v1FNaSR:
             self.mouse_pos_x = 0.0
             self.mouse_pos_y = 0.0
 
-            # width/height - размер масштабированного контента (get_size()).
-            # view_width/view_height - фактический размер возвращаемого Render.
             self.width = 0
             self.height = 0
             self.view_width = 0
@@ -63,15 +61,10 @@ init python in v1FNaSR:
             self.perspective = None
             self.r_power = None
 
-            # anchor у Transform не нужен: без perspective он не участвует в render.
             self._transform = renpy.display.transform.Transform(
                 self.displayable,
                 zoom=self.zoom
             )
-
-        # ------------------------------------------------------------------
-        # Публичный API
-        # ------------------------------------------------------------------
 
         def get_size(self):
             return (self.width, self.height)
@@ -93,10 +86,6 @@ init python in v1FNaSR:
                 zoom=self.zoom
             )
 
-        # ------------------------------------------------------------------
-        # Геометрия
-        # ------------------------------------------------------------------
-
         def _origin_shift(self):
             """
             Положение левого верхнего угла контента внутри Render
@@ -115,10 +104,6 @@ init python in v1FNaSR:
             if self.anchor is not None:
                 return self.anchor
             return (self.view_width / 2.0, self.view_height / 2.0)
-
-        # ------------------------------------------------------------------
-        # Обновление смещения (вызывается из event, а НЕ из render)
-        # ------------------------------------------------------------------
 
         def _update_offset(self):
             """
@@ -143,10 +128,6 @@ init python in v1FNaSR:
 
             renpy.redraw(self, 0)
 
-        # ------------------------------------------------------------------
-        # Ren'Py Displayable API
-        # ------------------------------------------------------------------
-
         def render(self, width, height, st, at):
             x_shift = -(self.xoffset * self.power)
             y_shift = -(self.yoffset * self.power)
@@ -161,12 +142,10 @@ init python in v1FNaSR:
 
             origin_x, origin_y = self._origin_shift()
 
-            # "rv" вместо "render" - иначе имя затеняет метод класса
             rv = renpy.Render(self.view_width, self.view_height)
             rv.subpixel_blit(child_r, (origin_x + x_shift, origin_y + y_shift))
 
             if self.fill_viewport:
-                # Overscan-часть контента не должна вылезать за область.
                 rv.xclipping = True
                 rv.yclipping = True
 
@@ -179,8 +158,6 @@ init python in v1FNaSR:
 
             origin_x, origin_y = self._origin_shift()
 
-            # Координаты относительно левого верхнего угла контента.
-            # При fill_viewport=False origin = (0, 0) -> формула прежняя.
             child_x = x - origin_x + (self.xoffset * self.power)
             child_y = y - origin_y + (self.yoffset * self.power)
 
@@ -207,7 +184,6 @@ init python in v1FNaSR:
         """
 
         def __new__(cls, class_wrappee, *args, **kwargs):
-            # Захватываем cls явно: внутри Wrapped cls уже другой класс
             _outer_cls = cls
 
             class Wrapped(class_wrappee):
@@ -215,11 +191,9 @@ init python in v1FNaSR:
                 def __init__(self, *a, **k):
                     super(Wrapped, self).__init__(*a, **k)
 
-                    # Одиночное подчёркивание — нет name-mangling,
-                    # статические методы снаружи видят атрибут без проблем
                     self._wrapper = _outer_cls
-                    self._v1items = []       # [{"d": Displayable, "size": (w,h)}]
-                    self._reg_v1items = []   # реестр для защиты от дублей
+                    self._v1items = []
+                    self._reg_v1items = []
 
                     for i in a:
                         if isinstance(i, renpy.display.core.Displayable):
@@ -227,8 +201,6 @@ init python in v1FNaSR:
                                 self._reg_v1items.append(i)
                                 self._v1items.append({"d": i, "size": (0, 0)})
 
-                    # list() для совместимости Python 2 (dict.items() → list)
-                    # и Python 3 (dict.items() → view)
                     for _key, value in list(k.items()):
                         if isinstance(value, renpy.display.core.Displayable):
                             if value not in self._reg_v1items:
@@ -240,7 +212,6 @@ init python in v1FNaSR:
                     return list(parent_visit) + [item["d"] for item in self._v1items]
 
                 def render(self, width, height, st, at):
-                    # Обновляем размеры дочерних параллакс-элементов
                     for item in self._v1items:
                         r = renpy.render(item["d"], width, height, st, at)
                         item["size"] = r.get_size()
@@ -254,14 +225,11 @@ init python in v1FNaSR:
                         d = item["d"]
                         dw, dh = item["size"]
 
-                        # Центрирующее смещение для параллакс-элемента
                         result = d.event(ev, x - dw // 2, y - dh // 2, st)
 
-                        # Запоминаем первый ненулевой результат
                         if result is not None and child_result is None:
                             child_result = result
 
-                    # Суперкласс (кнопка) имеет приоритет над дочерними
                     parent_result = super(Wrapped, self).event(ev, x, y, st)
                     return parent_result if parent_result is not None else child_result
 
@@ -269,10 +237,6 @@ init python in v1FNaSR:
                     return "V1WrappedFNaSR(%s)" % super(Wrapped, self).__repr__()
 
             return Wrapped(*args, **kwargs)
-
-        # ------------------------------------------------------------------
-        # Вспомогательные статические методы
-        # ------------------------------------------------------------------
 
         @staticmethod
         def _is_wrapped(instance):
@@ -310,7 +274,7 @@ init python in v1FNaSR:
             if not isinstance(displayable, renpy.display.core.Displayable):
                 return
             if displayable in instance._reg_v1items:
-                return  # защита от дублей
+                return
 
             size = size if size is not None else (0, 0)
             instance._reg_v1items.append(displayable)

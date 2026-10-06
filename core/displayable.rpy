@@ -91,8 +91,6 @@ init python in v1FNaSR:
             self.child_width = child_width
             self.child_height = child_height
 
-            # Область, которая ловит движение мыши.
-            # Кнопка находится ровно по центру этой области.
             self.width = max(
                 child_width,
                 int(self.radius * 2.0)
@@ -132,14 +130,12 @@ init python in v1FNaSR:
             return result
 
         def event(self, ev, x, y, st):
-            # Обновляем прозрачность по положению курсора.
             new_alpha = self._calculate_alpha(x, y)
 
             if new_alpha != self.alpha:
                 self.alpha = new_alpha
                 renpy.redraw(self, 0)
 
-            # Координаты относительно самой кнопки.
             child_x = (
                 x - (self.width - self.child_width) / 2.0
             )
@@ -148,7 +144,6 @@ init python in v1FNaSR:
                 y - (self.height - self.child_height) / 2.0
             )
 
-            # Передаём события самой кнопке.
             return self.child.event(
                 ev,
                 child_x,

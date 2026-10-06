@@ -1,5 +1,4 @@
 init -1 python in v1FNaSR:
-    # Решил вынести некоторую информацию за Player для будущих Enemy и прочих что перемещается по локациям
     class BaseAI(object):
         def __init__(self):
             self._current_location = None
@@ -28,7 +27,7 @@ init -1 python in v1FNaSR:
             max_panic = int(max_panic)
             magnitude_change_panic = int(magnitude_change_panic)
             if max_panic <= 0:
-                raise FNaSRValueError("max_panic не может быть меньше или равно нулю")
+                raise FNaSRValueError("'max_panic' cannot be less than or equal to zero")
 
             self._id = to_text(id)
 
@@ -58,7 +57,7 @@ init -1 python in v1FNaSR:
         @property
         def has_tablet(self):
             if self._current_location is None:
-                raise FNaSRAttributeError("Игрок не находится ни в одной локации")
+                raise FNaSRAttributeError("The player is not in any location")
             return self._current_location.tablet is not None
 
         @property
@@ -104,7 +103,7 @@ init -1 python in v1FNaSR:
 
         def get_sees_image(self):
             if self._current_location is None:
-                raise FNaSRAttributeError("Игрок не находится ни в одной локации")
+                raise FNaSRAttributeError("The player is not in any location")
 
             if self._open_tablet is None:
                 return self._current_location.parallax_image
@@ -112,7 +111,7 @@ init -1 python in v1FNaSR:
             selected = self._open_tablet.selected
 
             if selected is None:
-                raise FNaSRException("В планшете не выбрана локация")
+                raise FNaSRException("No location has been selected on the tablet")
 
             loc = self._current_location.location_system.require_location(selected)
 
@@ -120,15 +119,15 @@ init -1 python in v1FNaSR:
 
         def move(self, location, allow_migrate=False):
             if self.is_open_tablet:
-                raise FNaSRException("Нельзя перемещаться на другие локации пока планшет открыт")
+                raise FNaSRException("You cannot move to other locations while the tablet is open")
 
             super(Player, self).move(location, allow_migrate)
 
         def open_tablet(self):
             if self._current_location is None:
-                raise FNaSRAttributeError("Игрок не находится ни в одной локации")
+                raise FNaSRAttributeError("The player is not in any location")
             if not self.has_tablet:
-                raise FNaSRException("В текущей локации с id '{}' нет планшета".format(self._current_location.id))
+                raise FNaSRException("There is no tablet in the current location({})".format(self._current_location.id))
             self._open_tablet = self._current_location.tablet
             self._open_tablet.safe_discharge(2)
 
@@ -176,6 +175,12 @@ init -1 python in v1FNaSR:
             if self._panic > self._max_panic:
                 self._panic = self._max_panic
 
+            if self._open_tablet is not None and self._open_tablet.out_battery:
+                if has_screen("tablet"):
+                    main_executor.submit(hide_screen, "tablet", player=self)
+                else:
+                    self.close_tablet()
+
             if new_status:
                 update_ui()
 
@@ -205,7 +210,7 @@ init -1 python in v1FNaSR:
         def create_player(self, id, max_panic=15, start_location=None, register_in_cycle=True):
             id = to_text(id)
             if id in self._players:
-                raise FNaSRException("Персонаж с id '{}' уже создан".format(id))
+                raise FNaSRException("A character with ID '{}' has already been created.".format(id))
             
             player = Player(id, max_panic)
             if start_location is not None:
@@ -224,7 +229,7 @@ init -1 python in v1FNaSR:
         def delete_player(self, id):
             id = to_text(id)
             if id not in self._players:
-                raise FNaSRException("Персонаж с id '{}' не существует".format(id))
+                raise FNaSRException("The character with ID '{}' does not exist".format(id))
 
             player = self._players.pop(id)
 
@@ -237,7 +242,7 @@ init -1 python in v1FNaSR:
         def switch_player(self, id):
             id = to_text(id)
             if id not in self._players:
-                raise FNaSRException("Персонаж с id '{}' не существует".format(id))
+                raise FNaSRException("The character with ID '{}' does not exist".format(id))
 
             self._current_player = self._players[id]
 

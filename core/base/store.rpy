@@ -1,6 +1,17 @@
 # state.rpy
+init python early:
+    import sys
+
+    DEBUG_FLAG = "--v1FNaSR:Debug"
+
+    renpy.store.V1_DEBUG_FNaSR = DEBUG_FLAG in sys.argv
+
+    if renpy.store.V1_DEBUG_FNaSR:
+        sys.argv.remove(DEBUG_FLAG)
+
 init -6 python in v1FNaSR:
     import threading as _threading
+    import sys as _sys
 
     _store = dict()
     _store["old"] = dict()
@@ -20,7 +31,7 @@ init -6 python in v1FNaSR:
         "Значение экрана должно быть итерируемым, а не '{}'"
     )
     _store["sound_channels"] = dict()
-    _store["debug_mode"] = True
+    _store["debug_mode"] = bool(getattr(renpy.store, "V1_DEBUG_FNaSR", False))
     _store["initialized"] = False
     _store["base_initialized"] = False
 
@@ -30,7 +41,7 @@ init -6 python in v1FNaSR:
         with _store_lock:
             return _store["debug_mode"]
 
-    def is_initialized(full=True, only_base=False): # может все таки стоит убрать only_base и добавить def is_base_initialized()
+    def is_initialized(full=True, only_base=False):
         with _store_lock:
             if full:
                 return _store["initialized"] and _store["base_initialized"]

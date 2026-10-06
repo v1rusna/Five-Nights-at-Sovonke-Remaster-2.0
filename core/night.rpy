@@ -3,9 +3,7 @@ init -1 python in v1FNaSR:
 
     from collections import OrderedDict
 
-    # Имя последовательности основных ночей. Создаётся всегда.
     MAIN_SEQUENCE = "main"
-
 
     def _check_text_id(value, what):
         """Проверяет, что значение — непустая строка."""
@@ -171,7 +169,7 @@ init -1 python in v1FNaSR:
 
     class NightSystem(object):
         def __init__(self):
-            self._nights = OrderedDict()      # порядок регистрации
+            self._nights = OrderedDict()
             self._sequences = OrderedDict()
             self._completed = set()
             self._loaded = None
@@ -224,7 +222,7 @@ init -1 python in v1FNaSR:
                 seq_name = anchor_seq.name
 
             elif sequence is not None:
-                self.get_sequence(sequence)  # заранее проверяем существование
+                self.get_sequence(sequence)
 
             self._nights[night.id] = night
 
