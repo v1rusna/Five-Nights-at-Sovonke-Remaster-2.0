@@ -1,6 +1,6 @@
 # registry.rpy
 init -7 python in v1FNaSR:
-    def _default_screen_iter_screens(screen_list, state, **kwargs):
+    def _default_screen_handler(screen_list, state, **kwargs):
         if state == "show":
             for screen_name in screen_list:
                 renpy.show_screen(screen_name, **kwargs)
@@ -52,6 +52,9 @@ init -7 python in v1FNaSR:
         def keys(self):
             return list(iter_keys(self._items))
 
+        def values(self):
+            return list(iter_values(self._items))
+
     class _ScreensRegistry(_Registry):
 
         def __init__(
@@ -75,7 +78,7 @@ init -7 python in v1FNaSR:
 
         def _normalize_callback(self, callback):
             if callback is None:
-                callback = _default_screen_iter_screens
+                callback = _default_screen_handler
 
             if not callable(callback):
                 raise FNaSRTypeError("callback должен быть вызываемым объектом, передано '{}'".format(repr(callback)))
@@ -130,7 +133,7 @@ init -7 python in v1FNaSR:
         with _store_lock:
             system = _store["systems"].get(system_name)
         if system is None:
-            raise FNaSRNotFound("Система '{}' не зарегистрирована".format(system_name))
+            raise FNaSRNotFound("System '{}' is not registered.".format(system_name))
         return system
 
     def has_system(system_name):
@@ -188,20 +191,88 @@ init -7 python in v1FNaSR:
 
     def hide_all_screen(directly=False, **kwargs):
         with _store_lock:
-            screen_data_keys = _store["screens"].keys()
+            screen_data = _store["screens"].values()
 
-        for screen_key in screen_data_keys:
-            with _store_lock:
-                screen_data = _store["screens"].get(screen_key)
-
-            if screen_data is None:
-                continue
-
-            screens, callback = screen_data
+        for screens, callback in screen_data:
             if directly:
-                _default_screen_iter_screens(screens, "hide", **kwargs)
+                _default_screen_handler(screens, "hide", **kwargs)
             else:
                 callback(screens, "hide", **kwargs)
+
+    def replace_screen(original_screen_name, name_new_screen):
+        if is_initialized():
+            raise FNaSRRegisterError("Нельзя заменять экраны после начала игры.")
+
+        with _store_lock:
+            if original_screen_name in _store["replace_screen"]:
+                raise FNaSRRegisterError("Экран '{}' уже был заменен.".format(original_screen_name))
+
+        screens = renpy.display.screen.screens
+
+        try:
+            original_screen = screens[(original_screen_name, None)]
+        except KeyError:
+            raise FNaSRRegisterError("Исходный экран '{}' не найден.".format(original_screen_name))
+
+        try:
+            replacement_screen = screens[(name_new_screen, None)]
+        except KeyError:
+            raise FNaSRRegisterError("Экран-замена '{}' не найден.".format(name_new_screen))
+
+        renpy.display.screen.screens[(original_screen_name, None)] = replacement_screen
+
+        with _store_lock:
+            _store["replace_screen"][original_screen_name] = (name_new_screen, original_screen)
+
+    def restore_screen(original_screen_name):
+        if is_initialized():
+            raise FNaSRRegisterError("Нельзя изменять экраны после начала игры.")
+
+        with _store_lock:
+            data = _store["replace_screen"].get(original_screen_name)
+
+        if data is None:
+            raise FNaSRRegisterError("Экран '{}' не был заменен.".format(original_screen_name))
+
+        _, original_screen = data
+
+        renpy.display.screen.screens[(original_screen_name, None)] = original_screen
+
+        with _store_lock:
+            del _store["replace_screen"][original_screen_name]
+
+    def restore_all_screens():
+        if is_initialized():
+            raise FNaSRRegisterError("Нельзя изменять экраны после начала игры.")
+
+        with _store_lock:
+            snapshot = dict(_store["replace_screen"])
+
+        errors = []
+
+        for original_name, data in iter_items(snapshot):
+            replacement_name, original_screen = data
+
+            try:
+                renpy.display.screen.screens[(original_name, None)] = original_screen
+            except Exception as e:
+                errors.append((original_name, replacement_name, e))
+                continue
+
+            with _store_lock:
+                _store["replace_screen"].pop(original_name,None)
+
+        if errors:
+            message = "При восстановлении экранов произошли исключения:\n"
+
+            for original_name, replacement_name, error in errors:
+                message += "{} <- {}: {}\n".format(original_name,replacement_name,error)
+
+            raise FNaSRException(message)
+
+    def is_replaced_screen(screen_name):
+        with _store_lock:
+            return screen_name in _store["replace_screen"]
 
 
     def register_channel(name, mixer, overwrite=False, **kwargs):
@@ -210,9 +281,7 @@ init -7 python in v1FNaSR:
 
         with _store_lock:
             if not overwrite and name in _store["sound_channels"]:
-                raise FNaSRRegisterError(
-                    "Звуковой канал '{}' уже зарегистрирован".format(name)
-                )
+                raise FNaSRRegisterError("Звуковой канал '{}' уже зарегистрирован".format(name))
 
         renpy.music.register_channel(vname, mixer, **kwargs)
 
@@ -253,4 +322,5 @@ init python:
     v1FNaSR.register_channel("sound", "sound", loop=False)
     v1FNaSR.add_quit_fn(lambda: v1FNaSR.hide_all_screen(True))
     v1FNaSR.add_quit_fn(lambda: v1FNaSR.stop_all(0.5))
+    v1FNaSR.add_quit_fn(v1FNaSR.restore_all_screens)
 

@@ -10,6 +10,8 @@ init:
 
 label AAA_v1_start_FNaSR:
 
+    $ renpy.log("screens: {}".format(renpy.display.screen.screens))
+
     stop music fadeout 2
     window hide dissolve
 

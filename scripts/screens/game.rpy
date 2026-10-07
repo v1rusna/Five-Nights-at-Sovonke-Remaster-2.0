@@ -79,10 +79,19 @@ screen V1TabletButtonScreenFNaSR(player):
 
 screen _v1_show_camera_map_screen_FNaSR(tablet_screen, state, player):
     if state == "show":
-        timer 0.18 action [Hide("_v1_show_camera_map_screen_FNaSR"), Function(player.open_tablet), Show(tablet_screen)]
+        timer 0.18 action [
+            Hide("_v1_show_camera_map_screen_FNaSR"),
+            Function(player.open_tablet),
+            Show(tablet_screen),
+            Function(v1FNaSR.play, v1FNaSR.resources.sounds.sfx["camera_static_1_new"], "camera_static", fadein=0.1)
+        ]
         add "anim v1_tablet_open_entire_FNaSR"
     else:
-        on "show" action [Hide(tablet_screen), Function(player.close_tablet)]
+        on "show" action [
+            Hide(tablet_screen),
+            Function(player.close_tablet),
+            Function(v1FNaSR.stop, "camera_static", fadeout=0.1)
+        ]
         timer 0.18 action [Hide("_v1_show_camera_map_screen_FNaSR")]
         add "anim v1_tablet_close_entire_FNaSR"
 

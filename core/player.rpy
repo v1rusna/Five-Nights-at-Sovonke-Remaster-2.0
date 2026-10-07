@@ -1,4 +1,7 @@
 init -1 python in v1FNaSR:
+    register_channel("heartbeat", "ambience", loop=True)
+    register_channel("breathing", "ambience", loop=True)
+
     class BaseAI(object):
         def __init__(self):
             self._current_location = None
@@ -41,6 +44,7 @@ init -1 python in v1FNaSR:
             self._setattr("_magnitude_change_panic", magnitude_change_panic)
             self._setattr("_rollback", False)
             self._setattr("_rollback_threshold", round(self._max_panic * 2 / 3))
+            self._setattr("_is_play_heartbeat", False)
 
         @property
         def id(self):
@@ -88,12 +92,12 @@ init -1 python in v1FNaSR:
         def rollback_threshold(self):
             return self._rollback_threshold
 
-        def get_panic_text(self):
-            return "panic: {}/{}".format(self._panic, self._max_panic)
-
         @property
         def has_bulb(self):
             return self._current_location.bulb is not None
+
+        def get_panic_text(self):
+            return "panic: {}/{}".format(self._panic, self._max_panic)
 
         def set_moving(self, value):
             self._is_moving = bool(value)
@@ -141,47 +145,54 @@ init -1 python in v1FNaSR:
                 self.open_tablet()
 
         def update(self):
-            if self._current_location is None:
+            location = self._current_location
+
+            if location is None:
                 return
 
-            current_location = self._current_location
+            door = location.door
+            panic_step = self._magnitude_change_panic
+            panic_changed = False
 
-            new_status = False
+            if door is not None and not door.is_open:
+                panic_changed = True
+                self._panic += panic_step
 
-            if current_location.door is not None:
-                if not current_location.door.is_open:
-                    new_status = True
-                    self._panic += self._magnitude_change_panic
-                    if self._panic >= self._max_panic:
-                        current_location.door.button.force_unclick()
-                        self._rollback = True
-                elif self._panic > 0:
-                    new_status = True
-                    self._panic -= self._magnitude_change_panic
-                    if self._rollback and self._panic <= self._rollback_threshold:
-                        self._rollback = False
+                if not self._is_play_heartbeat and self._panic >= self._max_panic / 2:
+                    self._is_play_heartbeat = True
+                    play(renpy.store.sfx_head_heartbeat, "heartbeat", fadein=2)
+
+                if self._panic >= self._max_panic:
+                    door.button.force_unclick()
+                    self._rollback = True
+                    play(resources.sounds.sfx["panic_breathing_1"], "breathing", fadein=2)
+
             elif self._panic > 0:
-                new_status = True
-                self._panic -= self._magnitude_change_panic
+                panic_changed = True
+                self._panic -= panic_step
+
+                if self._is_play_heartbeat and self._panic < self._max_panic / 2:
+                    self._is_play_heartbeat = False
+                    stop("heartbeat", fadeout=2)
+
                 if self._rollback and self._panic <= self._rollback_threshold:
                     self._rollback = False
+                    stop("breathing", fadeout=2)
 
-            if self._rollback:
-                if current_location.door is not None and not current_location.door.is_open:
-                    current_location.door.button.force_unclick()
+            self._panic = min(max(self._panic, 0), self._max_panic)
 
-            if self._panic < 0:
-                self._panic = 0
-            if self._panic > self._max_panic:
-                self._panic = self._max_panic
+            if self._rollback and door is not None and not door.is_open:
+                door.button.force_unclick()
 
-            if self._open_tablet is not None and self._open_tablet.out_battery:
+            tablet = self._open_tablet
+
+            if tablet is not None and tablet.out_battery:
                 if has_screen("tablet"):
                     main_executor.submit(hide_screen, "tablet", player=self)
                 else:
                     self.close_tablet()
 
-            if new_status:
+            if panic_changed:
                 update_ui()
 
         def reset(self):

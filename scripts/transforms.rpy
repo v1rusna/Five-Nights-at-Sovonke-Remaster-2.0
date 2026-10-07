@@ -1,3 +1,38 @@
+init:
+    python:
+        import math as v1_math_FNaSR
+        def v1_ease_FNaSR(t):
+            return 0.5 - v1_math_FNaSR.cos(v1_math_FNaSR.pi * t) / 2.0
+
+        def v1_door_hold_vignette_appear_t_func_FNaSR(t_obj, st, at):
+            DOOR_HOLDING_VIGNETTE_APPEAR = 0.8
+            door_hold_vignette_current_alpha = 0.0
+
+            normalized_t = st / DOOR_HOLDING_VIGNETTE_APPEAR
+            warped_t = v1_ease_FNaSR(normalized_t)
+
+            door_hold_vignette_current_alpha += warped_t
+
+            if door_hold_vignette_current_alpha < 1.0:
+                t_obj.alpha = door_hold_vignette_current_alpha
+                return 0.0
+
+            t_obj.alpha = 1.0
+            return None
+
+        def v1_door_hold_vignette_disappear_t_func_FNaSR(t_obj, st, at):
+            DOOR_HOLDING_VIGNETTE_DISAPPEAR = 0.8
+            
+            if st >= DOOR_HOLDING_VIGNETTE_DISAPPEAR:
+                t_obj.alpha = 0.0
+                return None  # Завершаем трансформацию
+            
+            normalized_t = st / DOOR_HOLDING_VIGNETTE_DISAPPEAR
+            warped_t = v1_ease_FNaSR(normalized_t)
+            t_obj.alpha = 1.0 - warped_t  # Уменьшаем от 1.0 до 0.0
+            
+            return 0.0  # Продолжаем обновление
+
 transform v1_set_align_center_FNaSR(x, y):
     xalign x yalign y
 
@@ -80,3 +115,9 @@ transform v1_move_direction_t_FNaSR(dx, dy, distance, show_duration, hide_durati
         easeout show_duration xoffset 0 yoffset 0 alpha 1.0
     on hide:
         easein hide_duration xoffset (dx * distance) yoffset (dy * distance) alpha 0.0
+
+transform v1_door_hold_vignette_appear_FNaSR():
+    function v1_door_hold_vignette_appear_t_func_FNaSR
+
+transform v1_door_hold_vignette_disappear_FNaSR():
+    function v1_door_hold_vignette_disappear_t_func_FNaSR

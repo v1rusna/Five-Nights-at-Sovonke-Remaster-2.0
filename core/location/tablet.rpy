@@ -3,6 +3,8 @@ init python in v1FNaSR:
     import string as _string
     from datetime import timedelta as _td
 
+    register_channel("camera_static", "ambience", loop=True)
+
     _MIN_CHARGE = 0
 
     class EnergyStorage(ResetLogic):

@@ -30,6 +30,7 @@ init -6 python in v1FNaSR:
         "Экран с ключом '{}' не найден",
         "Значение экрана должно быть итерируемым, а не '{}'"
     )
+    _store["replace_screen"] = dict()
     _store["sound_channels"] = dict()
     _store["debug_mode"] = bool(getattr(renpy.store, "V1_DEBUG_FNaSR", False))
     _store["initialized"] = False

@@ -9,11 +9,15 @@ screen V1GameMenuSelectorFNaSR:
 
     default tt = v1FNaSR.TextTools
     default settings = False
+    default is_running = v1FNaSR.require_system("night").is_running
 
     default bar_null = Frame(v1FNaSR.resources.images.other["bar_null"],36,36)
     default bar_full = Frame(v1FNaSR.resources.images.other["bar_full"],36,36)
 
     key ["K_ESCAPE", "mouseup_3"] action Return()
+
+    on "show" action Function(lambda: v1FNaSR.require_system("cycle").freeze())
+    on "hide" action Function(lambda: v1FNaSR.require_system("cycle").unfreeze())
 
     add "black" alpha 0.5
 
@@ -22,6 +26,19 @@ screen V1GameMenuSelectorFNaSR:
     vbox align(0.5, 0.5) spacing 15:
         if not settings:
             textbutton tt.text("Продолжить") background None xalign 0.5 hover_sound v1FNaSR.resources.sounds.ui["button_h"] activate_sound v1FNaSR.resources.sounds.ui["button_c"] action Return()
+
+            if is_running:
+                textbutton tt.text("Начать ночь заново"):
+                    background None xalign 0.5
+                    hover_sound v1resFNaSR.sounds.ui["button_h"]
+                    activate_sound v1resFNaSR.sounds.ui["button_c"]
+                    action [Return(), Function(renpy.jump, "v1_quit_FNaSR")] # TODO: реализовать
+
+                textbutton tt.text("В меню"):
+                    background None xalign 0.5
+                    hover_sound v1resFNaSR.sounds.ui["button_h"]
+                    activate_sound v1resFNaSR.sounds.ui["button_c"]
+                    action [Return(), Function(renpy.jump, "v1_quit_FNaSR")] # TODO: реализовать
                 
             textbutton tt.text("Настройки"):
                 background None xalign 0.5
@@ -52,6 +69,11 @@ screen V1GameMenuSelectorFNaSR:
                 hover_sound v1FNaSR.resources.sounds.ui["button_h"]
                 activate_sound v1FNaSR.resources.sounds.ui["button_c"]
                 action SetScreenVariable("settings", False)
+
+screen V1SayScreenFNaSR:
+    text what id "what" xalign 0.5 ypos 964 xmaximum 1541 size 28 line_spacing 2
+    if who:
+        text who id "who" xalign 0.5 ypos 931 size 28 line_spacing 2
 
 init python:
     v1FNaSR.register_screen("main menu", "V1MainMenuScreenFNaSR")

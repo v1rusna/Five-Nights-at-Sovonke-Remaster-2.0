@@ -177,8 +177,11 @@ init -5 python in v1FNaSR:
         except Exception:
             _error("Error path renpy.store._errorhandling")
 
-        renpy.store._autosave = False
-        renpy.config.new_substitutions = False
+        try:
+            renpy.store._autosave = False
+        except:
+            pass
+        # renpy.config.new_substitutions = False
 
         with _store_lock:
             snapshot = []
@@ -245,8 +248,11 @@ init -5 python in v1FNaSR:
                 )
             )
 
-        renpy.store._autosave = True
-        renpy.config.new_substitutions = True
+        try:
+            renpy.store._autosave = True
+        except:
+            pass
+        # renpy.config.new_substitutions = True
 
         renpy.config.quit_callbacks.remove(quit_mod)
         stop_fn = _store.get("_game_cycle_system.stop")
