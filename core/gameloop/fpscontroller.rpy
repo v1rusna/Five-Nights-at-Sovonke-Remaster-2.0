@@ -1,5 +1,5 @@
 # fpscontroller.rpy
-init -3 python in v1FNaSR:
+init -6 python in v1FNaSR:
     from __future__ import division
     
     import sys as _sys

@@ -1,5 +1,5 @@
 #compat.rpy
-init -2 python in v1FNaSR:
+init -6 python in v1FNaSR:
 
     import sys as _sys
 

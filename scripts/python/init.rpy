@@ -3,6 +3,7 @@ init python in v1FNaSR:
         def init(self):
             def _on_enter_escape(self, entity):
                 if isinstance(entity, Player):
+                    require_system("night").finish(False)
                     renpy.jump("v1_quit_FNaSR")
 
             self._locations = [
@@ -390,11 +391,66 @@ init python in v1FNaSR:
                 if ns.has_night(n):
                     ns.unregister(n)
 
+    class EnemyCreateHook(BaseHook):
+        def init(self):
+            self._enemy_list = [
+                {
+                    "tag": "us",
+                    "name": "Ульяна",
+                    "sprite": "us angry pioneer",
+                    "color": "#FF3200"
+                }
+            ]
+
+            self._modules = {
+                "us": [lambda: EnemyMoveModule((-3, -2, 7, 1, 2, 4, -1))]
+            }
+
+        def __call__(self):
+            def _debug_text(context):
+                enemy = context.enemy
+                info = [
+                    "name: {}".format(enemy.name),
+                    "modules: {}".format(len(enemy.modules)),
+                    "sprite: {}".format(enemy.sprite),
+                    "nights start: {}".format(enemy.nights_start),
+                    "special night: {}".format(enemy.special_night),
+                    "current location id: {}".format(enemy.current_location.id),
+                    "current location name: {}".format(enemy.current_location.name),
+                ]
+                return color_text("\n".join(info), enemy.color)
+
+            cycle = require_system("cycle")
+            for i, enemy_data in enumerate(self._enemy_list):
+                try:
+                    enemy = Enemy(**enemy_data)
+                    for module in self._modules.get(enemy.tag, []):
+                        enemy.add_module(module())
+                except Exception:
+                    log.error("Ошибка создания врага '{}'".format(enemy_data.get("tag")))
+                else:
+                    df = DebugFold(color_text(enemy.tag, enemy.color),
+                        DebugText(_debug_text),
+                    order=i)
+                    df.context.enemy = enemy
+
+                    try:
+                        cycle.register(enemy)
+                    except Exception:
+                        log.error("Ошибка регистрации врага '{}'".format(enemy_data.get("tag")))
+                    else:
+                        debug.add_element(df, group="Enemy")
+
+        def handle_exception(self, exc):
+            log("EnemyCreateHook | handle_exception: {}".format(exc))
+        
+
     def _init_other():
         require_system("player").create_player("main")
 
     add_start_fn(LocationCreateHook(), once=True)
     add_start_fn(NightCreateHook(), once=True)
+    add_start_fn(EnemyCreateHook(), once=True)
     add_start_fn(_init_other, once=True)
 
     del _init_other

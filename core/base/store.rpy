@@ -32,7 +32,7 @@ init -6 python in v1FNaSR:
     )
     _store["replace_screen"] = dict()
     _store["sound_channels"] = dict()
-    _store["debug_mode"] = bool(getattr(renpy.store, "V1_DEBUG_FNaSR", False))
+    _store["debug_mode"] = bool(getattr(renpy.store, "V1_DEBUG_FNaSR", False)) or True
     _store["initialized"] = False
     _store["base_initialized"] = False
 

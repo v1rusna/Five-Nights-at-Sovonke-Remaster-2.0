@@ -10,8 +10,6 @@ init:
 
 label AAA_v1_start_FNaSR:
 
-    $ renpy.log("screens: {}".format(renpy.display.screen.screens))
-
     stop music fadeout 2
     window hide dissolve
 
@@ -57,7 +55,6 @@ label v1_load_night_label_FNaSR(night=None, ignore_lock=False, sequence=v1FNaSR.
             if sequence is None:
                 raise v1FNaSR.FNaSRException("Не указана ни ночь, ни последовательность.")
 
-            # Продолжение; если непройденных нет — повтор последней открытой ночи.
             target = ns.find_available_night(sequence)
 
             if target is None:

@@ -2,27 +2,6 @@ init -1 python in v1FNaSR:
     register_channel("heartbeat", "ambience", loop=True)
     register_channel("breathing", "ambience", loop=True)
 
-    class BaseAI(object):
-        def __init__(self):
-            self._current_location = None
-
-        def move(self, location, allow_migrate=False):
-            if not isinstance(location, Location):
-                raise FNaSRTypeError("`location` must be an instance of the 'Location' class, not '{}'".format(type(location)))
-            if self._current_location is location:
-                return
-            if location.location_system is None:
-                raise FNaSRException("The location '{}' is not registered in any of the location systems")
-            if not location.location_system.has_location(location.id):
-                raise FNaSRException("The location with ID '{}' refers to a LocationSystem in which it is not registered".format(location.id))
-            if self._current_location is not None and not allow_migrate and self._current_location.location_system != location.location_system:
-                raise FNaSRException("The current({}) and new({}) locations belong to different location systems".format(self._current_location.id, location.id))
-            if location.door is not None and not location.door.is_open:
-                raise DoorClose("The doors at the '{}'({}) location are closed".format(location.name, location.id))
-            self._current_location = location
-            location.on_enter(self)
-
-
     class Player(GameObject, BaseAI):
         def __init__(self, id, max_panic=15, magnitude_change_panic=1):
             super(Player, self).__init__()
@@ -49,10 +28,6 @@ init -1 python in v1FNaSR:
         @property
         def id(self):
             return self._id
-
-        @property
-        def current_location(self):
-            return self._current_location
 
         @property
         def is_open_tablet(self):

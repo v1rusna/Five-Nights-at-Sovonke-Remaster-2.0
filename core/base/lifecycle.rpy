@@ -241,12 +241,7 @@ init -5 python in v1FNaSR:
             _store["base_initialized"] = False
 
         def _error(header):
-            renpy.log(
-                "FNaSR | quit | {}\n{}".format(
-                    header,
-                    _traceback.format_exc()
-                )
-            )
+            renpy.log("FNaSR | quit | {}\n{}".format(header, _traceback.format_exc()))
 
         try:
             renpy.store._autosave = True

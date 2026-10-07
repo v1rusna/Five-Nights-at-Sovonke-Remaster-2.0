@@ -1,6 +1,6 @@
 
 # cycle.rpy
-init -2 python in v1FNaSR:
+init -5 python in v1FNaSR:
     import sys as _sys
     import time as _time
     import threading as _threading

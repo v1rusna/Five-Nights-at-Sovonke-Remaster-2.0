@@ -21,7 +21,6 @@ init -1 python in v1FNaSR:
     )
 
     class Tools(object):
-
         @staticmethod
         def switch_tablet(player, fast_switch=False):
             if player.is_open_tablet:
@@ -31,14 +30,6 @@ init -1 python in v1FNaSR:
 
         @staticmethod
         def get_active_directions(player, location_system):
-            """
-            Возвращает список (DirectionConfig, [Location, ...]) только
-            для направлений, у которых есть хотя бы одна доступная
-            локация. Порядок локаций внутри направления соответствует
-            порядку connections. Порядок направлений в результирующем
-            списке соответствует DIRECTION_CONFIGS (1..8 по часовой
-            стрелке).
-            """
             grouped = {}
 
             for loc_id, direction in player.current_location.connections:
@@ -63,14 +54,13 @@ init -1 python in v1FNaSR:
 
         @staticmethod
         def get_move_animation_distance():
-            """
-            Расстояние вылета панели направления в пикселях, адаптированное
-            под текущий viewport (та же единица масштабирования, что и у
-            xsize_button/ysize_button в V1MainGameInterfaceFNaSR). Считается
-            от адаптивного скаляра, а не от фиксированного пикселя, поэтому
-            остаётся "гарантированно за экраном" на разных разрешениях.
-            """
             return ViewportManager.current().scale_scalar(MOVE_DIRECTION_DISTANCE_BASE)
+
+        @staticmethod
+        def restart_night(night):
+            require_system("cycle").stop(True)
+            require_system("night").finish(False)
+            renpy.call("v1_load_night_label_FNaSR", night)
 
     class TextTools(object):
         __text_cache = dict()
@@ -86,5 +76,9 @@ init -1 python in v1FNaSR:
             _t = renpy.store.At(renpy.store.Text(text, style=text_style, size=size), renpy.store.v1_vhs_crt_shader_t_FNaSR(g_power))
             cls.__text_cache[text] = {"text": _t, "style": text_style, "size": size, "g_power": g_power}
             return _t
+
+    class MainMenuTools(object):
+        pass
+        
 
 

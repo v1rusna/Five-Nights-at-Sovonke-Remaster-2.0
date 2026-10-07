@@ -1,7 +1,12 @@
 # debug.rpy
-init -1 python in v1FNaSR:
+init -5 python in v1FNaSR:
     import traceback as _traceback
     import time as _time
+
+    def color_text(text, color):
+        if color is None:
+            return text
+        return "{color=%s}%s{/color}" % (color, text)
 
     def _get_frame_times():
         interface = getattr(renpy.display, "interface", None)
@@ -878,6 +883,7 @@ init -1 python in v1FNaSR:
     debug.create_group("Player", order=1)
     debug.create_group("Location", order=2)
     debug.create_group("Night", order=3)
+    debug.create_group("Enemy", order=4)
 
 init python in v1FNaSR:
     _len = get_builtin("len")

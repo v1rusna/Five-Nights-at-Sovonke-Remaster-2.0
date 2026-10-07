@@ -121,3 +121,10 @@ transform v1_door_hold_vignette_appear_FNaSR():
 
 transform v1_door_hold_vignette_disappear_FNaSR():
     function v1_door_hold_vignette_disappear_t_func_FNaSR
+
+transform v1_text_flicker_FNaSR(fdelay=0.7):
+    alpha 1.0
+    pause fdelay
+    alpha 0.0
+    pause fdelay
+    repeat
