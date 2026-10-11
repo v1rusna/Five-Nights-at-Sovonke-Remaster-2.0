@@ -116,23 +116,23 @@ init -2 python in v1FNaSR:
             elif is_string(path):
                 path = (path,)
             elif not isinstance(path, Iterable):
-                raise FNaSRTypeError("'path' должен быть итерируемым, пришло: {}".format(type(path)))
+                raise FNaSRTypeError("'path' должен быть итерируемым, получено: {}".format(type(path)))
 
             if not is_number(speed) or speed < 0:
-                raise FNaSRTypeError("'speed' должен быть числом пришло: {}".format(type(speed)))
+                raise FNaSRTypeError("'speed' должен быть числом получено: {}".format(type(speed)))
 
             start_extra = list()
             if start_factors is not None:
                 for fn in start_factors:
                     if not callable(fn):
-                        raise FNaSRTypeError("Фактор должен быть вызываемым, пришло: {}".format(type(fn)))
+                        raise FNaSRTypeError("Фактор должен быть вызываемым, получено: {}".format(type(fn)))
                     start_extra.append(fn)
 
             extra = list()
             if factors is not None:
                 for fn in factors:
                     if not callable(fn):
-                        raise FNaSRTypeError("Фактор должен быть вызываемым, пришло: {}".format(type(fn)))
+                        raise FNaSRTypeError("Фактор должен быть вызываемым, получено: {}".format(type(fn)))
                     extra.append(fn)
 
             self._setattr("_path", list(path))
@@ -163,7 +163,7 @@ init -2 python in v1FNaSR:
         @speed.setter
         def speed(self, value):
             if not is_number(value) or value < 0:
-                raise FNaSRTypeError("'speed' должен быть числом >= 0, пришло: {}".format(type(value)))
+                raise FNaSRTypeError("'speed' должен быть числом >= 0, получено: {}".format(type(value)))
             self._speed = float(value)
 
         @property
@@ -172,15 +172,15 @@ init -2 python in v1FNaSR:
 
         def add_stun(self, value):
             if not is_strict_integer(value):
-                raise FNaSRTypeError("'value' должен быть целым числом, пришло: {}".format(type(value)))
+                raise FNaSRTypeError("'value' должен быть целым числом, получено: {}".format(type(value)))
             if value < 1:
-                raise FNaSRValueError("'value' должен быть больше нуля, пришло: {}".format(repr(value)))
+                raise FNaSRValueError("'value' должен быть больше нуля, получено: {}".format(repr(value)))
 
             self._stun_left += value
 
         def add_factor(self, fn):
             if not callable(fn):
-                raise FNaSRTypeError("Фактор должен быть вызываемым, пришло: {}".format(type(fn)))
+                raise FNaSRTypeError("Фактор должен быть вызываемым, получено: {}".format(type(fn)))
             self._factors.append(fn)
 
         def on_include(self, enemy):

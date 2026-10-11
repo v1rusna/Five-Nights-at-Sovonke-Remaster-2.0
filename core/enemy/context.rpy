@@ -5,7 +5,7 @@ init -4 python in v1FNaSR:
 
         def __init__(self, enemy):
             if not isinstance(enemy, BaseEnemy):
-                raise FNaSRTypeError("'enemy' должен быть 'BaseEnemy', пришло: {}".format(type(enemy)))
+                raise FNaSRTypeError("'enemy' должен быть 'BaseEnemy', получено: {}".format(type(enemy)))
 
             super(EnemyContext, self).__init__()
             object.__setattr__(self, "_enemy", enemy)

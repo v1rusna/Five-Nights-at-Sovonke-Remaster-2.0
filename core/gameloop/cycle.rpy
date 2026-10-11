@@ -400,14 +400,14 @@ init -5 python in v1FNaSR:
 
         def add_refresh_time(self, value=0.1):
             if not is_number(value):
-                raise FNaSRValueError("value должен быть числом, пришло: {}".format(type(value)))
+                raise FNaSRValueError("value должен быть числом, получено: {}".format(type(value)))
 
             if value > 0:
                 self.refresh_time += float(value)
 
         def decrease_refresh_time(self, value=0.1):
             if not is_number(value):
-                raise FNaSRValueError("value должен быть числом, пришло: {}".format(type(value)))
+                raise FNaSRValueError("value должен быть числом, получено: {}".format(type(value)))
 
             if value <= 0:
                 return

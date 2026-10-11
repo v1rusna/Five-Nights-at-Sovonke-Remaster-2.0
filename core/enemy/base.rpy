@@ -100,7 +100,7 @@ init -3 python in v1FNaSR:
 
         def add_module(self, module, duplicate_obj=False, duplicate_type=False):
             if not isinstance(module, EnemyModule):
-                raise FNaSRTypeError("'module' должен быть наследником 'EnemyModule', пришло: {}".format(type(module)))
+                raise FNaSRTypeError("'module' должен быть наследником 'EnemyModule', получено: {}".format(type(module)))
 
             type_module = type(module)
 
@@ -190,7 +190,7 @@ init -3 python in v1FNaSR:
             elif is_string(special_night):
                 special_night = (special_night,)
             elif not isinstance(special_night, Iterable):
-                raise FNaSRTypeError("'special_night' должен быть итерируемым, пришло: {}".format(type(special_night)))
+                raise FNaSRTypeError("'special_night' должен быть итерируемым, получено: {}".format(type(special_night)))
 
             if nights_start is not None:
                 nights_start = int(nights_start)

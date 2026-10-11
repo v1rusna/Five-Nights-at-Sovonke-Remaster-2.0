@@ -159,9 +159,9 @@ init python in v1FNaSR:
         @hour_time.setter
         def hour_time(self, value):
             if not is_number(value):
-                raise FNaSRTypeError("'value' должен быть числом, пришло: {}".format(type(value)))
+                raise FNaSRTypeError("'value' должен быть числом, получено: {}".format(type(value)))
             if value < 1:
-                raise FNaSRValueError("'value' должен быть больше нуля, пришло: {}".format(repr(value)))
+                raise FNaSRValueError("'value' должен быть больше нуля, получено: {}".format(repr(value)))
 
             self._hour_time = value
 
@@ -196,7 +196,7 @@ init python in v1FNaSR:
 
         def add_timer(self, timer):
             if not isinstance(timer, Timer):
-                raise FNaSRTypeError("timer должен быть 'Timer', пришло: {}".format(type(timer)))
+                raise FNaSRTypeError("timer должен быть 'Timer', получено: {}".format(type(timer)))
             self._timers.append(timer)
 
         def remove_timer(self, timer):

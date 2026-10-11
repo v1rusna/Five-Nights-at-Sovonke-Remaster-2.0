@@ -1,5 +1,8 @@
+
 # location.rpy
 init python in v1FNaSR:
+
+    import threading as _threading
 
     # ------------------------------------------------------------------
     # Направления
@@ -24,6 +27,8 @@ init python in v1FNaSR:
     DIRECTION_MAX = DIRECTION_NORTH_WEST
     DIRECTION_COUNT = DIRECTION_MAX - DIRECTION_MIN + 1
     _DIRECTION_HALF_TURN = DIRECTION_COUNT // 2
+
+    _LOCATION_LOCK = _threading.RLock()
 
 
     def is_valid_direction(direction):
@@ -181,6 +186,8 @@ init python in v1FNaSR:
         __slots__ = ("_loc", "_explicit", "_auto")
 
         def __init__(self, loc, connections):
+            if not isinstance(loc, Location):
+                raise FNaSRTypeError("'loc' должен быть 'Location', получено: {}".format(type(loc)))
             self._loc = loc
             self._explicit = _normalize_connections(connections, loc.id)
             self._auto = {}
@@ -191,16 +198,19 @@ init python in v1FNaSR:
 
         @property
         def explicit(self):
-            """Снимок явных связей: frozenset пар (location_id, direction)."""
-            return frozenset(iter_items(self._explicit))
+            return self._call_with_lock(self._get_frozenset, self._explicit)
 
         @property
         def auto(self):
-            """Снимок автоматических связей: frozenset пар (location_id, direction)."""
-            return frozenset(iter_items(self._auto))
+            return self._call_with_lock(self._get_frozenset, self._auto)
+
+        def _get_frozenset(self, item):
+            return frozenset(iter_items(item))
 
         def get_direction(self, location_id, default=None):
-            """Направление связи с location_id (explicit или auto) либо default, если связи нет."""
+            return self._call_with_lock(self._get_direction_explicit, location_id, default)
+
+        def _get_direction_explicit(self, location_id, default=None):
             if not is_strict_integer(location_id):
                 return default
             location_id = int(location_id)
@@ -209,12 +219,6 @@ init python in v1FNaSR:
             return self._auto.get(location_id, default)
 
         def _add_auto(self, location_id, direction):
-            """
-            Добавление автоматической (обратной) связи. Пересчёт графа не запускает.
-
-            Защищает инварианты: не даёт создать auto-связь, дублирующую или
-            противоречащую явной, и не даёт записать второе направление для того же ID.
-            """
             location_id, direction = _normalize_pair(location_id, direction, self._loc.id)
 
             declared = self._explicit.get(location_id)
@@ -237,40 +241,30 @@ init python in v1FNaSR:
             self._auto[location_id] = direction
 
         def _reset_auto(self):
-            """Сброс автоматических связей перед пересчётом графа."""
             self._auto.clear()
 
         def _purge_target(self, location_id):
-            """
-            Удаляет связь с location_id из explicit и auto (по ID: локация исчезает целиком,
-            и её направление больше ничего не значит).
-            """
             self._explicit.pop(location_id, None)
             self._auto.pop(location_id, None)
 
         def add(self, location_id, direction):
-            """
-            Явное добавление связи с последующим пересчётом графа системы.
+            self._call_with_lock(self._add_explicit, location_id, direction)
 
-            Если явная связь с location_id уже есть — FNaSRException (даже с тем же
-            направлением): это ошибка в логике вызывающего кода. Сменить направление
-            можно так: discard(location_id), затем add(location_id, new_direction).
-
-            Если новая связь противоречит связям других локаций, пересчёт бросит
-            FNaSRException, а добавление будет откатено.
-            """
+        def _add_explicit(self, location_id, direction):
             location_id, direction = self._validate_pair(location_id, direction)
 
             existing = self._explicit.get(location_id)
             if existing is not None:
                 raise FNaSRException(
-                    "Локация '{}' уже имеет явную связь с '{}' (направление {}). "
-                    "Для смены направления сначала вызовите discard({}).".format(
+                    "Локация '{}' уже имеет явную связь с '{}' "
+                    "(направление {}). Для смены направления "
+                    "сначала вызовите discard({}).".format(
                         self._loc.id, location_id, existing, location_id
                     )
                 )
 
             self._explicit[location_id] = direction
+
             try:
                 self._regenerate()
             except Exception:
@@ -278,9 +272,9 @@ init python in v1FNaSR:
                 raise
 
         def remove(self, location_id):
-            """
-            Явное удаление связи по location_id. Бросает FNaSRKeyError, если явной связи нет.
-            """
+            self._call_with_lock(self._remove_explicit, location_id)
+
+        def _remove_explicit(self, location_id):
             location_id = self._validate_id(location_id)
             if location_id not in self._explicit:
                 if location_id in self._auto:
@@ -293,15 +287,26 @@ init python in v1FNaSR:
                 raise FNaSRKeyError(
                     "Связь с id '{}' отсутствует у локации '{}'.".format(location_id, self._loc.id)
                 )
-            del self._explicit[location_id]
-            self._regenerate()
+
+            data = self._explicit.pop(location_id)
+            try:
+                self._regenerate()
+            except Exception:
+                self._explicit[location_id] = data
+                raise
 
         def discard(self, location_id):
-            """Безопасное удаление явной связи по location_id (ничего не делает, если её нет)."""
+            self._call_with_lock(self._discard_explicit, location_id)
+
+        def _discard_explicit(self, location_id):
             location_id = self._validate_id(location_id)
             if location_id in self._explicit:
-                del self._explicit[location_id]
-                self._regenerate()
+                data = self._explicit.pop(location_id)
+                try:
+                    self._regenerate()
+                except Exception:
+                    self._explicit[location_id] = data
+                    raise
 
         def _regenerate(self):
             loc_sys = self._loc.location_system
@@ -319,17 +324,20 @@ init python in v1FNaSR:
             merged.update(self._explicit)
             return merged
 
+        def _call_with_lock(self, fn, *args, **kwargs):
+            with _LOCATION_LOCK:
+                return fn(*args, **kwargs)
+
         def __len__(self):
+            return self._call_with_lock(self._length)
+
+        def _length(self):
             return len(self._merged())
 
         def __contains__(self, location_id):
-            """
-            `2 in connections` — есть ли связь (явная или автоматическая) с location_id=2.
+            return self._call_with_lock(self._contains, location_id)
 
-            Ключ связи — location_id, поэтому проверка идёт по ID, а не по паре.
-            Не бросает исключений: всё, что не является настоящим 'int' (строки, bool,
-            кортежи), просто не содержится. Направление узнаётся через get_direction().
-            """
+        def _contains(self, location_id):
             if not is_strict_integer(location_id):
                 return False
             location_id = int(location_id)
@@ -339,12 +347,17 @@ init python in v1FNaSR:
             return iter(self.to_list())
 
         def to_list(self):
-            """Все связи (explicit + auto), отсортированные по ID: [(location_id, direction), ...]."""
+            return self._call_with_lock(self._to_list_explicit)
+
+        def _to_list_explicit(self):
             return sorted(iter_items(self._merged()))
 
         def __repr__(self):
-            return "_LocationConnections(explicit=%s, auto=%s)" % (
-                _format_map(self._explicit), _format_map(self._auto)
+            return self._call_with_lock(self._repr)
+
+        def _repr(self):
+            return "%s(explicit=%s, auto=%s)" % (
+                type(self), _format_map(self._explicit), _format_map(self._auto)
             )
 
 
@@ -352,10 +365,12 @@ init python in v1FNaSR:
         __slots__ = (
             "_id", "_name", "_image", "_loc_connections",
             "_tablet", "_ambient", "_camera", "_loc_sys",
-            "_parallax_image", "_door", "_bulb", "_on_enter_fn"
+            "_parallax_image", "_door", "_bulb", "_on_enter_fn",
+            "_camera_button",
         )
 
         def __init__(self, location_id, name, image, loc_connections=None, ambient=None, door=None, bulb=None, on_enter_fn=None):
+            location_id = _normalize_id(location_id)
             if door is not None and not isinstance(door, Door):
                 raise FNaSRTypeError("'door' должен быть объектом класса 'Door', передано: {}".format(type(door)))
             if bulb is not None and not isinstance(bulb, Bulb):
@@ -363,7 +378,7 @@ init python in v1FNaSR:
             if on_enter_fn is not None and not callable(on_enter_fn):
                 raise FNaSRTypeError("'on_enter_fn' должен быть вызываемым объектом, передано: {}".format(type(on_enter_fn)))
 
-            self._id = int(location_id)
+            self._id = location_id
             self._name = to_text(name)
             self._image = image
             self._parallax_image = Parallax(
@@ -467,7 +482,7 @@ init python in v1FNaSR:
                 return
 
             if not isinstance(tablet, Tablet):
-                raise FNaSRTypeError("tablet должен быть 'Tablet', пришло: {}".format(type(tablet)))
+                raise FNaSRTypeError("tablet должен быть 'Tablet', получено: {}".format(type(tablet)))
 
             if self._camera is None:
                 raise FNaSRValueError("Невозможно создать кнопку пакеры так как камера не задана")
@@ -526,130 +541,217 @@ init python in v1FNaSR:
 
         def __init__(self):
             self._locations = dict()
+            self._lock = _LOCATION_LOCK
 
         @property
         def locations(self):
-            return dict(self._locations)
+            with self._lock:
+                locations = dict(self._locations)
+            return locations
 
         def get_location(self, location_id):
-            return self._locations.get(int(location_id))
+            location_id = _normalize_id(location_id)
+            with self._lock:
+                location = self._locations.get(location_id)
+            return location
 
         def require_location(self, location_id):
-            location = self._locations.get(int(location_id))
+            location = self.get_location(location_id)
             if location is None:
                 raise FNaSRKeyError("Локация с id '{}' не зарегистрирована.".format(location_id))
             return location
 
         def has_location(self, location_id):
-            return int(location_id) in self._locations
+            if not is_strict_integer(location_id):
+                return False
+            with self._lock:
+                has = location_id in self._locations
+            return has
 
         def _validate_registration(self, location, overwrite):
-            if not isinstance(location, Location):
-                raise FNaSRTypeError("location должен быть 'Location', а не '{}'".format(type(location)))
-            if not overwrite and location.id in self._locations:
-                raise FNaSRException("Локация с id '{}' уже существует".format(location.id))
+            with self._lock:
+                if not isinstance(location, Location):
+                    raise FNaSRTypeError("location должен быть 'Location', а не '{}'".format(type(location)))
+                if not overwrite and location.id in self._locations:
+                    raise FNaSRException("Локация '{}'({}) уже существует".format(location.name, location.id))
+                if location._loc_sys is not None and location._loc_sys is not self:
+                    raise FNaSRException("Локация '{}'({}) уже зарегистрирована в другой системе".format(location.name, location.id))
 
         def _attach(self, location, overwrite):
-            self._validate_registration(location, overwrite)
+            with self._lock:
+                self._validate_registration(location, overwrite)
+                old = self._locations.get(location.id) if overwrite else None
 
-            old = self._locations.get(location.id) if overwrite else None
-            if old is not None:
-                if old._tablet is not None:
-                    raise FNaSRException("В локации '{}' есть планшет, нельзя перезаписывать локации с планшетом".format(old.id))
-                old._loc_sys = None
-                old._loc_connections._reset_auto()
+                if old is not None:
+                    if old._tablet is not None:
+                        raise FNaSRException("В локации '{}' есть планшет, нельзя перезаписывать локации с планшетом".format(old.id))
+                    old._loc_sys = None
+                    old._loc_connections._reset_auto()
 
-            location._loc_sys = self
-            self._locations[location.id] = location
+                location._loc_sys = self
+                self._locations[location.id] = location
 
         def _restore_registry(self, backup, touched):
-            for location in touched:
-                if isinstance(location, Location):
-                    location._loc_sys = None
-                    location._loc_connections._reset_auto()
+            with self._lock:
+                for location in touched:
+                    if isinstance(location, Location) and location._loc_sys is self
+                        location._loc_sys = None
+                        location._loc_connections._reset_auto()
 
-            self._locations.clear()
-            self._locations.update(backup)
-            for location in iter_values(self._locations):
-                location._loc_sys = self
+                self._locations.clear()
+                self._locations.update(backup)
 
-            self.generate_connections()
+                for location in iter_values(self._locations):
+                    location._loc_sys = self
 
+                self.generate_connections()
+
+        @main_thread_only
         def register(self, location, overwrite=False, _regenerate=True):
             if not _regenerate:
                 self._attach(location, overwrite)
                 return
             self.register_many([location], overwrite=overwrite)
 
+        @main_thread_only
         def register_many(self, locations, overwrite=False):
             locations = list(locations)
-            backup = dict(self._locations)
-            try:
-                for location in locations:
-                    self._attach(location, overwrite)
-                self.generate_connections()
-            except Exception:
-                self._restore_registry(backup, locations)
-                raise
 
+            with self._lock:
+                backup = dict(self._locations)
+                attached = []
+
+                try:
+                    for location in locations:
+                        self._attach(location, overwrite)
+                        attached.append(location)
+
+                    self.generate_connections()
+
+                except Exception:
+                    self._restore_registry(backup, attached)
+                    raise
+
+        @main_thread_only
         def unregister(self, location_id):
-            location_id = int(location_id)
-            if location_id not in self._locations:
-                raise FNaSRKeyError("Локация с id '{}' не зарегистрирована".format(location_id))
+            location_id = _normalize_id(location_id)
+            with self._lock:
+                location = self._locations.get(location_id)
 
-            location = self._locations[location_id]
-            if location.tablet is not None:
-                raise FNaSRException(
-                    "Локация '{}' ещё содержит планшет '{}'; сначала переместите "
-                    "или удалите его через TabletManager".format(location_id, location.tablet.tag)
-                )
+                if location is None:
+                    raise FNaSRKeyError("Локация с id '{}' не зарегистрирована".format(location_id))
 
-            removed = self._locations.pop(location_id)
-            removed._loc_sys = None
-            removed._loc_connections._reset_auto()
+                location = self._locations[location_id]
+                if location.tablet is not None:
+                    raise FNaSRException(
+                        "Локация '{}' ещё содержит планшет '{}'; сначала переместите "
+                        "или удалите его через TabletManager".format(location_id, location.tablet.tag)
+                    )
 
-            for loc in iter_values(self._locations):
-                loc._loc_connections._purge_target(location_id)
+                removed = self._locations.pop(location_id)
+                removed._loc_sys = None
+                removed._loc_connections._reset_auto()
 
-            self.generate_connections()
+                for loc in iter_values(self._locations):
+                    loc._loc_connections._purge_target(location_id)
+
+                try:
+                    self.generate_connections()
+                except Exception:
+                    removed._loc_sys = self
+                    self._locations[location_id] = removed
+                    raise
+
+        @main_thread_only
+        def unregister(self, location_id):
+            location_id = _normalize_id(location_id)
+
+            with self._lock:
+                location = self._locations.get(location_id)
+
+                if location is None:
+                    raise FNaSRKeyError("Локация с id '{}' не зарегистрирована".format(location_id))
+
+                if location.tablet is not None:
+                    raise FNaSRException(
+                        "Локация '{}' ещё содержит планшет '{}'; сначала переместите "
+                        "или удалите его через TabletManager".format(location_id, location.tablet.tag)
+                    )
+
+                locations_backup = dict(self._locations)
+
+                connections_backup = {
+                    loc_id: (
+                        dict(loc._loc_connections._explicit),
+                        dict(loc._loc_connections._auto),
+                    )
+                    for loc_id, loc in iter_items(self._locations)
+                }
+
+                try:
+                    removed = self._locations.pop(location_id)
+                    removed._loc_sys = None
+                    removed._loc_connections._reset_auto()
+
+                    for loc in iter_values(self._locations):
+                        loc._loc_connections._purge_target(location_id)
+
+                    self.generate_connections()
+                except Exception:
+                    self._locations.clear()
+                    self._locations.update(locations_backup)
+
+                    for loc_id, loc in iter_items(self._locations):
+                        loc._loc_sys = self
+
+                        explicit, auto = connections_backup[loc_id]
+                        loc._loc_connections._explicit.clear()
+                        loc._loc_connections._explicit.update(explicit)
+                        loc._loc_connections._auto.clear()
+                        loc._loc_connections._auto.update(auto)
+
+                    raise
 
         def generate_connections(self):
-            locations = self._locations
+            with self._lock:
+                locations = self._locations
 
-            computed = {}
-            for loc_id in iter_keys(locations):
-                computed[loc_id] = {}
+                computed = {}
+                for loc_id in iter_keys(locations):
+                    computed[loc_id] = {}
 
-            for source in iter_values(locations):
-                for target_id, direction in iter_items(source._loc_connections._explicit):
-                    target = locations.get(target_id)
-                    if target is None:
-                        continue
+                for source in iter_values(locations):
+                    for target_id, direction in iter_items(source._loc_connections._explicit):
+                        target = locations.get(target_id)
+                        if target is None:
+                            continue
 
-                    reverse = get_opposite_direction(direction)
-                    declared = target._loc_connections._explicit.get(source.id)
-                    if declared is not None:
-                        if declared != reverse:
-                            raise FNaSRException(
-                                "Противоречие направлений: локация '{}' считает '{}' направлением {}, "
-                                "поэтому '{}' должна указывать на '{}' направлением {}, "
-                                "а указывает направлением {}.".format(
-                                    source.id, target_id, direction,
-                                    target_id, source.id, reverse, declared
+                        reverse = get_opposite_direction(direction)
+                        declared = target._loc_connections._explicit.get(source.id)
+                        if declared is not None:
+                            if declared != reverse:
+                                raise FNaSRException(
+                                    "Противоречие направлений: локация '{}' считает '{}' направлением {}, "
+                                    "поэтому '{}' должна указывать на '{}' направлением {}, "
+                                    "а указывает направлением {}.".format(
+                                        source.id, target_id, direction,
+                                        target_id, source.id, reverse, declared
+                                    )
                                 )
-                            )
-                        continue
+                            continue
 
-                    computed[target_id][source.id] = reverse
+                        computed[target_id][source.id] = reverse
 
-            for loc_id, auto in iter_items(computed):
-                connections = locations[loc_id]._loc_connections
-                connections._reset_auto()
-                for source_id, reverse in iter_items(auto):
-                    connections._add_auto(source_id, reverse)
+                for loc_id, auto in iter_items(computed):
+                    connections = locations[loc_id]._loc_connections
+                    connections._reset_auto()
+                    for source_id, reverse in iter_items(auto):
+                        connections._add_auto(source_id, reverse)
 
         def __iter__(self):
-            return iter(iter_values(dict(self._locations)))
+            with self._lock:
+                iter_locations = tuple(iter_values(self._locations))
+            return iter(iter_locations)
 
     register_system("location", LocationSystem())
 

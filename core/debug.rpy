@@ -611,7 +611,7 @@ init -5 python in v1FNaSR:
 
         def add_element(self, element):
             if not isinstance(element, DebugElement):
-                raise FNaSRTypeError("element должен быть 'DebugElement', пришло: {}".format(type(element)))
+                raise FNaSRTypeError("element должен быть 'DebugElement', получено: {}".format(type(element)))
 
             if element not in self._elements:
                 self._elements.append(element)
@@ -619,7 +619,7 @@ init -5 python in v1FNaSR:
 
         def discard_element(self, element):
             if not isinstance(element, DebugElement):
-                raise FNaSRTypeError("element должен быть 'DebugElement', пришло: {}".format(type(element)))
+                raise FNaSRTypeError("element должен быть 'DebugElement', получено: {}".format(type(element)))
 
             if element in self._elements:
                 self._elements.remove(element)

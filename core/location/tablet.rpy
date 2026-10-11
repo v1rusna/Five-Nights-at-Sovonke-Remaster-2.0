@@ -83,7 +83,7 @@ init python in v1FNaSR:
 
         def charge_from(self, source):
             if not isinstance(source, EnergyStorage):
-                raise FNaSRValueError("source должен быть 'EnergyStorage', пришло: {}".format(type(source)))
+                raise FNaSRValueError("source должен быть 'EnergyStorage', получено: {}".format(type(source)))
 
             if source.out_battery:
                 return
