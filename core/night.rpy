@@ -19,10 +19,10 @@ init -1 python in v1FNaSR:
 
 
     class Night(object):
-        __slots__ = (
-            "_id", "_title", "_start_location_id", "_end_of_shift",
-            "_requires", "_start_callback", "_end_callback"
-        )
+        # __slots__ = (
+        #     "_id", "_title", "_start_location_id", "_end_of_shift",
+        #     "_requires", "_start_callback", "_end_callback"
+        # )
 
         def __init__(
             self,
@@ -105,7 +105,7 @@ init -1 python in v1FNaSR:
 
 
     class NightSequence(object):
-        __slots__ = ("_name", "_ordered_unlock", "_ids")
+        # __slots__ = ("_name", "_ordered_unlock", "_ids")
 
         def __init__(self, name, ordered_unlock=True):
             _check_text_id(name, "name")

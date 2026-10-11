@@ -8,9 +8,9 @@ init python in v1FNaSR:
     _MIN_CHARGE = 0
 
     class EnergyStorage(ResetLogic):
-        __slots__ = (
-            "_charge", "_max_charge", "_discharge",
-        )
+        # __slots__ = (
+        #     "_charge", "_max_charge", "_discharge",
+        # )
         def __init__(self, charge=1000, max_charge=1000, discharge=1):
             charge = int(charge)
             max_charge = int(max_charge)

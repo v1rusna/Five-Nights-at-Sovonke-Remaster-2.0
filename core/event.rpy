@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # event.rpy
 init -5 python in v1FNaSR:
-    import _fnmatch
-    import _threading
+    import fnmatch as _fnmatch
+    import threading as _threading
 
     class EventRecord(object):
-        __slots__ = ("handler", "once", "priority", "id",)
+        # __slots__ = ("handler", "once", "priority", "id",)
 
         _counter = 0
         _counter_lock = _threading.Lock() 

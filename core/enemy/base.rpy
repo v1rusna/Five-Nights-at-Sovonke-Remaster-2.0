@@ -1,31 +1,54 @@
+
 # base.rpy
 init -3 python in v1FNaSR:
     import traceback as _traceback
+    import threading as _threading
+    from weakref import WeakSet as _WeakSet
+
+    _created_enemy = _WeakSet()
+    _created_enemy_lock = _threading.Lock()
+    def _register_enemy(enemy):
+        if not isinstance(enemy, BaseEnemy):
+            return
+        with _created_enemy_lock:
+            _created_enemy.add(enemy)
+    def get_created_enemy():
+        with _created_enemy_lock:
+            created_enemy = tuple(_created_enemy)
+        return created_enemy
 
     def recolor_enemy_sprite(sprite):
         return renpy.store.Transform(sprite, matrixcolor=renpy.store.SaturationMatrix(0.4))
 
-    def get_random_position(p1=0, p2=999):
-        return (renpy.random.randint(p1, p2), 0)
-
     class EnemyModule(ResetLogic):
-        __slots__ = ("_error",)
+        # __slots__ = ("_error",)
 
         def __init__(self):
             super(EnemyModule, self).__init__()
             self._error = None
+            self._freeze = False
 
         @property
         def error(self):
             return self._error
 
-        def set_error(self, text=None): # set_error можно спокойно переопределить и при возникновении исключения что то предпринять
+        @property
+        def freezing(self):
+            return self._freeze
+
+        def set_error(self, text=None):
             if text is None:
                 text = _traceback.format_exc()
             self._error = text
 
         def clear_error(self):
             self._error = None
+
+        def freeze(self):
+            self._freeze = True
+
+        def unfreeze(self):
+            self._freeze = False
 
         def on_include(self, enemy):
             pass
@@ -38,13 +61,18 @@ init -3 python in v1FNaSR:
 
         def update(self, context):
             pass
+        
+        def get_debug_list_texts(self, enemy_context):
+            pass
+
+        def __repr__(self):
+            return "<{}>".format(type(self))
 
     class BaseEnemy(GameObject, BaseAI):
-        __slots__ = ("_modules", "_types_modules", "_context",)
+        # __slots__ = ("_modules", "_types_modules", "_context", "__weakref__",)
 
         def __init__(self):
-            GameObject.__init__(self)
-            BaseAI.__init__(self)
+            super(BaseEnemy, self).__init__()
  
             self._modules = list()
             self._types_modules = set()
@@ -61,6 +89,14 @@ init -3 python in v1FNaSR:
         @property
         def types_modules(self):
             return tuple(self._types_modules)
+
+        @property
+        def errors(self):
+            errors = []
+            for m in self.modules:
+                if m.error:
+                    errors.append("{}: {}".format(repr(m), m.error))
+            return tuple(errors)
 
         def add_module(self, module, duplicate_obj=False, duplicate_type=False):
             if not isinstance(module, EnemyModule):
@@ -101,7 +137,7 @@ init -3 python in v1FNaSR:
             return module in self._modules
 
         def start(self):
-            for module in self.modules:
+            for module in self._modules:
                 if module.error:
                     continue
                 self._safe_call(module, "start", self._context)
@@ -110,8 +146,8 @@ init -3 python in v1FNaSR:
             self.current_refresh_time = refresh_time
             self._accumulated_time += dt
 
-            for module in self.modules:
-                if module.error:
+            for module in self._modules:
+                if module.error or module.freezing:
                     continue
                 self._safe_call(module, "tick_update", self._context, dt)
 
@@ -119,14 +155,14 @@ init -3 python in v1FNaSR:
                 self.update()
 
         def update(self):
-            for module in self.modules:
-                if module.error:
+            for module in self._modules:
+                if module.error or module.freezing:
                     continue
                 self._safe_call(module, "update", self._context)
 
         def reset(self):
-            for module in self.modules:
-                self._safe_call(module, "reset", self._context)
+            for module in self._modules:
+                self._safe_call(module, "reset")
 
             super(BaseEnemy, self).reset()
 
@@ -141,10 +177,10 @@ init -3 python in v1FNaSR:
 
 
     class Enemy(BaseEnemy):
-        __slots__ = (
-            "_tag", "_nights_start", "_special_night", "_name", "_color",
-            "_sprite", "_parallax_sprite",
-        )
+        # __slots__ = (
+        #     "_tag", "_nights_start", "_special_night", "_name", "_color",
+        #     "_sprite", "_parallax_sprite", "_align",
+        # )
 
         def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None):
             super(Enemy, self).__init__()
@@ -164,8 +200,9 @@ init -3 python in v1FNaSR:
             self._special_night = set(special_night)
             self._name = to_text(name)
             self._color = color
+            self._setattr("_align", (0.5, 0.5))
 
-            self._sprite = sprite
+            self._sprite = recolor_enemy_sprite(sprite)
             self._parallax_sprite = Parallax(
                 displayable=self._sprite,
                 zoom=1.15,
@@ -174,6 +211,8 @@ init -3 python in v1FNaSR:
                 sharpness_factor=0.1,
                 fill_viewport=True
             )
+
+            _register_enemy(self)
 
         @property
         def tag(self):
@@ -196,11 +235,26 @@ init -3 python in v1FNaSR:
             return self._color
 
         @property
+        def align(self):
+            return self._align
+
+        @property
         def sprite(self):
             return self._sprite
 
         @property
         def parallax_sprite(self):
             return self._parallax_sprite
+
+        def set_align(self, x=None, y=None):
+            if x is None:
+                x = renpy.random.uniform(0.1, 0.9)
+            if y is None:
+                y = 0.5
+
+            x = float(x)
+            y = float(y)
+
+            self._align = (x, y,)
 
 

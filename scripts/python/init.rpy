@@ -415,8 +415,8 @@ init python in v1FNaSR:
                     "sprite: {}".format(enemy.sprite),
                     "nights start: {}".format(enemy.nights_start),
                     "special night: {}".format(enemy.special_night),
-                    "current location id: {}".format(enemy.current_location.id),
-                    "current location name: {}".format(enemy.current_location.name),
+                    "location id: {}".format(enemy.current_location.id),
+                    "location name: {}".format(enemy.current_location.name),
                 ]
                 return color_text("\n".join(info), enemy.color)
 
@@ -431,6 +431,12 @@ init python in v1FNaSR:
                 else:
                     df = DebugFold(color_text(enemy.tag, enemy.color),
                         DebugText(_debug_text),
+                        DebugFold("modules errors",
+                            DebugIf(lambda context: len(context.enemy.errors) > 0,
+                                DebugText(lambda context: "\n".join("-{}".format(err) for err in context.enemy.errors)),
+                                DebugText(lambda context: "There are no errors"),
+                            ),
+                        order=1),
                     order=i)
                     df.context.enemy = enemy
 

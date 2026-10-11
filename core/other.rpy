@@ -20,6 +20,7 @@ init -10 python in v1FNaSR:
 
     class BaseAI(object):
         def __init__(self):
+            super(BaseAI, self).__init__()
             self._current_location = None
 
         @property

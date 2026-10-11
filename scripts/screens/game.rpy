@@ -21,6 +21,7 @@ screen V1MainGameInterfaceFNaSR:
     $ player = v1FNaSR.require_system("player").current_player
 
     add player.get_sees_image()
+    use _v1_enemy_show(player)
     use V1InfoNightScreenFNaSR(player, ns)
 
     if not player.is_open_tablet and not player.is_moving and not player.under_attack:
@@ -223,10 +224,25 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     timer 3.3 / speed action (Function(v1FNaSR.show_screen, "move"), Function(v1FNaSR.stop, "walk", fadeout=1.0))
     timer 1.8 / speed action Function(player.move, move_to)
     add player.get_sees_image() at v1_go_t_FNaSR(speed)
+    fixed:
+        at v1_go_t_FNaSR(speed)
+        use _v1_enemy_show(player)
     add move_to.parallax_image at v1_moving_location2_FNaSR(speed)
+    fixed:
+        at v1_moving_location2_FNaSR(speed)
+        use _v1_enemy_show(player)
     add "black" at v1_moving_black_FNaSR(speed)
     use V1InfoNightScreenFNaSR()
 
-
+screen _v1_enemy_show(player):
+    for enemy in v1FNaSR.get_created_enemy():
+        if player.is_open_tablet:
+            if enemy.current_location.id == player.current_location.tablet.selected:
+                $ xa, ya = enemy.align
+                add enemy.sprite align(xa, ya)
+        else:
+            if enemy.current_location.id == player.current_location.id:
+                $ xa, ya = enemy.align
+                add enemy.parallax_sprite align(xa, ya)
 
 

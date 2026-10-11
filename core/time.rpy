@@ -156,6 +156,15 @@ init python in v1FNaSR:
         def hour_time(self):
             return float(self._hour_time * self.current_refresh_time)
 
+        @hour_time.setter
+        def hour_time(self, value):
+            if not is_number(value):
+                raise FNaSRTypeError("'value' должен быть числом, пришло: {}".format(type(value)))
+            if value < 1:
+                raise FNaSRValueError("'value' должен быть больше нуля, пришло: {}".format(repr(value)))
+
+            self._hour_time = value
+
         def set_time(self, hour, minutes=0):
             if not is_integer(hour):
                 raise FNaSRTypeError("hour должен быть целым числом, передано: {}.".format(type(hour)))
@@ -179,7 +188,6 @@ init python in v1FNaSR:
             if step > 1:
                 minutes = int(minutes // step * step)
             return int(minutes)
-
 
         def timer(self, fn, seconds, repetitions=1):
             timer = Timer(fn, seconds, repetitions)

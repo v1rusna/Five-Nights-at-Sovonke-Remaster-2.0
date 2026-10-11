@@ -1,7 +1,7 @@
 # context.rpy
 init -4 python in v1FNaSR:
     class EnemyContext(DebugContext):
-        __slots__ = ("_enemy",)
+        # __slots__ = ("_enemy",)
 
         def __init__(self, enemy):
             if not isinstance(enemy, BaseEnemy):

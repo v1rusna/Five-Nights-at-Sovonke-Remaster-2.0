@@ -65,9 +65,10 @@ init -5 python in v1FNaSR:
         _reset_to_default - это словарь на который опирается reset, содержание должно быть: 'attr': self.attr
         _reset_to_default должен сформироваться до первого вызова reset, желательно чтобы он был готов после __init__
         """
-        __slots__ = ("_fast_reset", "_reset_to_default")
+        # __slots__ = ("_fast_reset", "_reset_to_default")
 
         def __init__(self):
+            super(ResetLogic, self).__init__()
             self._reset_to_default = dict()
 
         def _setattr(self, attr, val, use_object=False):
@@ -108,12 +109,12 @@ init -5 python in v1FNaSR:
                 raise
 
     class GameObject(ResetLogic):
-        __slots__ = (
-            "_accumulated_time",
-            "_enabled",
-            "_consecutive_errors",
-            "current_refresh_time",
-        )
+        # __slots__ = (
+        #     "_accumulated_time",
+        #     "_enabled",
+        #     "_consecutive_errors",
+        #     "current_refresh_time",
+        # )
 
         def __init__(self):
             super(GameObject, self).__init__()
