@@ -403,7 +403,7 @@ init python in v1FNaSR:
             ]
 
             self._modules = {
-                "us": [lambda: EnemyMoveModule((-3, -2, 7, 1, 2, 4, -1))]
+                "us": [lambda: EnemyMoveModule((-3, -2, 7, 1, 2, 4, -1), start_factors=ALL_ENEMY_MOVING_START_FACTORS, factors=ALL_ENEMY_MOVING_FACTORS)]
             }
 
         def __call__(self):
@@ -431,12 +431,22 @@ init python in v1FNaSR:
                 else:
                     df = DebugFold(color_text(enemy.tag, enemy.color),
                         DebugText(_debug_text),
-                        DebugFold("modules errors",
+                        DebugFold("=== modules debug ===",
+                            DebugIf(lambda context: len(context.enemy.modules) > 0,
+                                DebugText(lambda context: "\n".join(
+                                    "-{}".format(t) 
+                                    for m in context.enemy.modules 
+                                    for t in m.get_debug_list_texts(context.enemy.context)
+                                )),
+                                DebugText(lambda context: "A fake enemy"),
+                            ),
+                        order=1),
+                        DebugFold("=== modules errors ===",
                             DebugIf(lambda context: len(context.enemy.errors) > 0,
                                 DebugText(lambda context: "\n".join("-{}".format(err) for err in context.enemy.errors)),
                                 DebugText(lambda context: "There are no errors"),
                             ),
-                        order=1),
+                        order=2),
                     order=i)
                     df.context.enemy = enemy
 

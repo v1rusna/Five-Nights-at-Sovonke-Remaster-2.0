@@ -9,6 +9,7 @@ init -2 python in v1FNaSR:
 
     # --- считаются ОДИН РАЗ при start() (не меняются за ночь) ---
     def factor_difficulty(module, context):
+        return 1.0 # TODO: когда будут настройки убрать return
         d = settings.game_difficulty # 1-4
         return 0.7 + 0.3 * (d - 1)
 
@@ -71,6 +72,22 @@ init -2 python in v1FNaSR:
 
     def factor_time(module, context):
         return 1.0 + module.TIME_GAIN * (1.0 - _math.exp(-_hours(context) / module.TIME_TAU))
+
+    ALL_ENEMY_MOVING_START_FACTORS = (
+        factor_difficulty,
+        factor_night
+    )
+
+    ALL_ENEMY_MOVING_FACTORS = (
+        factor_watched,
+        factor_door,
+        factor_external,
+        factor_proximity,
+        factor_endgame,
+        factor_mood,
+        factor_crowd,
+        factor_time,
+    )
 
     class EnemyMoveModule(EnemyModule):
         BASE_INTERVAL = 30.0   # средний интервал между ходами (сек) при speed=1 в начале ночи

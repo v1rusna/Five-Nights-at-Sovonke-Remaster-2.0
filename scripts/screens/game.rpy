@@ -236,13 +236,14 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
 
 screen _v1_enemy_show(player):
     for enemy in v1FNaSR.get_created_enemy():
-        if player.is_open_tablet:
-            if enemy.current_location.id == player.current_location.tablet.selected:
-                $ xa, ya = enemy.align
-                add enemy.sprite align(xa, ya)
-        else:
-            if enemy.current_location.id == player.current_location.id:
-                $ xa, ya = enemy.align
-                add enemy.parallax_sprite align(xa, ya)
+        if enemy.current_location is not None:
+            if player.is_open_tablet:
+                if enemy.current_location.id == player.current_location.tablet.selected:
+                    $ xa, ya = enemy.align
+                    add enemy.sprite align(xa, ya)
+            else:
+                if enemy.current_location.id == player.current_location.id:
+                    $ xa, ya = enemy.align
+                    add enemy.parallax_sprite align(xa, ya)
 
 
