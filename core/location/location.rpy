@@ -57,9 +57,7 @@ init python in v1FNaSR:
     # ------------------------------------------------------------------
     def _normalize_id(value):
         if not is_strict_integer(value):
-            raise FNaSRTypeError(
-                "ID локации должен быть 'int' (не 'bool'), а не '{}': {!r}.".format(type(value), value)
-            )
+            raise FNaSRTypeError("ID локации должен быть 'int' (не 'bool'), а не '{}': {!r}.".format(type(value), value))
         return int(value)
 
 
@@ -594,7 +592,7 @@ init python in v1FNaSR:
         def _restore_registry(self, backup, touched):
             with self._lock:
                 for location in touched:
-                    if isinstance(location, Location) and location._loc_sys is self
+                    if isinstance(location, Location) and location._loc_sys is self:
                         location._loc_sys = None
                         location._loc_connections._reset_auto()
 

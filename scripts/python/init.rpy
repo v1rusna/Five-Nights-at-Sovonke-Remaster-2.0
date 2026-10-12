@@ -403,7 +403,7 @@ init python in v1FNaSR:
             ]
 
             self._modules = {
-                "us": [lambda: EnemyMoveModule((-3, -2, 7, 1, 2, 4, -1), start_factors=ALL_ENEMY_MOVING_START_FACTORS, factors=ALL_ENEMY_MOVING_FACTORS)]
+                "us": [lambda: EnemyMoveModule(-3, start_factors=ALL_ENEMY_MOVING_START_FACTORS, factors=ALL_ENEMY_MOVING_FACTORS)]
             }
 
         def __call__(self):

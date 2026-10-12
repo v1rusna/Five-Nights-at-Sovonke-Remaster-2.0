@@ -24,6 +24,7 @@ init -1 python in v1FNaSR:
             self._setattr("_rollback", False)
             self._setattr("_rollback_threshold", round(self._max_panic * 2 / 3))
             self._setattr("_is_play_heartbeat", False)
+            self._setattr("_died", False)
 
         @property
         def id(self):
@@ -70,6 +71,13 @@ init -1 python in v1FNaSR:
         @property
         def has_bulb(self):
             return self._current_location.bulb is not None
+
+        @property
+        def is_died(self):
+            return self._died
+
+        def to_kill(self):
+            self._died = True
 
         def get_panic_text(self):
             return "panic: {}/{}".format(self._panic, self._max_panic)

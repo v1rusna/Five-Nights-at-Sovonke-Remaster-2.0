@@ -21,7 +21,7 @@ init -3 python in v1FNaSR:
         return renpy.store.Transform(sprite, matrixcolor=renpy.store.SaturationMatrix(0.4))
 
     class EnemyModule(ResetLogic):
-        # __slots__ = ("_error",)
+        __slots__ = ("_error", "_freeze",)
 
         def __init__(self):
             super(EnemyModule, self).__init__()

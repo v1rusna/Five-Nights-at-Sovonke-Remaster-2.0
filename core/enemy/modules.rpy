@@ -1,5 +1,8 @@
+
 # modules.rpy
 init -2 python in v1FNaSR:
+    import threading as _threading
+
     def _hours(context):
         """Игровое время текущей сессии в часах с дробной частью (total_hours + доля часа)."""
         gt = context.game_time
@@ -103,20 +106,31 @@ init -2 python in v1FNaSR:
         ENDGAME_GAIN = 0.5     # прибавка в конце смены (x1.5 при 0.5)
         ENDGAME_POWER = 2.0    # форма нарастания: 1 = линейно, 2 = медленно, потом резко
 
-        def __init__(
-            self, path,
+        @staticmethod
+        def generate_new_path_all_enemy():
+            for enemy in get_created_enemy():
+                location = enemy.current_location
+
+                if location is None:
+                    continue
+
+                for module in enemy.modules:
+                    if isinstance(module, EnemyMoveModule):
+                        module.generate_new_path(location.id)
+
+        def __init__(self,
+            start_location_id=None,
+            end_location_id=None,
             speed=1.0,
             start_factors=None,
             factors=None
         ):
             super(EnemyMoveModule, self).__init__()
 
-            if path is None:
-                path = ()
-            elif is_string(path):
-                path = (path,)
-            elif not isinstance(path, Iterable):
-                raise FNaSRTypeError("'path' должен быть итерируемым, получено: {}".format(type(path)))
+            if start_location_id is not None:
+                start_location_id = _normalize_id(start_location_id)
+            if end_location_id is not None:
+                end_location_id = _normalize_id(end_location_id)
 
             if not is_number(speed) or speed < 0:
                 raise FNaSRTypeError("'speed' должен быть числом получено: {}".format(type(speed)))
@@ -135,13 +149,15 @@ init -2 python in v1FNaSR:
                         raise FNaSRTypeError("Фактор должен быть вызываемым, получено: {}".format(type(fn)))
                     extra.append(fn)
 
-            self._setattr("_path", list(path))
+            self._setattr("_path", [])
             self._setattr("_cursor", 0)
             self._setattr("_speed", float(speed))
             self._setattr("_idle", 0.0)
             self._setattr("_stun_left", 0.0)
             self._setattr("_mood", 1.0)
             self._setattr("_static", 1.0)
+            self._setattr("_start_location_id", start_location_id)
+            self._setattr("_end_location_id", end_location_id)
 
             self._start_factors = start_extra
             self._factors = extra
@@ -169,6 +185,34 @@ init -2 python in v1FNaSR:
         @property
         def stun_left(self):
             return self._stun_left
+
+        @property
+        def is_first(self):
+            return bool(self._path) and self._cursor == 0
+
+        @property
+        def is_last(self):
+            return bool(self._path) and self._cursor >= len(self._path) - 1
+
+        def generate_new_path(self, start_location_id=None, end_location_id=None):
+            if start_location_id is None:
+                start_location_id = self._start_location_id
+
+            if end_location_id is None:
+                end_location_id = self._end_location_id
+
+            path = PathGenerator.generate_path(
+                start_location_id,
+                end_location_id
+            )
+
+            self._path = path if path is not None else []
+            self._cursor = 0
+
+            if path is None:
+                return None
+
+            return tuple(path)
 
         def add_stun(self, value):
             if not is_strict_integer(value):
@@ -203,7 +247,12 @@ init -2 python in v1FNaSR:
 
 
         def start(self, context):
-            for location_id in self._path:
+            path = self.generate_new_path()
+            if path is None:
+                raise FNaSRException("Не удалось построить путь для '{}'({})".format(context.enemy.name, context.enemy.tag))
+
+            path = tuple(self._path)
+            for location_id in path:
                 context.location_system.require_location(location_id)
 
             static = 1.0
@@ -213,14 +262,19 @@ init -2 python in v1FNaSR:
             self._idle = 0.0
             self._mood = renpy.random.uniform(0.85, 1.2)
 
-            if self._path:
+            if path:
                 self._move(context)
 
         def update(self, context):
-            if not self._path:
+            path = tuple(self._path)
+
+            if not path:
                 return
 
-            dt = context.enemy.current_refresh_time
+            if self._cursor >= len(path) - 1:
+                return
+
+            dt = 1.0 # context.enemy.current_refresh_time
 
             if self._stun_left > 0.0:
                 self._stun_left = max(0.0, self._stun_left - dt)
@@ -230,11 +284,12 @@ init -2 python in v1FNaSR:
                 return
 
             if self.move_change(context):
-                self._idle_time = 0.0
+                self._idle = 0.0
+
                 self.step_forward()
 
                 if not self._move(context):
-                    self._cursor = 0
+                    self.generate_new_path()
                     self._move(context)
 
                 context.enemy.set_align()
@@ -258,7 +313,16 @@ init -2 python in v1FNaSR:
             return rate
 
         def move_change(self, context, consider_refresh_time=False):
-            self._idle += 1.0
+            dt = (
+                context.enemy.current_refresh_time
+                if consider_refresh_time
+                else 1.0
+            )
+
+            if dt <= 0.0:
+                return False
+
+            self._idle += dt
 
             if self._idle < self.MIN_DWELL:
                 return False
@@ -278,32 +342,66 @@ init -2 python in v1FNaSR:
             else:
                 return renpy.random.random() < 1.0 - _math.exp(-rate)
 
-        def step_forward(self):
-            if not len(self._path):
+        def step_forward(self, cyclic_path=False):
+            path = tuple(self._path)
+            if not len(path):
                 return
             self._cursor += 1
-            if self._cursor > len(self._path) - 1:
-                self._cursor = 0
+            if self._cursor > len(path) - 1:
+                if cyclic_path:
+                    self._cursor = 0
+                else:
+                    self._cursor -= 1
             return self.current_location_id
 
-        def step_back(self):
-            if not len(self._path):
+        def step_back(self, cyclic_path=False):
+            path = tuple(self._path)
+            if not len(path):
                 return
             self._cursor -= 1
             if self._cursor < 0:
-                self._cursor = len(self._path) - 1
+                if cyclic_path:
+                    self._cursor = len(path) - 1
+                else:
+                    self._cursor += 1
             return self.current_location_id
 
         def get_debug_list_texts(self, enemy_context):
             return [
-                "path: {}/{}".format(self._cursor+1, self.len_path),
+                "path: {}".format(self._path),
+                "progress: {}/{}".format(self._cursor+1, self.len_path),
                 "rate: {}".format(self.get_rate(enemy_context)),
                 "stun: {}".format(self.stun_left),
                 "speed: {}".format(self.speed),
                 "current location id: {}".format(self.current_location_id)
             ]
 
+    # Быстрый набросок на будущее, пока что не используется
+    class EnemyAttackModule(EnemyModule):
+        def __init__(self, safety_time=0.5):
+            raise FNaSRNotImplementedError
 
+            if not is_number(safety_time) or safety_time < 0:
+                raise FNaSRTypeError("'safety_time' должен быть положительным числом, получено: {}".format(type(safety_time)))
+
+            self._setattr("_safety_time", float(safety_time))
+            self._setattr("_current_safety_time", 0.0)
+
+        def on_include(self, enemy):
+            if context.get("player_manager") is None:
+                context.player_manager = require_system("player")
+
+        def tick_update(self, context, dt):
+            player = context.player_manager.current_player
+            if player.current_location.id == context.enemy.current_location.id:
+                self._current_safety_time += dt
+                if self._current_safety_time >= self._safety_time:
+                    self.kill_player(player)
+            else:
+                self._current_safety_time = 0.0
+
+        def kill_player(self, player):
+            player.to_kill()
 
 
 

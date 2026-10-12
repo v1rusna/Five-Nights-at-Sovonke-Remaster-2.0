@@ -1,14 +1,4 @@
 # state.rpy
-init python early:
-    import sys
-
-    DEBUG_FLAG = "--v1FNaSR:Debug"
-
-    renpy.store.V1_DEBUG_FNaSR = DEBUG_FLAG in sys.argv
-
-    if renpy.store.V1_DEBUG_FNaSR:
-        sys.argv.remove(DEBUG_FLAG)
-
 init -6 python in v1FNaSR:
     import threading as _threading
     import sys as _sys
@@ -32,7 +22,7 @@ init -6 python in v1FNaSR:
     )
     _store["replace_screen"] = dict()
     _store["sound_channels"] = dict()
-    _store["debug_mode"] = bool(getattr(renpy.store, "V1_DEBUG_FNaSR", False)) or True
+    _store["debug_mode"] = True
     _store["initialized"] = False
     _store["base_initialized"] = False
 

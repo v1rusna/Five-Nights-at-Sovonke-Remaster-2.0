@@ -220,9 +220,11 @@ screen V1MoveScreenFNaSR:
         use V1MoveDirectionFNaSR(config, locations, player)
 
 screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
+    python:
+        cycle = v1FNaSR.require_system("cycle")
     timer 3.6 / speed action (Hide("V1MovingAnotherLocationFNaSR"), Function(v1FNaSR.GlobalState.set, "animation", False))
     timer 3.3 / speed action (Function(v1FNaSR.show_screen, "move"), Function(v1FNaSR.stop, "walk", fadeout=1.0))
-    timer 1.8 / speed action Function(player.move, move_to)
+    timer 1.8 / speed action (Function(player.move, move_to), Function(cycle.call_in_cycle, v1FNaSR.EnemyMoveModule.generate_new_path_all_enemy))
     add player.get_sees_image() at v1_go_t_FNaSR(speed)
     fixed:
         at v1_go_t_FNaSR(speed)

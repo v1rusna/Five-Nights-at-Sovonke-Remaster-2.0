@@ -185,6 +185,9 @@ init -5 python in v1FNaSR:
 
             self._freeze_event = _threading.Event()
 
+            self._fns = list()
+            self._fns_lock = _threading.Lock()
+
         @property
         def fps(self):
             return self._fps_controller.current_fps
@@ -363,8 +366,10 @@ init -5 python in v1FNaSR:
                 try:
                     while not self._stop_event.is_set():
                         self._apply_pending_objects()
+                        self._apply_fns()
                         dt = self._fps_controller.tick()
                         is_frozen = self._freeze_event.is_set()
+
 
                         for obj in self._objects:
                             if self._stop_event.is_set() or is_frozen:
@@ -390,6 +395,9 @@ init -5 python in v1FNaSR:
                     self._state = CycleState.FAILED
                 else:
                     self._state = CycleState.STOPPED
+
+            with self._fns_lock:
+                del self._fns[:]
 
             if self._fatal_exc_info is not None:
                 self._error_log.append("GameCycle перешёл в FAILED:\n" +"".join(_traceback.format_exception(*self._fatal_exc_info)))
@@ -418,6 +426,32 @@ init -5 python in v1FNaSR:
                 return
 
             self._refresh_time = new_value
+
+        def call_in_cycle(self, fn):
+            if not callable(fn):
+                raise FNaSRTypeError("'fn' должен быть вызываемым, получено: {}".format(type(fn)))
+
+            with self._state_lock:
+                if (
+                    self._state not in (CycleState.STARTING, CycleState.RUNNING)
+                    or self._stop_event.is_set()
+                ):
+                    raise FNaSRCycleError("Нельзя добавить функцию в цикл из состояния '{}'.".format(self._state))
+
+            with self._fns_lock:
+                self._fns.append(fn)
+
+        def _apply_fns(self):
+            with self._fns_lock:
+                self._fns, fns = [], self._fns
+            for fn in fns:
+                self._safe_fn_call(fn)
+
+        def _safe_fn_call(self, fn, *args):
+            try:
+                fn(*args)
+            except Exception:
+                self._handle_object_error(fn, _sys.exc_info())
 
     register_system("cycle", GameCycle(FPSController(60)))
 
