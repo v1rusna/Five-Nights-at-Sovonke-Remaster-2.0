@@ -38,9 +38,15 @@ label v1_init_FNaSR:
         $ persistent.v1_recommendation_seen_FNaSR = True
         #jump v1_prolog_label_FNaSR
 
-    jump v1_load_night_label_FNaSR
+    jump v1_main_menu_label_FNaSR
 
 label v1_main_menu_label_FNaSR:
+    $ renpy.block_rollback()
+    show anim v1_tablet_open_entire_FNaSR
+    $ renpy.music.play(v1FNaSR.resources.sounds.sfx["tablet_open_2"], "sound")
+    $ renpy.pause(0.18, hard=True)
+    hide anim v1_tablet_open_entire_FNaSR
+    $ renpy.music.play(v1FNaSR.resources.sounds.sfx["camera_static_1_new"], "music", loop=True, fadein=0.5)
     $ v1FNaSR.show_screen("main menu")
     jump v1_loop_FNaSR
 
@@ -90,15 +96,6 @@ label v1_loop_FNaSR:
     jump v1_loop_FNaSR
 
 
-
-
-label v1_quit_mm_FNaSR:
-    $ v1FNaSR.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
-    scene black
-    show anim v1_tablet_close_entire_VNaSR
-    $ renpy.pause(0.18, hard=True)
-    hide anim v1_tablet_close_entire_VNaSR
-    $ renpy.pause(.1, hard=True)
 
 label v1_quit_FNaSR:
     $ v1FNaSR.require_system("cycle").stop(True)

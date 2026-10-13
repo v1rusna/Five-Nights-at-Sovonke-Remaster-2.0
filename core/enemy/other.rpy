@@ -321,6 +321,6 @@ init -5 python in v1FNaSR:
 
 
 init python:
-    v1FNaSR.register_channel("screamer", "sound")
+    v1FNaSR.register_channel("screamer", "sound", loop=False)
 
 

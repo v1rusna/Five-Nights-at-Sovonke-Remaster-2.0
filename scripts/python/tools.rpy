@@ -63,22 +63,118 @@ init -1 python in v1FNaSR:
             renpy.call("v1_load_night_label_FNaSR", night)
 
     class TextTools(object):
-        __text_cache = dict()
+        _text_cache = dict()
+        _textbutton_cache = dict()
 
         @classmethod
         def text(cls, text, text_style="v1_text_24_mod_button_static_FNaSR", size=26, g_power=0.0875):
             text = to_text(text)
-            if text in cls.__text_cache:
-                _item = cls.__text_cache[text]
+            if text in cls._text_cache:
+                _item = cls._text_cache[text]
                 if _item["style"] == text_style and _item["size"] == size and _item["g_power"] == g_power:
-                    return cls.__text_cache[text]["text"]
+                    return cls._text_cache[text]["text"]
 
             _t = renpy.store.At(renpy.store.Text(text, style=text_style, size=size), renpy.store.v1_vhs_crt_shader_t_FNaSR(g_power))
-            cls.__text_cache[text] = {"text": _t, "style": text_style, "size": size, "g_power": g_power}
+            cls._text_cache[text] = {"text": _t, "style": text_style, "size": size, "g_power": g_power}
+            return _t
+
+        @classmethod
+        def button(cls, text, action, text_style="v1_text_24_mod_button_static_FNaSR", size=26, g_power=0.0875, **kwargs):
+            text = cls.text(text, text_style="v1_text_24_mod_button_static_FNaSR", size=26, g_power=0.0875)
+            if isinstance(action, renpy.store.Action):
+                action = [action]
+            action = tuple(action)
+            cache_key = (text, action,)
+            if cache_key in cls._textbutton_cache:
+                _item = cls._textbutton_cache[cache_key]
+                if _item["action"] == action and _item["style"] == text_style and _item["size"] == size and _item["g_power"] == g_power:
+                    return cls._textbutton_cache[cache_key]["text"]
+
+            if "background" not in kwargs:
+                kwargs["background"] = None
+            if "hover_sound" not in kwargs:
+                kwargs["hover_sound"] = resources.sounds.ui["button_h"]
+            if "activate_sound" not in kwargs:
+                kwargs["activate_sound"] = resources.sounds.ui["button_c"]
+
+            _t = renpy.store.TextButton(text, clicked=tuple(action), **kwargs)
+            cls._textbutton_cache[cache_key] = {"text": _t, "action": action, "style": text_style, "size": size, "g_power": g_power}
             return _t
 
     class MainMenuTools(object):
-        pass
-        
+        _user_image = None
+        _location = None
+        _old_location = None
+        _show_enemy = None
+        _is_enemy_show = None
+        _screens_cache = tuple(["V1MainMenuFNaSR", "V1MainMenuFNaSR"])
+
+        @classmethod
+        def screen_switching(cls, old_screen=None, new_screen=None, **param_screen):
+            if old_screen is None:
+                old_screen = cls._screens_cache[0]
+            if new_screen is None:
+                new_screen = cls._screens_cache[1]
+
+            cls._screens_cache = (old_screen, new_screen,)
+            cls.set_bg()
+            renpy.hide_screen(old_screen)
+            play(resources.sounds.sfx["blip3"], "sound")
+            renpy.show_screen(new_screen, **param_screen)
+
+        @classmethod
+        def set_bg(cls, name=MISSING):
+            ls = require_system("location")
+            if name is MISSING:
+                cls._user_image = None
+                cls._old_location = cls._location
+                cls._location = renpy.random.choice([location for location in iter_values(ls.locations) if location.camera is not None])
+                log("show_enemy set None")
+                cls._show_enemy = None
+                cls._is_enemy_show = None
+            else:
+                cls._user_image = name
+
+        @classmethod
+        def get_bg(cls):
+            if cls._user_image is not None:
+                return cls._user_image
+            if cls._location is None:
+                cls.set_bg()
+            return cls._location.image
+
+        @classmethod
+        def get_enemy(cls):
+            if cls._show_enemy is None:
+                log("show_enemy is None")
+                cls._show_enemy = renpy.random.choice(get_created_enemy()).sprite
+            log("return show_enemy")
+            return cls._show_enemy
+
+        @classmethod
+        def is_enemy_show(cls):
+            if cls._is_enemy_show is None:
+                cls._is_enemy_show = renpy.random.random() > 0.7
+            return cls._is_enemy_show
+
+        @classmethod
+        def get_cam_num(cls):
+            if cls._location is None:
+                return ""
+            num_cam = cls._location.camera.num
+            if len(num_cam) == 1:
+                text_cam_num =  "CAM 0{}".format(num_cam)
+            else:
+                text_cam_num =  "CAM {}".format(num_cam)
+            return text_cam_num
+
+        @classmethod
+        def close(cls):
+            renpy.music.stop("music")
+            cls._user_image = None
+            cls._location = None
+            cls._old_location = None
+            cls._show_enemy = None
+
 
 
