@@ -403,7 +403,10 @@ init python in v1FNaSR:
             ]
 
             self._modules = {
-                "us": [lambda: EnemyMoveModule(-3, start_factors=ALL_ENEMY_MOVING_START_FACTORS, factors=ALL_ENEMY_MOVING_FACTORS)]
+                "us": [
+                    lambda: EnemyMoveModule(-3),
+                    lambda: EnemyAttackModule(EnemyScreamer("us angry pioneer", screamer_t=renpy.store.v1_uliana_screamer_t_FNaSR)),
+                ],
             }
 
         def __call__(self):
@@ -420,6 +423,17 @@ init python in v1FNaSR:
                 ]
                 return color_text("\n".join(info), enemy.color)
 
+            def _debug_modules(context):
+                info = []
+                for m in context.enemy.modules:
+                    m_info = m.get_debug_list_texts(context.enemy.context)
+                    if not m_info:
+                        continue
+                    info.append(color_text("={}=".format(type(m).__name__), ""))
+                    for t in m_info:
+                        info.append("-{}".format(t))
+                return "\n".join(info)
+
             cycle = require_system("cycle")
             for i, enemy_data in enumerate(self._enemy_list):
                 try:
@@ -433,11 +447,7 @@ init python in v1FNaSR:
                         DebugText(_debug_text),
                         DebugFold("=== modules debug ===",
                             DebugIf(lambda context: len(context.enemy.modules) > 0,
-                                DebugText(lambda context: "\n".join(
-                                    "-{}".format(t) 
-                                    for m in context.enemy.modules 
-                                    for t in m.get_debug_list_texts(context.enemy.context)
-                                )),
+                                DebugText(_debug_modules),
                                 DebugText(lambda context: "A fake enemy"),
                             ),
                         order=1),

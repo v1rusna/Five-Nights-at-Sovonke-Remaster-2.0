@@ -1,7 +1,7 @@
 
 # modules.rpy
 init -2 python in v1FNaSR:
-    import threading as _threading
+    import math as _math
 
     def _hours(context):
         """Игровое время текущей сессии в часах с дробной частью (total_hours + доля часа)."""
@@ -45,11 +45,11 @@ init -2 python in v1FNaSR:
         return 1.0 if value is None else value
 
     def factor_proximity(module, context):
-        n = len(module._path)
-        if n < 2:
+        left = module.steps_left
+        if left <= 0 or left >= module.PROXIMITY_RANGE:
             return 1.0
-        progress = module._cursor / float(n - 1)
-        return 1.0 + 0.3 * progress
+        closeness = (module.PROXIMITY_RANGE - left) / float(module.PROXIMITY_RANGE - 1)
+        return 1.0 + module.PROXIMITY_GAIN * closeness
 
     def factor_endgame(module, context):
         night = context.night_system.loaded
@@ -106,6 +106,9 @@ init -2 python in v1FNaSR:
         ENDGAME_GAIN = 0.5     # прибавка в конце смены (x1.5 при 0.5)
         ENDGAME_POWER = 2.0    # форма нарастания: 1 = линейно, 2 = медленно, потом резко
 
+        PROXIMITY_RANGE = 5    # с скольки шагов до игрока начинается давление (>= 2)
+        PROXIMITY_GAIN = 0.3   # прибавка, когда до игрока остался 1 шаг (x1.3)
+
         @staticmethod
         def generate_new_path_all_enemy():
             for enemy in get_created_enemy():
@@ -122,8 +125,8 @@ init -2 python in v1FNaSR:
             start_location_id=None,
             end_location_id=None,
             speed=1.0,
-            start_factors=None,
-            factors=None
+            start_factors=ALL_ENEMY_MOVING_START_FACTORS,
+            factors=ALL_ENEMY_MOVING_FACTORS
         ):
             super(EnemyMoveModule, self).__init__()
 
@@ -194,6 +197,10 @@ init -2 python in v1FNaSR:
         def is_last(self):
             return bool(self._path) and self._cursor >= len(self._path) - 1
 
+        @property
+        def steps_left(self):
+            return max(0, len(self._path) - 1 - self._cursor)
+
         def generate_new_path(self, start_location_id=None, end_location_id=None):
             if start_location_id is None:
                 start_location_id = self._start_location_id
@@ -251,7 +258,6 @@ init -2 python in v1FNaSR:
             if path is None:
                 raise FNaSRException("Не удалось построить путь для '{}'({})".format(context.enemy.name, context.enemy.tag))
 
-            path = tuple(self._path)
             for location_id in path:
                 context.location_system.require_location(location_id)
 
@@ -369,39 +375,77 @@ init -2 python in v1FNaSR:
         def get_debug_list_texts(self, enemy_context):
             return [
                 "path: {}".format(self._path),
-                "progress: {}/{}".format(self._cursor+1, self.len_path),
+                "steps left: {}".format(self.steps_left),
                 "rate: {}".format(self.get_rate(enemy_context)),
                 "stun: {}".format(self.stun_left),
                 "speed: {}".format(self.speed),
                 "current location id: {}".format(self.current_location_id)
             ]
 
-    # Быстрый набросок на будущее, пока что не используется
     class EnemyAttackModule(EnemyModule):
-        def __init__(self, safety_time=0.5):
-            raise FNaSRNotImplementedError
+        def __init__(self, enemy_screamer, safety_time=0.5):
+            if not isinstance(enemy_screamer, EnemyScreamer):
+                raise FNaSRTypeError("'enemy_screamer' должен быть 'EnemyScreamer', получено: {}".format(type(enemy_screamer)))
 
             if not is_number(safety_time) or safety_time < 0:
                 raise FNaSRTypeError("'safety_time' должен быть положительным числом, получено: {}".format(type(safety_time)))
 
+            super(EnemyAttackModule, self).__init__()
+
+            self._enemy_screamer = enemy_screamer
+
             self._setattr("_safety_time", float(safety_time))
             self._setattr("_current_safety_time", 0.0)
 
+        def get_safety_time(self):
+            "Получить safety_time с учётом времени анимации"
+            return self._safety_time + 1.8 / GlobalState.get("moving_animation_speed", 1.0)
+
         def on_include(self, enemy):
+            context = enemy.context
+            
             if context.get("player_manager") is None:
                 context.player_manager = require_system("player")
 
+            if context.get("is_all_players_dead") is None:
+                context.is_all_players_dead = False
+
         def tick_update(self, context, dt):
+            if context.is_all_players_dead:
+                return
             player = context.player_manager.current_player
             if player.current_location.id == context.enemy.current_location.id:
                 self._current_safety_time += dt
-                if self._current_safety_time >= self._safety_time:
-                    self.kill_player(player)
+                if self._current_safety_time >= self.get_safety_time():
+                    self._current_safety_time = 0.0
+                    self._kill_player(context, player)
             else:
                 self._current_safety_time = 0.0
 
-        def kill_player(self, player):
+        def _kill_player(self, context, player):
             player.to_kill()
+            self._add_history_murders(context.enemy.tag)
+            for player in context.player_manager:
+                if not player.is_died:
+                    context.player_manager.switch_player(player.id)
+                    break
+            else:
+                context.is_all_players_dead = True
+                main_executor.submit(renpy.jump, "v1_screamer_FNaSR")
+
+        def _add_history_murders(self, enemy_tag):
+            history_murders = GlobalState.get("HistoryMurders")
+            if history_murders is None:
+                GlobalState.set("HistoryMurders", list())
+
+            GlobalState.get("HistoryMurders").append((enemy_tag, self._enemy_screamer,))
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "net safety time: {}/{}".format(self._current_safety_time, self.get_safety_time()),
+                "safety time: {}/{}".format(self._current_safety_time, self.get_safety_time()),
+            ]
+
 
 
 

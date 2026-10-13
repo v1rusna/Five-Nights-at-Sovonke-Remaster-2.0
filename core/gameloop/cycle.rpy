@@ -304,6 +304,7 @@ init -5 python in v1FNaSR:
             with self._state_lock:
                 return self._state
 
+        @main_thread_only
         def start(self, threaded=True):
             with self._state_lock:
                 self._error_log.clear()
@@ -322,6 +323,7 @@ init -5 python in v1FNaSR:
                 self._run_in_current_thread = True
                 self._run()
 
+        @main_thread_only
         def stop(self, wait=False, timeout=None):
             error_text = None
             with self._state_lock:
@@ -336,6 +338,7 @@ init -5 python in v1FNaSR:
             if error_text:
                 renpy.log("FNaSR | GameCycle Errors:\n{}".format(error_text))
 
+        @main_thread_only
         def join(self, timeout=None):
             if self._thread is not None and self._thread.is_alive():
                 self._thread.join(timeout)

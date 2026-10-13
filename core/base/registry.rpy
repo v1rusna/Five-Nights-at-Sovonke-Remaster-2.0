@@ -1,5 +1,5 @@
 # registry.rpy
-init -7 python in v1FNaSR:
+init -11 python in v1FNaSR:
     def _default_screen_handler(screen_list, state, **kwargs):
         if state == "show":
             for screen_name in screen_list:

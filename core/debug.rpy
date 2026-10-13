@@ -70,7 +70,7 @@ init -5 python in v1FNaSR:
                 element.set_error(e)
 
     class DebugContext(object):
-        # __slots__ = ("_data",)
+        __slots__ = ("_data",)
 
         def __init__(self):
             object.__setattr__(self, "_data", {})

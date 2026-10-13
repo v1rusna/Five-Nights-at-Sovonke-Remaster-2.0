@@ -1,5 +1,5 @@
 # other.rpy
-init -10 python in v1FNaSR:              
+init -12 python in v1FNaSR:
     class GlobalState(object):
         _flags = dict()
         @classmethod
@@ -15,7 +15,7 @@ init -10 python in v1FNaSR:
             cls._flags.clear()
 
         @classmethod
-        def len(cls):
+        def get_len(cls):
             return len(cls._flags)
 
     class BaseAI(object):
@@ -169,7 +169,7 @@ init python in v1FNaSR:
     add_quit_fn(GlobalState.clear)
 
     debug.add_element(DebugSection(
-        DebugText(lambda context: "GlobalState: {}".format(GlobalState.len()), order=0, style="v1_text_16_style_FNaSR"),
+        DebugText(lambda context: "GlobalState: {}".format(GlobalState.get_len()), order=0, style="v1_text_16_style_FNaSR"),
         DebugText(lambda context: "\n".join("'{}': {}".format(k, repr(v)) for k, v in iter_items(GlobalState._flags)), order=1),
     order=3), group="System")
 

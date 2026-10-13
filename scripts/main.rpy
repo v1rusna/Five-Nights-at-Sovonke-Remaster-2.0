@@ -91,6 +91,7 @@ label v1_loop_FNaSR:
 
 
 
+
 label v1_quit_mm_FNaSR:
     $ v1FNaSR.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
     scene black

@@ -63,10 +63,10 @@ init -3 python in v1FNaSR:
             pass
         
         def get_debug_list_texts(self, enemy_context):
-            pass
+            return tuple()
 
         def __repr__(self):
-            return "<{}>".format(type(self))
+            return "<{} error={} freezed={}>".format(type(self).__name__, self._error is not None, self._freeze)
 
     class BaseEnemy(GameObject, BaseAI):
         # __slots__ = ("_modules", "_types_modules", "_context", "__weakref__",)

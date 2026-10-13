@@ -48,7 +48,7 @@ init python:
         if state == "hide":
             renpy.hide_screen(screen_names[0], **kwargs)
             if player is not None and move_to is not None:
-                v1FNaSR.GlobalState.set("animation", True)
+                v1FNaSR.GlobalState.set("moving_animation", True)
                 v1FNaSR.play(v1FNaSR.resources.sounds.sfx["walking"], "walk", fadeout=0.5, loop=False)
                 renpy.show_screen(screen_names[1], player=player, move_to=move_to, speed=speed, **kwargs)
 

@@ -79,7 +79,7 @@ init -5 python in v1FNaSR:
 
             Возвращает список ID локаций или None, если нет подходящей точки.
             """
-            if not is_strict_integer(distance_group_count)or distance_group_count < 1:
+            if not is_strict_integer(distance_group_count) or distance_group_count < 1:
                 raise FNaSRValueError("'distance_group_count' должен быть положительным int.")
 
             location_system = cls._get_location_system()
@@ -191,3 +191,116 @@ init -5 python in v1FNaSR:
                 grouped.setdefault(distance, []).append(location_id)
 
             return grouped
+
+    class EnemyScreamer(object):
+        _CAMERA_LAYER = "master"
+        _OVERLAY_LAYER = "screens"
+        _SOUND_CHANNEL = "screamer"
+
+        _FADE_NAME = "v1_black_fade_FNaSR"
+        _FADE_ZORDER = 49
+        _SPRITE_ZORDER = 50
+
+        _SCREAMER_DURATION = 2
+        _BLACKOUT_DURATION = 1
+
+        def __init__(
+            self,
+            sprite,
+            sound_screamer=None,
+            screamer_t=None,
+            camera_t=None,
+            bg_t=None,
+            is_screen_t=False,
+            is_black_fade=False
+        ):
+            if sound_screamer is None:
+                sound_screamer = resources.sounds.sfx["enemy_screamer_1"]
+
+            if screamer_t is None:
+                screamer_t = renpy.store.v1_slavya_screamer_t_FNaSR
+
+            if camera_t is None:
+                camera_t = renpy.store.v1_general_screamer_camera_t_FNaSR
+
+            if bg_t is None:
+                bg_t = renpy.store.v1_fading_t_FNaSR(0.8, 0.0, 0.85, renpy.store._warper.easein_quad)
+
+            self._sprite = sprite
+            self._sound_screamer = sound_screamer
+
+            self._screamer_t = screamer_t
+            self._camera_t = camera_t
+            self._bg_t = bg_t
+            self._is_screen_t = bool(is_screen_t)
+            self._is_black_fade = bool(is_black_fade)
+
+        @main_thread_only
+        def __call__(self):
+            image_name = "v1_animation_enemy_screamer_FNaSR"
+
+            play(self._sound_screamer, self._SOUND_CHANNEL)
+
+            try:
+                self._show_effects(image_name)
+                renpy.block_rollback()
+                renpy.pause(self._SCREAMER_DURATION, hard=True)
+            finally:
+                self._hide_effects(image_name)
+
+            self._show_blackout()
+
+        def _show_effects(self, image_name):
+            if self._is_black_fade:
+                renpy.show(
+                    name=self._FADE_NAME,
+                    at_list=[self._bg_t()],
+                    layer=self._OVERLAY_LAYER,
+                    what=renpy.store.Solid("#000"),
+                    zorder=self._FADE_ZORDER
+                )
+
+            renpy.show(
+                name=image_name,
+                at_list=[self._screamer_t],
+                layer=self._OVERLAY_LAYER,
+                what=self._sprite,
+                zorder=self._SPRITE_ZORDER
+            )
+
+            self._set_camera([self._camera_t])
+
+        def _hide_effects(self, image_name):
+            if self._is_black_fade:
+                renpy.hide(self._FADE_NAME, self._OVERLAY_LAYER)
+
+            renpy.hide(image_name, self._OVERLAY_LAYER)
+
+            self._set_camera([])
+
+        def _set_camera(self, at_list):
+            renpy.show_layer_at(
+                at_list=at_list,
+                layer=self._CAMERA_LAYER,
+                reset=False,
+                camera=True
+            )
+
+            if self._is_screen_t:
+                renpy.show_layer_at(
+                    at_list=at_list,
+                    layer=self._OVERLAY_LAYER,
+                    reset=False,
+                    camera=True
+                )
+
+        def _show_blackout(self):
+            renpy.show("black")
+            renpy.block_rollback()
+            renpy.pause(self._BLACKOUT_DURATION, hard=True)
+
+
+init python:
+    v1FNaSR.register_channel("screamer", "sound")
+
+

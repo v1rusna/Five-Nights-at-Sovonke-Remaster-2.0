@@ -243,6 +243,9 @@ init -1 python in v1FNaSR:
         def get_player(self, id):
             return self._players.get(to_text(id))
 
+        def __iter__(self):
+            return iter(list(self._players.values()))
+
     register_system("player", PlayerSystem())
 
 init python in v1FNaSR:

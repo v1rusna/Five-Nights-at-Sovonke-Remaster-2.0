@@ -1,5 +1,5 @@
 # lifecycle.rpy
-init -5 python in v1FNaSR:
+init -7 python in v1FNaSR:
     class BaseHook(object):
         """
         Базовый класс для хуков жизненного цикла, выполняемых при запуске и завершении работы FNaSR.
