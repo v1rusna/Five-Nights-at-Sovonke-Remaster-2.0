@@ -429,7 +429,7 @@ init python in v1FNaSR:
                     m_info = m.get_debug_list_texts(context.enemy.context)
                     if not m_info:
                         continue
-                    info.append(color_text("={}=".format(type(m).__name__), ""))
+                    info.append(color_text("={}=".format(type(m).__name__), "#8ab4ff"))
                     for t in m_info:
                         info.append("-{}".format(t))
                 return "\n".join(info)
