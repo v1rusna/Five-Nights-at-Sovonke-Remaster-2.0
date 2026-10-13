@@ -1,10 +1,122 @@
-# mainExecutor.rpy
+# mainExecutor.rpy  (заменяемая часть) 
 init python in v1FNaSR:
     import threading as _threading
     import collections as _collections
+    import sys as _sys
+
+    def dump_renpy_exception_classes():
+        for modname in ("renpy.game", "renpy.exports", "renpy.display.core", "renpy.execution"):
+            module = _sys.modules.get(modname)
+            if module is None:
+                continue
+            for name in sorted(dir(module)):
+                obj = getattr(module, name, None)
+                if isinstance(obj, type) and issubclass(obj, BaseException):
+                    print("{} :: {}.{} <- {}".format(
+                        modname, obj.__module__, name, ", ".join(b.__name__ for b in obj.__bases__)))
+        print("v1FNaSR control: " + ", ".join(c.__name__ for c in _CONTROL_EXCEPTIONS))
+
+    def _discover_control_exceptions():
+        game = renpy.game
+        found = []
+        for name in dir(game):
+            obj = getattr(game, name, None)
+            if (isinstance(obj, type)
+                    and issubclass(obj, BaseException)
+                    and obj.__module__ == game.__name__):
+                found.append(obj)
+        return tuple(found)
 
     class FNaSRExecutorClosedError(FNaSRException):
         pass
+
+    class FNaSRControlTransferError(FNaSRException):
+        u"""
+        Задача была прервана управляющим исключением Ren'Py (jump, call, restart, quit...).
+        Результата у такой задачи нет: управление ушло в движок в главном потоке.
+        Оригинальное исключение доступно в атрибуте `original`.
+        """
+        def __init__(self, original):
+            FNaSRException.__init__(self, "Задача прервана управляющим исключением Ren'Py: {}".format(type(original).__name__))
+            self.original = original
+
+    class ControlExceptionRegistry(object):
+        u"""
+        Реестр управляющих исключений для MainThreadExecutor.
+
+        Два уровня:
+            * базовые - исключения Ren'Py, найденные в renpy.game; неизменяемы;
+            * пользовательские - добавленные через register().
+
+        Исключение из реестра исполнитель не сохраняет как ошибку: ждущий поток
+        получает FNaSRControlTransferError, а оригинал перевыбрасывается
+        в главном потоке. Обработчик пользовательского исключения должен
+        находиться в стеке главного потока выше run_pending() (например,
+        вокруг renpy.pause или собственного цикла), иначе его перехватит
+        только обработчик ошибок Ren'Py.
+        """
+
+        _FORBIDDEN_MODULES = ("builtins", "__builtin__", "exceptions")
+
+        def __init__(self, base):
+            base = tuple(base)
+            if not base:
+                raise FNaSRException(
+                    "Не найдены управляющие исключения в renpy.game: "
+                    "MainThreadExecutor не сможет корректно передавать управление сценарием."
+                )
+            self._lock = _threading.Lock()
+            self._base = base
+            self._user = ()
+            # Снимок читается без блокировки: присваивание атрибута атомарно.
+            self._snapshot = base
+
+        def _validate(self, cls):
+            if not (isinstance(cls, type) and issubclass(cls, BaseException)):
+                raise FNaSRTypeError("Управляющее исключение должно быть классом-наследником BaseException, а не '{}'".format(cls))
+            if cls.__module__ in self._FORBIDDEN_MODULES:
+                raise FNaSRTypeError(
+                    "Встроенный класс '{}' нельзя объявить управляющим: "
+                    "он перехватил бы обычные ошибки пользовательского кода".format(cls.__name__)
+                )
+            if isinstance(cls, FNaSRException):
+                raise FNaSRTypeError("Класс '{}' наследуется от 'FNaSRException'".format(cls.__name__))
+
+        def register(self, *classes):
+            for cls in classes:
+                self._validate(cls)
+            with self._lock:
+                added = [c for c in classes if c not in self._base and c not in self._user]
+                if added:
+                    self._user = self._user + tuple(added)
+                    self._snapshot = self._base + self._user
+
+        def unregister(self, cls):
+            with self._lock:
+                if cls in self._base:
+                    raise FNaSRTypeError("Базовое исключение '{}' нельзя снять с регистрации".format(cls.__name__))
+                if cls not in self._user:
+                    raise FNaSRException("Исключение '{}' не зарегистрировано".format(cls.__name__))
+                self._user = tuple(c for c in self._user if c is not cls)
+                self._snapshot = self._base + self._user
+
+        def types(self):
+            return self._snapshot
+
+        def base_types(self):
+            return self._base
+
+        def user_types(self):
+            return self._user
+
+        def is_control(self, exc):
+            return isinstance(exc, self._snapshot)
+
+    control_exceptions = ControlExceptionRegistry(_discover_control_exceptions())
+
+    def control_exception(cls):
+        control_exceptions.register(cls)
+        return cls
 
     class MainThreadExecutor(object):
         def __init__(self):
@@ -35,8 +147,14 @@ init python in v1FNaSR:
                     future, fn, args, kwargs = self._queue.popleft()
                 try:
                     result = fn(*args, **kwargs)
-                except BaseException as exc:
+                except control_exceptions.types() as exc:
+                    future._set_interrupted(exc)
+                    raise
+                except Exception as exc:
                     future._set_exception(exc)
+                except BaseException as exc:
+                    future._set_interrupted(exc)
+                    raise
                 else:
                     future._set_result(result)
 
@@ -66,6 +184,10 @@ init python in v1FNaSR:
             self._exception = exc
             self._event.set()
 
+        def _set_interrupted(self, exc):
+            self._exception = FNaSRControlTransferError(exc)
+            self._event.set()
+
         def result(self, timeout=None):
             if not self._event.wait(timeout):
                 raise FNaSRTimeoutError("Future result timed out.")
@@ -80,8 +202,8 @@ init python in v1FNaSR:
 
     class ExecutorPump(renpy.Displayable):
         def render(self, width, height, st, at):
+            renpy.redraw(self, 0.05)
             main_executor.run_pending()
-            renpy.redraw(self, 0.05) 
             return renpy.Render(0, 0)
 
         def event(self, ev, x, y, st):

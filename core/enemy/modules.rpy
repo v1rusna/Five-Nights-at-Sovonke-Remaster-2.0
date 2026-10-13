@@ -431,7 +431,7 @@ init -2 python in v1FNaSR:
                     break
             else:
                 context.is_all_players_dead = True
-                main_executor.submit(renpy.jump, "v1_screamer_FNaSR")
+                main_executor.submit_and_wait(renpy.jump, "v1_screamer_label_FNaSR")
 
         def _add_history_murders(self, enemy_tag):
             history_murders = GlobalState.get("HistoryMurders")
@@ -442,7 +442,7 @@ init -2 python in v1FNaSR:
 
         def get_debug_list_texts(self, enemy_context):
             return [
-                "net safety time: {}/{}".format(self._current_safety_time, self.get_safety_time()),
+                "net safety time: {}".format(self._safety_time),
                 "safety time: {}/{}".format(self._current_safety_time, self.get_safety_time()),
             ]
 

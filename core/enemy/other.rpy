@@ -2,6 +2,26 @@ init -5 python in v1FNaSR:
     import collections as _collections
     import random as _random
 
+    class EnemyContext(DebugContext):
+        __slots__ = ("_enemy",)
+
+        def __init__(self, enemy):
+            if not isinstance(enemy, BaseEnemy):
+                raise FNaSRTypeError("'enemy' должен быть 'BaseEnemy', получено: {}".format(type(enemy)))
+
+            super(EnemyContext, self).__init__()
+            object.__setattr__(self, "_enemy", enemy)
+
+        @property
+        def enemy(self):
+            return self._enemy
+
+        def __setattr__(self, name, value):
+            if name == "_enemy":
+                object.__setattr__(self, name, value)
+            else:
+                super(EnemyContext, self).__setattr__(name, value)
+
     # Пока что генератор игнорирует направления, но в будущем можно избавится от хранения пути у противника
     # Например если игрок защитился то противник отступает на n локаций назад
     # то есть если игрок на севере, то отступить на 2 локации на юг, или юго-запад, или юго-восток и так далее
