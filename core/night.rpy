@@ -19,10 +19,10 @@ init -1 python in v1FNaSR:
 
 
     class Night(object):
-        # __slots__ = (
-        #     "_id", "_title", "_start_location_id", "_end_of_shift",
-        #     "_requires", "_start_callback", "_end_callback"
-        # )
+        __slots__ = (
+            "_id", "_title", "_start_location_id", "_end_of_shift",
+            "_requires", "_start_callback", "_end_callback"
+        )
 
         def __init__(
             self,
@@ -105,7 +105,7 @@ init -1 python in v1FNaSR:
 
 
     class NightSequence(object):
-        # __slots__ = ("_name", "_ordered_unlock", "_ids")
+        __slots__ = ("_name", "_ordered_unlock", "_ids")
 
         def __init__(self, name, ordered_unlock=True):
             _check_text_id(name, "name")
@@ -168,6 +168,8 @@ init -1 python in v1FNaSR:
 
 
     class NightSystem(object):
+        __slots__ = ("_nights", "_sequences", "_completed", "_loaded", "_running",)
+
         def __init__(self):
             self._nights = OrderedDict()
             self._sequences = OrderedDict()
@@ -583,7 +585,7 @@ init -1 python in v1FNaSR:
     def _night_quit_fn():
         ns = require_system("night")
         if ns.is_running:
-            ns.finish()
+            ns.finish(False)
         ns.unload()
     add_quit_fn(_night_quit_fn)
     del _night_quit_fn

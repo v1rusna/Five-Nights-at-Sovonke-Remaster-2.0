@@ -6,8 +6,7 @@ screen V1BaseUIScreenFNaSR:
 
 screen V1InfoNightScreenFNaSR(player=None, night_system=None):
     default ns = night_system if night_system is not None else v1FNaSR.require_system("night")
-    if player is None:
-        $ player = v1FNaSR.require_system("player").current_player
+    default player = player if player is not None else v1FNaSR.require_system("player").current_player
     if not player.is_open_tablet and ns.loaded is not None:
         text ns.loaded.title style "v1_text_24_style_FNaSR" xalign 1.0
 
@@ -21,7 +20,8 @@ screen V1MainGameInterfaceFNaSR:
     $ player = v1FNaSR.require_system("player").current_player
 
     add player.get_sees_image()
-    use _v1_enemy_show(player)
+    
+    use V1ShowEnemyFNaSR(player)
     use V1InfoNightScreenFNaSR(player, ns)
 
     if not player.is_open_tablet and not player.is_moving and not player.under_attack:
@@ -220,8 +220,7 @@ screen V1MoveScreenFNaSR:
         use V1MoveDirectionFNaSR(config, locations, player)
 
 screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
-    python:
-        cycle = v1FNaSR.require_system("cycle")
+    default cycle = v1FNaSR.require_system("cycle")
     
     on "show" action Function(v1FNaSR.GlobalState.set, "moving_animation_speed", speed)
     
@@ -231,15 +230,15 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     add player.get_sees_image() at v1_go_t_FNaSR(speed)
     fixed:
         at v1_go_t_FNaSR(speed)
-        use _v1_enemy_show(player)
+        use V1ShowEnemyFNaSR(player)
     add move_to.parallax_image at v1_moving_location2_FNaSR(speed)
     fixed:
         at v1_moving_location2_FNaSR(speed)
-        use _v1_enemy_show(player)
+        use V1ShowEnemyFNaSR(player)
     add "black" at v1_moving_black_FNaSR(speed)
     use V1InfoNightScreenFNaSR()
 
-screen _v1_enemy_show(player):
+screen V1ShowEnemyFNaSR(player):
     for enemy in v1FNaSR.get_created_enemy():
         if enemy.current_location is not None:
             if player.is_open_tablet:
@@ -250,5 +249,6 @@ screen _v1_enemy_show(player):
                 if enemy.current_location.id == player.current_location.id:
                     $ xa, ya = enemy.align
                     add enemy.parallax_sprite align(xa, ya)
+
 
 

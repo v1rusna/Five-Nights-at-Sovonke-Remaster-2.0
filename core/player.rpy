@@ -80,7 +80,7 @@ init -1 python in v1FNaSR:
             self._died = True
 
         def get_panic_text(self):
-            return "panic: {}/{}".format(self._panic, self._max_panic)
+            return "Паника: {}/{}".format(self._panic, self._max_panic)
 
         def set_moving(self, value):
             self._is_moving = bool(value)

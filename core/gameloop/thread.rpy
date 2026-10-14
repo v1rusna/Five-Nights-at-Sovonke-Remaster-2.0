@@ -95,6 +95,12 @@ init -6 python in v1FNaSR:
             return obj(*args, **kwargs)
         return wrapper
 
+    def update_ui():
+        if is_main_thread():
+            renpy.restart_interaction()
+        else:
+            main_executor.submit(renpy.restart_interaction)
+
     start_mod = main_thread_only(start_mod)
     quit_mod = main_thread_only(quit_mod)
 
@@ -123,16 +129,16 @@ init -6 python in v1FNaSR:
 
 init python in v1FNaSR:
     def _v1_thread_info_FNaSR(context):
-        thread_list = get_thread_list()
+        thread_list = sorted(get_thread_list())
         info = []
         for t in thread_list:
             cls_name = type(t).__name__
             if isinstance(t, ThreadWithCatch):
-                cls_name = "{color=#AC6700}%s{/color}" % cls_name
+                cls_name = color_text(cls_name, "#AC6700")
             elif is_main_thread(t):
-                cls_name = "{color=#9a9b99}%s{/color}" % cls_name
+                cls_name = color_text(cls_name, "#9a9b99")
             elif isinstance(t, _threading.Thread):
-                cls_name = "{color=#8b0000}%s{/color}" % cls_name
+                cls_name = color_text(cls_name, "#8b0000")
             info.append("%s(name={color=#7aa83a}'%s'{/color}, ident={color=#407cb4}%r{/color}, daemon={color=#235873}%r{/color}, alive{color=#235873}=%r{/color})" % (cls_name, t.name, t.ident, t.daemon, t.is_alive()))
         return "\n".join(info)
 
@@ -142,9 +148,3 @@ init python in v1FNaSR:
     order=2),group="System")
 
     del _v1_thread_info_FNaSR
-
-    def update_ui():
-        if is_main_thread():
-            renpy.restart_interaction()
-        else:
-            main_executor.submit(renpy.restart_interaction)

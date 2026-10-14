@@ -1,53 +1,66 @@
-init:
-    python:
-        import math as v1_math_FNaSR
-        import random as v1_random_FNaSR
-        def v1_ease_FNaSR(t):
-            return 0.5 - v1_math_FNaSR.cos(v1_math_FNaSR.pi * t) / 2.0
+init python:
+    import math as v1_math_FNaSR
+    import random as v1_random_FNaSR
 
-        def v1_door_hold_vignette_appear_t_func_FNaSR(t_obj, st, at):
-            DOOR_HOLDING_VIGNETTE_APPEAR = 0.8
-            door_hold_vignette_current_alpha = 0.0
+    def v1_button_static_hover_func_FNaSR(t_obj, st, at):
+        button_alpha = 1.0
 
-            normalized_t = st / DOOR_HOLDING_VIGNETTE_APPEAR
-            warped_t = v1_ease_FNaSR(normalized_t)
+        normalized_t = st / 0.5
+        warped_t = v1_ease_FNaSR(normalized_t)
 
-            door_hold_vignette_current_alpha += warped_t
-
-            if door_hold_vignette_current_alpha < 1.0:
-                t_obj.alpha = door_hold_vignette_current_alpha
-                return 0.0
-
-            t_obj.alpha = 1.0
+        if normalized_t > 1.0:
+            t_obj.alpha = 0.5
             return None
+        button_alpha = 1.0 - 0.5 * warped_t
+        t_obj.alpha = button_alpha
+        return 0.0
 
-        def v1_door_hold_vignette_disappear_t_func_FNaSR(t_obj, st, at):
-            DOOR_HOLDING_VIGNETTE_DISAPPEAR = 0.8
-            
-            if st >= DOOR_HOLDING_VIGNETTE_DISAPPEAR:
-                t_obj.alpha = 0.0
-                return None  # Завершаем трансформацию
-            
-            normalized_t = st / DOOR_HOLDING_VIGNETTE_DISAPPEAR
-            warped_t = v1_ease_FNaSR(normalized_t)
-            t_obj.alpha = 1.0 - warped_t  # Уменьшаем от 1.0 до 0.0
-            
-            return 0.0  # Продолжаем обновление
+    def v1_ease_FNaSR(t):
+        return 0.5 - v1_math_FNaSR.cos(v1_math_FNaSR.pi * t) / 2.0
 
-        def v1_shake_t_func_FNaSR(t_obj, st, at):
-            shake_power = 5.0
+    def v1_door_hold_vignette_appear_t_func_FNaSR(t_obj, st, at):
+        DOOR_HOLDING_VIGNETTE_APPEAR = 0.8
+        door_hold_vignette_current_alpha = 0.0
 
-            t_obj.xoffset = v1_random_FNaSR.uniform(-shake_power, shake_power)
-            t_obj.yoffset = v1_random_FNaSR.uniform(-shake_power, shake_power)
+        normalized_t = st / DOOR_HOLDING_VIGNETTE_APPEAR
+        warped_t = v1_ease_FNaSR(normalized_t)
 
+        door_hold_vignette_current_alpha += warped_t
+
+        if door_hold_vignette_current_alpha < 1.0:
+            t_obj.alpha = door_hold_vignette_current_alpha
             return 0.0
 
-        def v1_shake_rotate_t_func_FNaSR(t_obj, st, at):
-            shake_rotate_power = 3.0
+        t_obj.alpha = 1.0
+        return None
 
-            t_obj.rotate = v1_random_FNaSR.uniform(-shake_rotate_power, shake_rotate_power)
+    def v1_door_hold_vignette_disappear_t_func_FNaSR(t_obj, st, at):
+        DOOR_HOLDING_VIGNETTE_DISAPPEAR = 0.8
+        
+        if st >= DOOR_HOLDING_VIGNETTE_DISAPPEAR:
+            t_obj.alpha = 0.0
+            return None  # Завершаем трансформацию
+        
+        normalized_t = st / DOOR_HOLDING_VIGNETTE_DISAPPEAR
+        warped_t = v1_ease_FNaSR(normalized_t)
+        t_obj.alpha = 1.0 - warped_t  # Уменьшаем от 1.0 до 0.0
+        
+        return 0.0  # Продолжаем обновление
 
-            return 0.0
+    def v1_shake_t_func_FNaSR(t_obj, st, at):
+        shake_power = 5.0
+
+        t_obj.xoffset = v1_random_FNaSR.uniform(-shake_power, shake_power)
+        t_obj.yoffset = v1_random_FNaSR.uniform(-shake_power, shake_power)
+
+        return 0.0
+
+    def v1_shake_rotate_t_func_FNaSR(t_obj, st, at):
+        shake_rotate_power = 3.0
+
+        t_obj.rotate = v1_random_FNaSR.uniform(-shake_rotate_power, shake_rotate_power)
+
+        return 0.0
 
 transform v1_set_align_center_FNaSR(x, y):
     xalign x yalign y
@@ -359,3 +372,7 @@ transform v1_general_screamer_camera_t_FNaSR():
         function v1_shake_t_func_FNaSR
     parallel:
         function v1_shake_rotate_t_func_FNaSR
+
+transform v1_button_static_hover_t_FNaSR():
+        size (110, 40)
+        function v1_button_static_hover_func_FNaSR

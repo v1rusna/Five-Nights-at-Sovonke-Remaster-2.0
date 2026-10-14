@@ -33,6 +33,10 @@ screen V1MainMenuFNaSR:
 
     default mm = v1FNaSR.MainMenuTools
     default tt = v1FNaSR.TextTools
+    default ns = v1FNaSR.require_system("night")
+    default target = ns.find_available_night(v1FNaSR.MAIN_SEQUENCE)
+    if target is None:
+        $ target = ns.find_last_unlocked_night(v1FNaSR.MAIN_SEQUENCE)
 
     key "mouseup_3" action NullAction()
     key "K_ESCAPE" action NullAction()
@@ -40,17 +44,19 @@ screen V1MainMenuFNaSR:
     use V1MainMenuFrameFNaSR()
 
     vbox align(0.15, 0.5) spacing 15:
-        add tt.button("Начать", (Hide('V1MainMenuFNaSR'), Jump('v1_play_FNaSR')))
+        add tt.button("Начать({})".format(target.title), (Hide('V1MainMenuFNaSR'), Jump('v1_play_FNaSR')))
         add tt.button("Выбор ночи", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuChoiceNightFNaSR"))
         add tt.button("Достижения", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuAchievementsFNaSR"))
         add tt.button("Настройки", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuSettingsFNaSR"))
         add tt.button("Выйти", (Hide('V1MainMenuFNaSR'), Jump('v1_quit_mm_FNaSR')))
 
-screen V1MainMenuChoiceNightFNaSR:
+screen V1MainMenuChoiceNightFNaSR(sequence=v1FNaSR.MAIN_SEQUENCE):
     tag v1menuFNaSR
 
     default mm = v1FNaSR.MainMenuTools
     default tt = v1FNaSR.TextTools
+    default ns = v1FNaSR.require_system("night")
+    default special_n = ns.get_special_nights()
 
     use V1MainMenuFrameFNaSR()
 
@@ -59,9 +65,44 @@ screen V1MainMenuChoiceNightFNaSR:
 
     add tt.text("Выбор ночи", size=22) align(0.5, 0.14)
 
-    vbox align(0.5, 0.5):
-        add tt.text("В разработке") xalign 0.5
-        add tt.button("Назад", Function(mm.screen_switching, "V1MainMenuChoiceNightFNaSR", "V1MainMenuFNaSR"), xalign=0.5)
+    vbox align(0.15, 0.5) spacing 15:
+        add tt.text("Список ночей", size=28)
+
+        for n in ns.get_nights(sequence):
+            button:
+                background None
+                if ns.is_unlocked(n):
+                    hover_sound v1FNaSR.resources.sounds.ui["button_h"]
+                    activate_sound v1FNaSR.resources.sounds.ui["button_c"]
+                    action (Hide('V1MainMenuChoiceNightFNaSR'), Call('v1_play_FNaSR', n))
+                
+                fixed:
+                    fit_first True
+                    
+                    text tt.text(n.title)
+                    
+                    if not ns.is_unlocked(n):
+                        add "v1_button_static_entire_FNaSR" at v1_button_static_hover_t_FNaSR()
+
+        if special_n:
+            add tt.text("Специальные ночи")
+            for n in special_n:
+                button:
+                    background None
+                    if ns.is_unlocked(n):
+                        hover_sound v1FNaSR.resources.sounds.ui["button_h"]
+                        activate_sound v1FNaSR.resources.sounds.ui["button_c"]
+                        action (Hide('V1MainMenuChoiceNightFNaSR'), Call('v1_play_FNaSR', n))
+                    
+                    fixed:
+                        fit_first True
+                        
+                        text tt.text(n.title)
+                        
+                        if not ns.is_unlocked(n):
+                            add "v1_button_static_entire_FNaSR" at v1_button_static_hover_t_FNaSR()
+        
+        add tt.button("Назад", Function(mm.screen_switching, "V1MainMenuChoiceNightFNaSR", "V1MainMenuFNaSR"))
 
 screen V1MainMenuAchievementsFNaSR:
     tag v1menuFNaSR

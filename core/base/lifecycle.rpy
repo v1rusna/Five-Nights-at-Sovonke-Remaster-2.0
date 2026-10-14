@@ -138,7 +138,7 @@ init -7 python in v1FNaSR:
 
     def start_mod():
         if renpy.game.context().init_phase:
-            raise FNaSRException("start_mod нельзя вызывать во время инициализации")
+            raise FNaSRRuntimeError("start_mod нельзя вызывать во время инициализации игры.")
 
         with _store_lock:
             if _store["initialized"]:
@@ -181,7 +181,6 @@ init -7 python in v1FNaSR:
             renpy.store._autosave = False
         except:
             pass
-        # renpy.config.new_substitutions = False
 
         with _store_lock:
             snapshot = []
@@ -231,7 +230,7 @@ init -7 python in v1FNaSR:
 
     def quit_mod():
         if renpy.game.context().init_phase:
-            raise FNaSRException("quit_mod нельзя вызывать во время инициализации")
+            raise FNaSRRuntimeError("quit_mod нельзя вызывать во время инициализации игры.")
 
         with _store_lock:
             if not _store["initialized"]:
@@ -247,7 +246,6 @@ init -7 python in v1FNaSR:
             renpy.store._autosave = True
         except:
             pass
-        # renpy.config.new_substitutions = True
 
         renpy.config.quit_callbacks.remove(quit_mod)
         stop_fn = _store.get("_game_cycle_system.stop")
