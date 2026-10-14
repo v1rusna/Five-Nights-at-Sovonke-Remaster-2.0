@@ -85,9 +85,9 @@ init -5 python in v1FNaSR:
                 if name not in self._settings:
                     return default
 
-                s = getattr(renpy.persistent, self._get_persistent_name(name), default)
+                s = self._copy(getattr(renpy.persistent, self._get_persistent_name(name), default))
 
-            return self._copy(s)
+            return s
 
         @main_thread_only
         def set_setting(self, name, new_value):
@@ -229,9 +229,9 @@ init -5 python in v1FNaSR:
             if isinstance(item, dict):
                 return dict(item)
             if isinstance(item, list):
-                return list(item) # Может заменить на tuple?
+                return list(item)
             if isinstance(item, set):
-                return set(item) # Может заменить на tuple?
+                return set(item)
             return item
 
         def __getattr__(self, attr):
@@ -239,9 +239,9 @@ init -5 python in v1FNaSR:
                 if attr not in self._settings:
                     raise FNaSRAttributeError("Settings object has no attribute {!r}".format(attr))
 
-                s = getattr(renpy.persistent, self._get_persistent_name(attr))
+                s = self._copy(getattr(renpy.persistent, self._get_persistent_name(attr)))
 
-            return self._copy(s)
+            return s
 
         def __setattr__(self, attr, value):
             if attr in ("_settings","_fns","_lock",):
@@ -249,7 +249,7 @@ init -5 python in v1FNaSR:
                 return
             try:
                 self.set_setting(attr, value)
-            except Exception as e:
+            except AttributeError as e:
                 raise FNaSRAttributeError(e)
 
         def __iter__(self):
