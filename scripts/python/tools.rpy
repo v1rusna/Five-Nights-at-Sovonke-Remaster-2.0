@@ -129,7 +129,6 @@ init -1 python in v1FNaSR:
                 cls._user_image = None
                 cls._old_location = cls._location
                 cls._location = renpy.random.choice([location for location in iter_values(ls.locations) if location.camera is not None])
-                log("show_enemy set None")
                 cls._show_enemy = None
                 cls._is_enemy_show = None
             else:
@@ -146,9 +145,7 @@ init -1 python in v1FNaSR:
         @classmethod
         def get_enemy(cls):
             if cls._show_enemy is None:
-                log("show_enemy is None")
                 cls._show_enemy = renpy.random.choice(get_created_enemy()).sprite
-            log("return show_enemy")
             return cls._show_enemy
 
         @classmethod

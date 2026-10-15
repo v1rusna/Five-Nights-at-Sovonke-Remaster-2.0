@@ -12,7 +12,6 @@ init -2 python in v1FNaSR:
 
     # --- считаются ОДИН РАЗ при start() (не меняются за ночь) ---
     def factor_difficulty(module, context):
-        return 1.0 # TODO: когда будут настройки убрать return
         d = settings.game_difficulty # 1-4
         return 0.7 + 0.3 * (d - 1)
 
