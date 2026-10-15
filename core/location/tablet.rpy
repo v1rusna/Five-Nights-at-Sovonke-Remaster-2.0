@@ -142,9 +142,9 @@ init python in v1FNaSR:
             self._setattr("_charge", charge)
             self._setattr("_max_charge", max_charge)
             self._setattr("_discharge", discharge)
+            self._setattr("_selected_location_id", discharge)
 
             self._available_locations = set()
-            self._selected_location_id = None
 
             self._location_id = None
 
@@ -247,15 +247,19 @@ init python in v1FNaSR:
             location_id = int(location_id)
             self._available_locations.add(location_id)
             if self._selected_location_id is None:
-                self._selected_location_id = location_id
+                self._setattr("_selected_location_id", location_id)
 
         def unregister(self, location_id):
             location_id = int(location_id)
             self._available_locations.discard(location_id)
             if not self._available_locations:
-                self._selected_location_id = None
+                self._setattr("_selected_location_id", None)
             elif self._selected_location_id == location_id:
-                self._selected_location_id = renpy.random.choice(list(self._available_locations))
+                new_loc_id = renpy.random.choice(self._available_locations)
+                if self._reset_to_default["_selected_location_id"] == location_id:
+                    self._setattr("_selected_location_id", new_loc_id)
+                else:
+                    self._selected_location_id = new_loc_id
 
         def has_location(self, location_id):
             return int(location_id) in self._available_locations

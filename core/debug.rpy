@@ -2,6 +2,7 @@
 init -5 python in v1FNaSR:
     import traceback as _traceback
     import time as _time
+    import sys as _sys
 
     def color_text(text, color):
         if color is None:
@@ -44,19 +45,103 @@ init -5 python in v1FNaSR:
         return (len(recent) - 1) / dt if dt > 0 else 0.0
 
     class LogSystem(object):
+        _conditions = {
+            "==": lambda a, b: a == b,
+            "!=": lambda a, b: a != b,
+            ">": lambda a, b: a > b,
+            "<": lambda a, b: a < b,
+            ">=": lambda a, b: a >= b,
+            "<=": lambda a, b: a <= b,
+            "in": lambda item, container: item in container,
+            "is": lambda a, b: a is b
+        }
+
+        def __init__(self):
+            self._enable = False
+            self._log_error = True
+            self._log_traceback = True
+
+        @property
+        def is_enable(self):
+            return self._enable
+
+        @property
+        def is_log_error(self):
+            return self._log_error
+
+        @property
+        def is_log_traceback(self):
+            return self._log_traceback
+
+        def enable(self):
+            self._enable = True
+
+        def disable(self):
+            self._enable = False
+
+        def enable_log_error(self):
+            self._log_error = True
+
+        def disable_log_error(self):
+            self._log_error = False
+
+        def enable_log_traceback(self):
+            self._log_traceback = True
+
+        def disable_log_traceback(self):
+            self._log_traceback = False
+
+        def on(self):
+            self.enable()
+            self.enable_log_error()
+            self.enable_log_traceback()
+
+        def off(self):
+            self.disable()
+            self.disable_log_error()
+            self.disable_log_traceback()
+
         def error(self, msg=None, format_exc=None):
+            if not self._log_error:
+                return
+
             if msg is None:
                 msg = "error"
-            if format_exc is None:
-                format_exc = _traceback.format_exc()
+
             renpy.log("FNaSR | %s:" % msg)
-            renpy.log(format_exc)
 
-        def __call__(self, msg, value=None):
+            if not self._log_traceback:
+                return
+
+            if format_exc is None:
+                exc_info = _sys.exc_info()
+
+                if exc_info[0] is None:
+                    return
+
+                format_exc = "".join(_traceback.format_exception(*exc_info))
+
+            if format_exc:
+                renpy.log(format_exc)
+
+        def condition(self, obj1, operator, obj2):
+            if not is_string(operator):
+                raise FNaSRValueError("Unsupported condition operator: {!r}".format(operator))
+            fn = self._conditions.get(operator)
+            if fn is None:
+                raise FNaSRValueError("Unsupported condition operator: {!r}".format(operator))
+
+            result = fn(obj1, obj2)
+
+            if self._enable:
+                self("Result of the condition '{!r} {} {!r}': {}".format(obj1, operator, obj2, result))
+
+            return result
+
+        def __call__(self, msg):
+            if not self._enable:
+                return
             text = to_text(msg)
-            if value is not None:
-                text += ": " + repr(value)
-
             renpy.log("FNaSR | "+text)
 
     log = LogSystem()

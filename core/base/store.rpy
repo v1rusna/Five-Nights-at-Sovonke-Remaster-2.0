@@ -22,7 +22,7 @@ init -10 python in v1FNaSR:
     )
     _store["replace_screen"] = dict()
     _store["sound_channels"] = dict()
-    _store["debug_mode"] = True
+    _store["debug_mode"] = False
     _store["initialized"] = False
     _store["base_initialized"] = False
 

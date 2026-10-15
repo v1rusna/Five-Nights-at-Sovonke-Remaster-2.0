@@ -6,7 +6,8 @@ screen V1BaseUIScreenFNaSR:
 
 screen V1InfoNightScreenFNaSR(player=None, night_system=None):
     default ns = night_system if night_system is not None else v1FNaSR.require_system("night")
-    default player = player if player is not None else v1FNaSR.require_system("player").current_player
+    if player is None:
+        $ player =  v1FNaSR.require_system("player").current_player
     if not player.is_open_tablet and ns.loaded is not None:
         text ns.loaded.title style "v1_text_24_style_FNaSR" xalign 1.0
 
@@ -239,10 +240,12 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     use V1InfoNightScreenFNaSR()
 
 screen V1ShowEnemyFNaSR(player):
+    default ls = v1FNaSR.require_system("location")
+    $ location_selected = ls.require_location(player.current_location.tablet.selected)
     for enemy in v1FNaSR.get_created_enemy():
         if enemy.current_location is not None:
             if player.is_open_tablet:
-                if enemy.current_location.id == player.current_location.tablet.selected:
+                if enemy.current_location.id == player.current_location.tablet.selected or enemy.current_location.id in location_selected.camera.identical_ids:
                     $ xa, ya = enemy.align
                     add enemy.sprite align(xa, ya)
             else:

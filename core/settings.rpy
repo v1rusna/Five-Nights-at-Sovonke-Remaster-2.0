@@ -182,10 +182,11 @@ init -5 python in v1FNaSR:
                 raise FNaSRTypeError("'fn' должен быть вызываемым, пришло: {}".format(type(fn)))
             storage.append(fn)
 
-        def _run_fns(self, storage, label):
+        @staticmethod
+        def _run_fns(storage, label):
             for fn in tuple(storage):
                 try:
-                    fn(self)
+                    fn()
                 except Exception:
                     log.error("Settings.{} | {}".format(label, repr(fn)))
 
@@ -273,10 +274,27 @@ init -5 python in v1FNaSR:
         def __contains__(self, item):
             return self.has_setting(item)
 
+        def __len__(self):
+            with self._lock:
+                s_len = len(self._settings)
+            return s_len
+
     settings = Settings()
 
     settings.create_setting("game_difficulty", 2)
     settings.create_setting("nights_gone", list())
 
-    add_start_fn(settings.load)
-    add_quit_fn(settings.save)
+    add_start_fn(settings.load, order=1)
+    add_quit_fn(settings.save, order=1)
+
+init python in v1FNaSR:
+    def _v1_settings_debug(context):
+        info = []
+        for name in settings:
+            info.append(" {}: {}".format(name, settings.get_setting(name)))
+        return "\n".join(info)
+
+    debug.add_element(DebugSection(
+        DebugText(lambda context: "Настроек: {}".format(len(settings)), style="v1_text_16_style_FNaSR"),
+        DebugText(_v1_settings_debug, order=1),
+    order=4), group="System")

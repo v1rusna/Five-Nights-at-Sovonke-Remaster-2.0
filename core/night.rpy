@@ -590,6 +590,11 @@ init -1 python in v1FNaSR:
     add_quit_fn(_night_quit_fn)
     del _night_quit_fn
 
+    def _save_nights_progress():
+        settings.set_setting("nights_gone", require_system("night").export_progress())
+    def _load_nights_progress():
+        require_system("night").import_progress(settings.get_setting("nights_gone", list()))
+
 init python in v1FNaSR:
     _dsn = DebugSection(
         DebugText(lambda context: "Ночь: {}".format(context.ns.loaded.id), style="v1_text_16_style_FNaSR", order=0),
