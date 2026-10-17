@@ -48,8 +48,8 @@ init -5 python in v1FNaSR:
         _conditions = {
             "==": lambda a, b: a == b,
             "!=": lambda a, b: a != b,
-            ">": lambda a, b: a > b,
-            "<": lambda a, b: a < b,
+            ">":  lambda a, b: a > b,
+            "<":  lambda a, b: a < b,
             ">=": lambda a, b: a >= b,
             "<=": lambda a, b: a <= b,
             "in": lambda item, container: item in container,
@@ -214,6 +214,8 @@ init -5 python in v1FNaSR:
             return "<DebugContext len={} at {}>".format(len(self._data), hex(id(self)))
 
     class DebugElement(object):
+        __slots__ = ("_enable", "_error", "_order", "_condition", "_context",)
+
         def __init__(self, order=0, condition=None):
             if condition is not None and not callable(condition):
                 raise FNaSRTypeError("'condition' must be callable and return a boolean; received: {}".format(type(condition)))
@@ -301,6 +303,8 @@ init -5 python in v1FNaSR:
             )
 
     class DebugText(DebugElement):
+        __slots__ = ("_fn", "_style", "_renpy_obj", "_previous_content",)
+
         def __init__(self, fn, style="v1_text_12_style_FNaSR", **kwargs):
             if not callable(fn):
                 raise FNaSRTypeError("'fn' must be a callable; passed: {}".format(type(fn)))
@@ -334,6 +338,11 @@ init -5 python in v1FNaSR:
             return query in to_text(self._previous_content).lower()
 
     class DebugButton(DebugElement):
+        __slots__ = (
+            "_text_fn", "_fn", "_style", "_text_style",
+            "_renpy_obj", "_previous_content", "_clicked",
+        )
+
         def __init__(self, text_fn, fn, style="v1_move_location_button_FNaSR", text_style="v1_text_12_style_FNaSR", **kwargs):
             if not callable(text_fn):
                 raise FNaSRTypeError("'text_fn' must be a callable; passed: {}".format(type(text_fn)))
@@ -378,6 +387,8 @@ init -5 python in v1FNaSR:
             return query in to_text(self._previous_content).lower()
 
     class DebugSection(DebugElement):
+        __slots__ = ("_section", "_cache_ids", "_renpy_obj", "_sorted_elements",)
+
         def __init__(self, *elements, **kwargs):
             for element in elements:
                 if not isinstance(element, DebugElement):
@@ -436,13 +447,8 @@ init -5 python in v1FNaSR:
             return self._renpy_obj
 
         def get(self):
-            contents, failed = self._collect()
-
-            if failed:
-                self.disable()
-                return
-
-            return self._build(contents)
+            contents, _ = self._collect()
+            return self._build(contents) if contents else None
 
         def matches(self, query):
             for element in self._section:
@@ -473,6 +479,7 @@ init -5 python in v1FNaSR:
             return "<Section elements={} is {}>".format(len(self._section), super(DebugSection, self).__repr__())
 
     class DebugRow(DebugSection):
+        __slots__ = ()
         def _build(self, contents):
             ids = [id(content) for content in contents]
 
@@ -489,6 +496,11 @@ init -5 python in v1FNaSR:
             return self._renpy_obj
 
     class DebugFold(DebugSection):
+        __slots__ = (
+            "_title", "_expanded", "_header",
+            "_header_state", "_fold_ids", "_fold_obj",
+        )
+
         _INDENT = 14
 
         def __init__(self, title, *elements, **kwargs):
@@ -572,6 +584,8 @@ init -5 python in v1FNaSR:
             )
 
     class DebugIf(DebugElement):
+        __slots__ = ("_if_condition", "_element", "_else_element",)
+
         def __init__(self, if_condition, element, else_element, **kwargs):
             if not callable(if_condition):
                 raise FNaSRTypeError("'if_condition' must be callable; passed: {}".format(type(if_condition)))
@@ -628,6 +642,11 @@ init -5 python in v1FNaSR:
             return element.count_element_states()
 
     class DebugGroup(object):
+        __slots__ = (
+            "_name", "_title", "_order", "_elements",
+            "_enable", "_header", "_sorted_elements",
+        )
+
         def __init__(self, name, title=None, order=0):
             name = to_text(name)
             if title is None:
