@@ -1,7 +1,6 @@
 # state.rpy
 init -10 python in v1FNaSR:
     import threading as _threading
-    import sys as _sys
 
     _store = dict()
     _store["old"] = dict()
@@ -21,7 +20,6 @@ init -10 python in v1FNaSR:
         "Значение экрана должно быть итерируемым, а не '{}'"
     )
     _store["replace_screen"] = dict()
-    _store["sound_channels"] = dict()
     _store["debug_mode"] = False
     _store["initialized"] = False
     _store["base_initialized"] = False

@@ -36,17 +36,17 @@ label v1_init_FNaSR:
         hide expression v1FNaSR.InitImages.recommendation with dissolve
         $ renpy.pause(1.0, hard=True)
         $ persistent.v1_recommendation_seen_FNaSR = True
-        #jump v1_prolog_label_FNaSR
+        jump v1_prolog_label_FNaSR
 
     jump v1_main_menu_label_FNaSR
 
 label v1_main_menu_label_FNaSR:
     $ renpy.block_rollback()
     show anim v1_tablet_open_entire_FNaSR
-    $ renpy.music.play(v1FNaSR.resources.sounds.sfx["tablet_open_2"], "sound")
+    $ v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["tablet_open_2"], "sound")
     $ renpy.pause(0.18, hard=True)
     hide anim v1_tablet_open_entire_FNaSR
-    $ renpy.music.play(v1FNaSR.resources.sounds.sfx["camera_static_1_new"], "music", loop=True, fadein=0.5)
+    $ v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["camera_static_1_new"], "music", loop=True, fadein=0.5)
     $ v1FNaSR.show_screen("main menu")
     jump v1_loop_FNaSR
 
@@ -103,3 +103,8 @@ label v1_quit_FNaSR:
     scene black with dissolve
     $ renpy.pause(.5, hard=True)
     $ MainMenu(confirm=False)()
+
+
+
+label v1_prolog_label_FNaSR:
+    jump v1_main_menu_label_FNaSR

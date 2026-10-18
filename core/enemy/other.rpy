@@ -259,7 +259,7 @@ init -5 python in v1FNaSR:
         def __call__(self):
             image_name = "v1_animation_enemy_screamer_FNaSR"
 
-            play(self._sound_screamer, self._SOUND_CHANNEL)
+            audio.play(self._sound_screamer, self._SOUND_CHANNEL)
 
             try:
                 self._show_effects(image_name)
@@ -321,6 +321,6 @@ init -5 python in v1FNaSR:
 
 
 init python:
-    v1FNaSR.register_channel("screamer", "sound", loop=False)
+    v1FNaSR.audio.register_channel("screamer", "sound", loop=False)
 
 

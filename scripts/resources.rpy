@@ -46,7 +46,7 @@ init python in v1FNaSR:
 
     add_start_fn(_scale_images, -1)
     add_start_fn(InitImages.init, -1, once=True)
-    register_channel("walk", "sound")
+    audio.register_channel("walk", "sound")
 
 
 

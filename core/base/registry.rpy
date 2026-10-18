@@ -1,5 +1,7 @@
 # registry.rpy
 init -11 python in v1FNaSR:
+    import threading as _threading
+
     def _default_screen_handler(screen_list, state, **kwargs):
         if state == "show":
             for screen_name in screen_list:
@@ -9,6 +11,14 @@ init -11 python in v1FNaSR:
         if state == "hide":
             for screen_name in screen_list:
                 renpy.hide_screen(screen_name, **kwargs)
+
+    def single_screen_interaction(index=0):
+        def inner(screen_list, state, **kwargs):
+            if state == "show":
+                renpy.show_screen(screen_list[index], **kwargs)
+            elif state == "hide":
+                renpy.hide_screen(screen_list[index], **kwargs)
+        return inner
 
 
     class _Registry(object):
@@ -275,52 +285,8 @@ init -11 python in v1FNaSR:
             return screen_name in _store["replace_screen"]
 
 
-    def register_channel(name, mixer, overwrite=False, **kwargs):
-        name = name.replace(" ", "_")
-        vname = "v1_{}_FNaSR".format(name)
-
-        with _store_lock:
-            if not overwrite and name in _store["sound_channels"]:
-                raise FNaSRRegisterError("Звуковой канал '{}' уже зарегистрирован".format(name))
-
-        renpy.music.register_channel(vname, mixer, **kwargs)
-
-        with _store_lock:
-            _store["sound_channels"][name] = vname
-
-    def play(filename, channel=None, **kwargs):
-        channel = get_channel(channel)
-        if channel is None:
-            channel = "v1_music_FNaSR"
-        renpy.music.play(filename, channel, **kwargs)
-
-    def stop(channel=None, **kwargs):
-        channel = get_channel(channel)
-        if channel is None:
-            channel = "v1_music_FNaSR"
-        renpy.music.stop(channel, **kwargs)
-
-    def get_channel(channel):
-        with _store_lock:
-            if channel not in _store["sound_channels"]:
-                if channel is None:
-                    return
-                raise FNaSRKeyError("Звуковой канал '{}' не зарегистрирован".format(channel))
-            else:
-                channel = _store["sound_channels"][channel]
-        return channel
-
-    def stop_all(fadeout):
-        with _store_lock:
-            channels = tuple(iter_values(_store["sound_channels"]))
-
-        for channel in channels:
-            renpy.music.stop(channel, fadeout=fadeout)
 
 init python:
-    v1FNaSR.register_channel("music", "music", loop=True)
-    v1FNaSR.register_channel("sound", "sound", loop=False)
     v1FNaSR.add_quit_fn(lambda: v1FNaSR.hide_all_screen(True))
-    v1FNaSR.add_quit_fn(lambda: v1FNaSR.stop_all(0.5))
     v1FNaSR.add_quit_fn(v1FNaSR.restore_all_screens)
 

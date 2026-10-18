@@ -1,8 +1,9 @@
 # labels.rpy
 init python in v1FNaSR:
+    @main_thread_only
     def stop_game_helper(is_win):
         require_system("cycle").stop(True)
-        stop_all(0.5)
+        audio.stop_all(0.5)
         hide_all_screen(True)
         require_system("night").finish(bool(is_win))
 

@@ -1,6 +1,6 @@
 init -1 python in v1FNaSR:
-    register_channel("heartbeat", "ambience", loop=True)
-    register_channel("breathing", "ambience", loop=True)
+    audio.register_channel("heartbeat", "ambience", loop=True)
+    audio.register_channel("breathing", "ambience", loop=True)
 
     class Player(GameObject, BaseAI):
         def __init__(self, id, max_panic=15, magnitude_change_panic=1):
@@ -37,7 +37,7 @@ init -1 python in v1FNaSR:
         @property
         def has_tablet(self):
             if self._current_location is None:
-                raise FNaSRAttributeError("The player is not in any location")
+                return False
             return self._current_location.tablet is not None
 
         @property
@@ -90,7 +90,7 @@ init -1 python in v1FNaSR:
 
         def get_sees_image(self):
             if self._current_location is None:
-                raise FNaSRAttributeError("The player is not in any location")
+                raise FNaSRValueError("The player is not in any location")
 
             if self._open_tablet is None:
                 return self._current_location.parallax_image
@@ -110,9 +110,26 @@ init -1 python in v1FNaSR:
 
             super(Player, self).move(location, allow_migrate)
 
+            if self.current_location.ambience is not None:
+                last_played = audio.get_last_played("location_ambience")
+                sound, _ = self.current_location.ambience
+                if sound != last_played:
+                    main_executor.submit(
+                        audio.play,
+                        sound,
+                        "location_ambience",
+                        fadein=0.5
+                    )
+            else:
+                main_executor.submit(
+                    audio.stop,
+                    "location_ambience",
+                    fadeout=0.5
+                )
+
         def open_tablet(self):
             if self._current_location is None:
-                raise FNaSRAttributeError("The player is not in any location")
+                raise FNaSRValueError("The player is not in any location")
             if not self.has_tablet:
                 raise FNaSRException("There is no tablet in the current location({})".format(self._current_location.id))
             self._open_tablet = self._current_location.tablet
@@ -128,6 +145,9 @@ init -1 python in v1FNaSR:
                 self.open_tablet()
 
         def update(self):
+            if self._died:
+                return
+            
             location = self._current_location
 
             if location is None:
@@ -143,12 +163,22 @@ init -1 python in v1FNaSR:
 
                 if not self._is_play_heartbeat and self._panic >= self._max_panic / 2:
                     self._is_play_heartbeat = True
-                    play(renpy.store.sfx_head_heartbeat, "heartbeat", fadein=2)
+                    main_executor.submit(
+                        audio.play,
+                        renpy.store.sfx_head_heartbeat,
+                        "heartbeat",
+                        fadein=2
+                    )
 
                 if self._panic >= self._max_panic:
                     door.button.force_unclick()
                     self._rollback = True
-                    play(resources.sounds.sfx["panic_breathing_1"], "breathing", fadein=2)
+                    main_executor.submit(
+                        audio.play,
+                        resources.sounds.sfx["panic_breathing_1"],
+                        "heartbeat",
+                        fadein=2
+                    )
 
             elif self._panic > 0:
                 panic_changed = True
@@ -156,11 +186,19 @@ init -1 python in v1FNaSR:
 
                 if self._is_play_heartbeat and self._panic < self._max_panic / 2:
                     self._is_play_heartbeat = False
-                    stop("heartbeat", fadeout=2)
+                    main_executor.submit(
+                        audio.stop,
+                        "heartbeat",
+                        fadeout=2
+                    )
 
                 if self._rollback and self._panic <= self._rollback_threshold:
                     self._rollback = False
-                    stop("breathing", fadeout=2)
+                    main_executor.submit(
+                        audio.stop,
+                        "breathing",
+                        fadeout=2
+                    )
 
             self._panic = min(max(self._panic, 0), self._max_panic)
 
@@ -187,6 +225,10 @@ init -1 python in v1FNaSR:
                     if location is not None:
                         self.move(location)
 
+    # Изначально была задумка переключения между персонажами, например мини-режим где ты играешь за 2 охранников одновременно
+    # но дальнейший код был написал без оглядки на эту идея и теперь вряд ли задумка будет работать, здесь 2 варианта:
+    # 1 - убрать PlayerSystem
+    # 2 - переписать код и сделать эту идею жизнеспособной
     class PlayerSystem(object):
         def __init__(self):
             self._players = dict()

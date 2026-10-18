@@ -64,7 +64,7 @@ screen V1TabletButtonScreenFNaSR(player):
     default ysize_tablet_button = int(viewport.scale_scalar(200))
 
     if player.current_location.tablet.out_battery:
-        $ tablet_button_action = Function(v1FNaSR.play, v1FNaSR.resources.sounds.sfx["error"], "sound")
+        $ tablet_button_action = Function(v1FNaSR.audio.play, v1FNaSR.resources.sounds.sfx["error"], "sound")
     else:
         $ tablet_button_action = Function(v1FNaSR.Tools.switch_tablet, player)
 
@@ -85,14 +85,14 @@ screen _v1_show_camera_map_screen_FNaSR(tablet_screen, state, player):
             Hide("_v1_show_camera_map_screen_FNaSR"),
             Function(player.open_tablet),
             Show(tablet_screen),
-            Function(v1FNaSR.play, v1FNaSR.resources.sounds.sfx["camera_static_1_new"], "camera_static", fadein=0.1)
+            Function(v1FNaSR.audio.play, v1FNaSR.resources.sounds.sfx["camera_static_1_new"], "camera_static", fadein=0.1)
         ]
         add "anim v1_tablet_open_entire_FNaSR"
     else:
         on "show" action [
             Hide(tablet_screen),
             Function(player.close_tablet),
-            Function(v1FNaSR.stop, "camera_static", fadeout=0.1)
+            Function(v1FNaSR.audio.stop, "camera_static", fadeout=0.1)
         ]
         timer 0.18 action [Hide("_v1_show_camera_map_screen_FNaSR")]
         add "anim v1_tablet_close_entire_FNaSR"
@@ -226,7 +226,7 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     on "show" action Function(v1FNaSR.GlobalState.set, "moving_animation_speed", speed)
     
     timer 3.6 / speed action (Hide("V1MovingAnotherLocationFNaSR"), Function(v1FNaSR.GlobalState.set, "moving_animation", False))
-    timer 3.3 / speed action (Function(v1FNaSR.show_screen, "move"), Function(v1FNaSR.stop, "walk", fadeout=1.0))
+    timer 3.3 / speed action (Function(v1FNaSR.show_screen, "move"), Function(v1FNaSR.audio.stop, "walk", fadeout=1.0))
     timer 1.8 / speed action (Function(player.move, move_to), Function(cycle.call_in_cycle, v1FNaSR.EnemyMoveModule.generate_new_path_all_enemy))
     add player.get_sees_image() at v1_go_t_FNaSR(speed)
     fixed:
@@ -241,10 +241,10 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
 
 screen V1ShowEnemyFNaSR(player):
     default ls = v1FNaSR.require_system("location")
-    $ location_selected = ls.require_location(player.current_location.tablet.selected)
     for enemy in v1FNaSR.get_created_enemy():
         if enemy.current_location is not None:
             if player.is_open_tablet:
+                $ location_selected = ls.require_location(player.current_location.tablet.selected)
                 if enemy.current_location.id == player.current_location.tablet.selected or enemy.current_location.id in location_selected.camera.identical_ids:
                     $ xa, ya = enemy.align
                     add enemy.sprite align(xa, ya)

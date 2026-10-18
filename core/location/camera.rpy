@@ -1,6 +1,7 @@
 # camera.rpy
 init python in v1FNaSR:
     class CameraInfo(object):
+        __slots__ = ("_num", "_align", "_rotate", "_identical", "_active", "_break_time",)
 
         _BREAK_IMAGE = None
 
@@ -17,9 +18,9 @@ init python in v1FNaSR:
             if not isinstance(identical_ids, Iterable):
                 raise FNaSRTypeError("identical_ids должен быть Iterable, а не '{}'".format(type(align)))
 
-            self._num = to_text(num)   # str
-            self._align = tuple(align)        # tuple[float, float]
-            self._rotate = int(rotate) # int
+            self._num = to_text(num)
+            self._align = tuple(align)
+            self._rotate = int(rotate)
             self._identical = frozenset(identical_ids)
             self._active = True
             self._break_time = 0.0

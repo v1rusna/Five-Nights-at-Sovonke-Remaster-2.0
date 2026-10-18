@@ -1,6 +1,7 @@
 
 # location.rpy
 init python in v1FNaSR:
+    audio.register_channel("location_ambience", "ambience", loop=True)
 
     import threading as _threading
 
@@ -362,13 +363,22 @@ init python in v1FNaSR:
     class Location(object):
         __slots__ = (
             "_id", "_name", "_image", "_loc_connections",
-            "_tablet", "_ambient", "_camera", "_loc_sys",
+            "_tablet", "_ambience", "_camera", "_loc_sys",
             "_parallax_image", "_door", "_bulb", "_on_enter_fn",
             "_camera_button",
         )
 
-        def __init__(self, location_id, name, image, loc_connections=None, ambient=None, door=None, bulb=None, on_enter_fn=None):
+        def __init__(self, location_id, name, image, loc_connections=None, ambience=None, door=None, bulb=None, on_enter_fn=None):
             location_id = _normalize_id(location_id)
+            if ambience is not None:
+                if not isinstance(ambience, (list, tuple,)):
+                    raise FNaSRTypeError("'ambience' должен быть списком, передано: {}".format(type(ambience)))
+                if len(ambience) != 2:
+                    raise FNaSRTypeError("В 'ambience' должно быть строго 2 элемента: 1-путь к аудио, 2-флаг доступности аудио из камеры, передано: {}".format(len(ambience)))
+                if not is_string(ambience[0]) or not isinstance(ambience[1], bool):
+                    raise FNaSRTypeError("Первый элемент 'ambience' должен быть строкой, а второй булевым значением, передано: 1-{}; 2-{}".format(type(ambience[0]), type(ambience[1])))
+                ambience = tuple(ambience)
+
             if door is not None and not isinstance(door, Door):
                 raise FNaSRTypeError("'door' должен быть объектом класса 'Door', передано: {}".format(type(door)))
             if bulb is not None and not isinstance(bulb, Bulb):
@@ -381,14 +391,14 @@ init python in v1FNaSR:
             self._image = image
             self._parallax_image = Parallax(
                 image,
-                1.15,     # итоговый zoom: прежний zoom * 1.1, который давал camera
-                None,    # anchor: None -> центр области
-                0.07,    # power
+                1.15,
+                None,
+                0.07,
                 sharpness_factor=0.1,
                 fill_viewport=True
             )
             self._tablet = None
-            self._ambient = ambient
+            self._ambience = ambience
             self._door = door
             self._bulb = bulb
             self._on_enter_fn = on_enter_fn
@@ -424,8 +434,8 @@ init python in v1FNaSR:
             return self._parallax_image
 
         @property
-        def ambient(self):
-            return self._ambient
+        def ambience(self):
+            return self._ambience
 
         @property
         def connections(self):
@@ -464,9 +474,7 @@ init python in v1FNaSR:
 
         def set_camera(self, camera_info):
             if not isinstance(camera_info, CameraInfo):
-                raise FNaSRTypeError(
-                    "camera_info должен быть объектом класса 'CameraInfo', а не '{}'".format(type(camera_info))
-                )
+                raise FNaSRTypeError("camera_info должен быть объектом класса 'CameraInfo', а не '{}'".format(type(camera_info)))
             self._camera = camera_info
 
         def _attach_tablet(self, tablet):
@@ -511,7 +519,7 @@ init python in v1FNaSR:
                 if tablet.selected != self._id:
                     tablet.select(self._id)
                     tablet.safe_discharge(1)
-                    play(resources.sounds.sfx["blip3"], "sound")
+                    audio.play(resources.sounds.sfx["blip3"], "sound")
 
             cam_button = renpy.store.Button(
                 child=cam_text,
@@ -535,8 +543,6 @@ init python in v1FNaSR:
 
 
     class LocationSystem(object):
-        __slots__ = ("_locations",)
-
         def __init__(self):
             self._locations = dict()
             self._lock = _LOCATION_LOCK

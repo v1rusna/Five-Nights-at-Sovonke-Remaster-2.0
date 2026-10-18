@@ -26,11 +26,11 @@ init python:
         if play_sound:
             if state == "show":
                 if renpy.random.random() > 0.8:
-                    v1FNaSR.play(v1FNaSR.resources.sounds.sfx["tablet_open_1"], "sound")
+                    v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["tablet_open_1"], "sound")
                 else:
-                    v1FNaSR.play(v1FNaSR.resources.sounds.sfx["tablet_open_2"], "sound")
+                    v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["tablet_open_2"], "sound")
             else:
-                v1FNaSR.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
+                v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
 
         renpy.show_screen(screen_names[0], state=state, **kwargs)
 
@@ -49,7 +49,7 @@ init python:
             renpy.hide_screen(screen_names[0], **kwargs)
             if player is not None and move_to is not None:
                 v1FNaSR.GlobalState.set("moving_animation", True)
-                v1FNaSR.play(v1FNaSR.resources.sounds.sfx["walking"], "walk", fadeout=0.5, loop=False)
+                v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["walking"], "walk", fadeout=0.5, loop=False)
                 renpy.show_screen(screen_names[1], player=player, move_to=move_to, speed=speed, **kwargs)
 
     v1FNaSR.register_screen("tablet", ["_v1_show_camera_map_screen_FNaSR", "V1CameraMapScreenFNaSR"], callback=_v1_tablet_screen_callback)

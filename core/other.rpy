@@ -39,15 +39,11 @@ init -12 python in v1FNaSR:
             if self._current_location is not None and not allow_migrate and self._current_location.location_system != location.location_system:
                 raise FNaSRException("The current({}) and new({}) locations belong to different location systems".format(self._current_location.id, location.id))
             if location.door is not None and not location.door.is_open:
-                raise DoorClose("The doors at the '{}'({}) location are closed".format(location.name, location.id))
+                raise DoorClose(location.id)
             self._current_location = location
             location.on_enter(self)
 
     class _MissingType(object):
-        """
-        Sentinel для «значение не задано».
-        Используется вместо None, чтобы не путать «нет дефолта» и «дефолт = None».
-        """
         _instance = None
 
         def __new__(cls):
@@ -65,7 +61,7 @@ init -12 python in v1FNaSR:
 
     MISSING = _MissingType()
 
-    class InfoObject(object):
+    class InfoObject(object): # Этот класс можно заменить на DebugContext
         def __init__(self, **kwargs):
             object.__setattr__(self, "_v1data", {})
             self.update(kwargs)

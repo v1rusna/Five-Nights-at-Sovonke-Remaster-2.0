@@ -239,11 +239,30 @@ screen V1SayScreenFNaSR:
         text who id "who" xalign 0.5 ypos 931 size 28 line_spacing 2
 
 init python:
-    v1FNaSR.register_screen("main menu", "V1MainMenuFNaSR")
+    def _v1_main_menu_screen_handler_FNaSR(screen_list, state, **kwargs):
+        menu_index = kwargs.pop("menu_index", 0)
+        if state == "show":
+            renpy.show_screen(screen_list[menu_index], **kwargs)
+        elif state == "hide":
+            for screen_name in screen_list:
+                renpy.hide_screen(screen_name, **kwargs)
+
+    v1FNaSR.register_screen(
+        "main menu",
+        [
+            "V1MainMenuFNaSR",
+            "V1MainMenuChoiceNightFNaSR",
+            "V1MainMenuAchievementsFNaSR",
+            "V1MainMenuSettingsFNaSR"
+        ],
+        callback=_v1_main_menu_screen_handler_FNaSR
+    )
+
+    del _v1_main_menu_screen_handler_FNaSR
 
 
 label v1_play_FNaSR(night=None, sequence=v1FNaSR.MAIN_SEQUENCE):
-    $ renpy.music.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
+    $ v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
     $ v1FNaSR.MainMenuTools.close()
     scene black
     show anim v1_tablet_close_entire_FNaSR
@@ -253,7 +272,7 @@ label v1_play_FNaSR(night=None, sequence=v1FNaSR.MAIN_SEQUENCE):
     call v1_load_night_label_FNaSR(night=night, sequence=sequence)
 
 label v1_quit_mm_FNaSR:
-    $ v1FNaSR.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
+    $ v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["tablet_close_1"], "sound")
     scene black
     show anim v1_tablet_close_entire_FNaSR
     $ renpy.pause(0.18, hard=True)

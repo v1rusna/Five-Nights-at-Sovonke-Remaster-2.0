@@ -1,6 +1,6 @@
 # door.rpy
 init python in v1FNaSR:
-    register_channel("door_sound", "sound", loop=False)
+    audio.register_channel("door_sound", "sound", loop=False)
 
     class DoorClose(FNaSRException): pass
 
@@ -27,14 +27,22 @@ init python in v1FNaSR:
         def open(self, play_sound=True, show_vignette=True):
             self._open = True
             if play_sound:
-                play(renpy.store.sfx_door_squeak_light, "door_sound")
+                main_executor.submit(
+                    audio.play,
+                    renpy.store.sfx_door_squeak_light,
+                    "door_sound"
+                )
             if show_vignette:
                 main_executor.submit(self._show_vignette, [renpy.store.v1_door_hold_vignette_disappear_FNaSR])
 
         def close(self, play_sound=True, show_vignette=True):
             self._open = False
             if play_sound:
-                play(resources.sounds.sfx["door_unhold"], "door_sound")
+                main_executor.submit(
+                    audio.play,
+                    resources.sounds.sfx["door_unhold"],
+                    "door_sound"
+                )
             if show_vignette:
                 main_executor.submit(self._show_vignette, [renpy.store.v1_door_hold_vignette_appear_FNaSR])
 

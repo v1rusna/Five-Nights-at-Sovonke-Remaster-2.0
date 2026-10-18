@@ -18,14 +18,22 @@ init -1 python in v1FNaSR:
                 return
             self._is_on = True
             if play_sound:
-                play(resources.sounds.sfx["switch_on"], "sound")
+                main_executor.submit(
+                    audio.play,
+                    resources.sounds.sfx["switch_on"],
+                    "sound"
+                )
 
         def switch_off(self, play_sound=True):
             if not self._is_on:
                 return
             self._is_on = False
             if play_sound:
-                play(resources.sounds.sfx["switch_off"], "sound")
+                main_executor.submit(
+                    audio.play,
+                    resources.sounds.sfx["switch_off"],
+                    "sound"
+                )
 
         def switch(self, play_sound=True):
             if self._is_on:
