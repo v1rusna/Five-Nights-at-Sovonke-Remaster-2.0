@@ -1033,7 +1033,7 @@ init python in v1FNaSR:
             for screen_name in screen_names:
                 renpy.hide_screen(screen_name, **kwargs)
 
-    register_screen("debug", "V1DebugScreenFNaSR", callback=_v1_debug_screen_callback)
+    screen_manager.register_screen("debug", "V1DebugScreenFNaSR", callback=_v1_debug_screen_callback)
 
     del _button_debug_activate
     del _text_count_element_states

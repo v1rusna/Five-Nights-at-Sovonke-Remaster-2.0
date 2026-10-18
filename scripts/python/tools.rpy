@@ -24,9 +24,9 @@ init -1 python in v1FNaSR:
         @staticmethod
         def switch_tablet(player, fast_switch=False):
             if player.is_open_tablet:
-                hide_screen("tablet", player=player, fast_switch=fast_switch)
+                screen_manager.hide_screen("tablet", player=player, fast_switch=fast_switch)
             else:
-                show_screen("tablet", player=player, fast_switch=fast_switch)
+                screen_manager.show_screen("tablet", player=player, fast_switch=fast_switch)
 
         @staticmethod
         def get_active_directions(player, location_system):

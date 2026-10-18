@@ -104,7 +104,6 @@ init -6 python in v1FNaSR:
     start_mod = main_thread_only(start_mod)
     quit_mod = main_thread_only(quit_mod)
 
-    # Я не добавлял renpy.audio.audio.* так как у них уже есть lock = threading.RLock(), так что в теории они потокобезопасные
     def _wrapped_fn():
         _store["old"]["renpy_show"] = renpy.show
         _store["old"]["renpy_hide"] = renpy.hide

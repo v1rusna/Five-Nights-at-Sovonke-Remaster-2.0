@@ -208,10 +208,9 @@ init -1 python in v1FNaSR:
             tablet = self._open_tablet
 
             if tablet is not None and tablet.out_battery:
-                if has_screen("tablet"):
-                    main_executor.submit(hide_screen, "tablet", player=self)
-                else:
-                    self.close_tablet()
+                if screen_manager.has_screen("tablet"):
+                    main_executor.submit(screen_manager.hide_screen, "tablet", player=self)
+                self.close_tablet()
 
             if panic_changed:
                 update_ui()

@@ -4,7 +4,7 @@ init python in v1FNaSR:
     def stop_game_helper(is_win):
         require_system("cycle").stop(True)
         audio.stop_all(0.5)
-        hide_all_screen(True)
+        screen_manager.hide_all_screen(True)
         require_system("night").finish(bool(is_win))
 
     def get_latest_killer():

@@ -47,7 +47,7 @@ label v1_main_menu_label_FNaSR:
     $ renpy.pause(0.18, hard=True)
     hide anim v1_tablet_open_entire_FNaSR
     $ v1FNaSR.audio.play(v1FNaSR.resources.sounds.sfx["camera_static_1_new"], "music", loop=True, fadein=0.5)
-    $ v1FNaSR.show_screen("main menu")
+    $ v1FNaSR.screen_manager.show_screen("main menu")
     jump v1_loop_FNaSR
 
 
@@ -87,8 +87,8 @@ label v1_game_FNaSR:
             location = ls.get_location(-1)
         if location is not None:
             v1FNaSR.require_system("player").current_player.move(location)
-        v1FNaSR.show_screen("game_interface")
-        v1FNaSR.show_screen("debug")
+        v1FNaSR.screen_manager.show_screen("game_interface")
+        v1FNaSR.screen_manager.show_screen("debug")
         v1FNaSR.require_system("cycle").start()
 
 label v1_loop_FNaSR:

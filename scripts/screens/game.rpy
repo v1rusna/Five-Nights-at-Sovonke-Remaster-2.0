@@ -31,7 +31,7 @@ screen V1MainGameInterfaceFNaSR:
                 "Переместиться",
                 style="v1_move_location_button_FNaSR",
                 text_style="v1_text_24_mod_button_FNaSR",
-                clicked=(Function(player.set_moving, True), Function(v1FNaSR.show_screen, "move"))
+                clicked=(Function(player.set_moving, True), Function(v1FNaSR.screen_manager.show_screen, "move"))
             ),
             radius=200.0,
             opaque_radius=20.0,
@@ -184,7 +184,7 @@ screen V1MoveDirectionFNaSR(config, locations, player):
                             text_style "v1_text_24_mod_button_FNaSR"
                             if not v1FNaSR.GlobalState.get("moving_animation", False):
                                 action Function(
-                                    v1FNaSR.hide_screen,
+                                    v1FNaSR.screen_manager.hide_screen,
                                     "move",
                                     player=player,
                                     move_to=location,
@@ -209,7 +209,7 @@ screen V1MoveScreenFNaSR:
             text_style="v1_text_24_mod_button_FNaSR",
             clicked=(
                 Function(player.set_moving, False),
-                Function(v1FNaSR.hide_screen, "move")
+                Function(v1FNaSR.screen_manager.hide_screen, "move")
             )
         ),
         radius=200.0,
@@ -226,7 +226,7 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     on "show" action Function(v1FNaSR.GlobalState.set, "moving_animation_speed", speed)
     
     timer 3.6 / speed action (Hide("V1MovingAnotherLocationFNaSR"), Function(v1FNaSR.GlobalState.set, "moving_animation", False))
-    timer 3.3 / speed action (Function(v1FNaSR.show_screen, "move"), Function(v1FNaSR.audio.stop, "walk", fadeout=1.0))
+    timer 3.3 / speed action (Function(v1FNaSR.screen_manager.show_screen, "move"), Function(v1FNaSR.audio.stop, "walk", fadeout=1.0))
     timer 1.8 / speed action (Function(player.move, move_to), Function(cycle.call_in_cycle, v1FNaSR.EnemyMoveModule.generate_new_path_all_enemy))
     add player.get_sees_image() at v1_go_t_FNaSR(speed)
     fixed:

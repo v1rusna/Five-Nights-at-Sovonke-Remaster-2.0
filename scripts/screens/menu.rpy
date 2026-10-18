@@ -247,7 +247,7 @@ init python:
             for screen_name in screen_list:
                 renpy.hide_screen(screen_name, **kwargs)
 
-    v1FNaSR.register_screen(
+    v1FNaSR.screen_manager.register_screen(
         "main menu",
         [
             "V1MainMenuFNaSR",

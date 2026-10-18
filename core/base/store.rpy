@@ -13,13 +13,6 @@ init -10 python in v1FNaSR:
         "Система '{}' уже зарегистрирована",
         "Система '{}' не найдена"
     )
-    _store["screens"] = _ScreensRegistry(
-        "экранов",
-        "Экран с ключом '{}' уже зарегистрирован",
-        "Экран с ключом '{}' не найден",
-        "Значение экрана должно быть итерируемым, а не '{}'"
-    )
-    _store["replace_screen"] = dict()
     _store["debug_mode"] = False
     _store["initialized"] = False
     _store["base_initialized"] = False
@@ -30,10 +23,8 @@ init -10 python in v1FNaSR:
         with _store_lock:
             return _store["debug_mode"]
 
-    def is_initialized(full=True, only_base=False):
+    def is_initialized(full=True):
         with _store_lock:
             if full:
                 return _store["initialized"] and _store["base_initialized"]
-            if only_base:
-                return _store["base_initialized"]
             return _store["initialized"] or _store["base_initialized"]
