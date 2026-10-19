@@ -69,8 +69,6 @@ init -3 python in v1FNaSR:
             return "<{} error={} freezed={}>".format(type(self).__name__, self._error is not None, self._freeze)
 
     class BaseEnemy(GameObject, BaseAI):
-        # __slots__ = ("_modules", "_types_modules", "_context", "__weakref__",)
-
         def __init__(self):
             super(BaseEnemy, self).__init__()
  
@@ -177,11 +175,6 @@ init -3 python in v1FNaSR:
 
 
     class Enemy(BaseEnemy):
-        # __slots__ = (
-        #     "_tag", "_nights_start", "_special_night", "_name", "_color",
-        #     "_sprite", "_parallax_sprite", "_align",
-        # )
-
         def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None):
             super(Enemy, self).__init__()
 

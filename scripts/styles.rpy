@@ -21,6 +21,10 @@ init python:
         style.v1_text_16_style_FNaSR
     )
 
+    style.v1_text_24_typewriter_style_FNaSR = renpy.style.Style(
+        style.v1_text_24_style_FNaSR
+    )
+
     def v1_init_style_FNaSR():
         font_24_size = v1FNaSR.scale_font_size(24)
         font_16_size = v1FNaSR.scale_font_size(16)

@@ -21,12 +21,14 @@ init python in v1FNaSR:
 
 label v1_win_label_FNaSR:
     $ v1FNaSR.stop_game_helper(True)
+    scene black
 
     $ v1FNaSR.GlobalState.clear()
     jump v1_main_menu_label_FNaSR
 
 label v1_screamer_label_FNaSR:
     $ v1FNaSR.stop_game_helper(False)
+    scene black
     
     python hide:
         latest_killer, screamer = v1FNaSR.get_latest_killer()

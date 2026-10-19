@@ -140,7 +140,7 @@ init python in v1FNaSR:
                         "name": "склады",
                         "image": resources.images.bg["v1_ext_storage_night_FNaSR"],
                         "loc_connections": [(6,3), (7,7)],
-                        "ambience": (resources.sounds.ambient["electrical_panel"], True,),
+                        "ambience": [(resources.sounds.ambient["electrical_panel"], True,)],
                     },
                     CameraInfo(15, (0.615, 0.445)),
                 ),

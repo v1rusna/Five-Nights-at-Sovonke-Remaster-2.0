@@ -39,7 +39,7 @@ screen V1MainGameInterfaceFNaSR:
         ) align (0.5, -0.2)
 
     if not player.is_moving and player.has_door and not player.is_open_tablet:
-        text player.get_panic_text() style "v1_text_24_style_FNaSR" align (0.9, 0.8)
+        text "Паника: "+player.get_panic_text() style "v1_text_24_style_FNaSR" align (0.9, 0.8)
         add (v1FNaSR.InitImages.ui_door_open if player.current_location.door.is_open else v1FNaSR.InitImages.ui_door_close) align (0.75, 0.9)
         if not player.is_rollback_panic:
             add player.current_location.door.button align (0.75, 1.0)

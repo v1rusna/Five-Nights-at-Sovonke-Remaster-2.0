@@ -86,9 +86,172 @@ init -5 python in v1FNaSR:
             with self._lock:
                 return key in self._channels
 
+    class AmbienceManager(object):
+        def __init__(self):
+            self._ls = None
+
+        def sync_player(self, player, fadein=0.5, fadeout=0.5):
+            if self._ls is None:
+                self._ls = require_system("location")
+                
+            ls = self._ls
+            
+            location = player.current_location
+            old_location = ls.get_location(player.previous_location_id)
+            ambience_list = None
+            played_channel = []
+
+            if player.is_open_tablet:
+                selected_location = ls.require_location(player.current_location.tablet.selected)
+                ambience_list = selected_location.ambience
+            else:
+                ambience_list = location.ambience
+
+            for s_data in ambience_list:
+                sound, play_in_camera, channel = s_data
+                last_played = audio.get_last_played(channel)
+
+                if player.is_open_tablet:
+                    if play_in_camera and sound != last_played:
+                        main_executor.submit(audio.play, sound, channel, fadein=fadein)
+                else:
+                    if sound != last_played:
+                        main_executor.submit(audio.play, sound, channel, fadein=fadein)
+                played_channel.append(channel)
+
+            if old_location is not None:
+                for s_data in old_location.ambience:
+                    _, _, channel = s_data
+                    if channel not in played_channel:
+                        main_executor.submit(audio.stop, channel, fadeout=fadeout)
+
+
     audio = AudioManager()
+    ambience_manager = AmbienceManager()
 
 init python in v1FNaSR:
     audio.register_channel("music", "music", loop=True)
     audio.register_channel("sound", "sound", loop=False)
     add_quit_fn(lambda: audio.stop_all(0.5))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# audio.rpy
+
+init -5 python in v1FNaSR:
+
+    import threading as _threading
+
+    class AmbienceManager(object):
+        __slots__ = ("_active_channels", "_lock")
+
+        def __init__(self):
+            self._active_channels = {}
+            self._lock = _threading.RLock()
+
+        def _get_desired_channels(self, player):
+            location = player.current_location
+
+            if location is None:
+                return {}
+
+            in_camera = player.is_open_tablet
+
+            if in_camera:
+                tablet = location.tablet
+
+                if tablet is None:
+                    raise FNaSRException("Планшет открыт, но в локации '{}' отсутствует объект Tablet.".format(location.id))
+
+                selected = tablet.selected
+
+                if selected is None:
+                    return {}
+
+                location_system = location.location_system
+
+                if location_system is None:
+                    raise FNaSRException("Локация '{}' не зарегистрирована в LocationSystem.".format(location.id))
+
+                location = location_system.require_location(selected)
+
+            desired = {}
+
+            for sound, play_in_camera, channel in location.ambience:
+
+                if in_camera and not play_in_camera:
+                    continue
+
+                if not audio.has_channel(channel):
+                    raise FNaSRKeyError("Звуковой канал '{}' не зарегистрирован.".format(channel))
+
+                if channel in desired:
+                    raise FNaSRValueError("Канал '{}' используется несколькими звуками ambience локации '{}'.".format(channel, location.id))
+
+                desired[channel] = sound
+
+            return desired
+
+        def sync_player(self, player, fadein=0.5, fadeout=0.5):
+            player_system = get_system("player")
+
+            if player_system is not None:
+                if player_system.current_player is not player:
+                    return
+
+            desired = self._get_desired_channels(player)
+
+            with self._lock:
+                current = self._active_channels
+
+                for channel in tuple(current):
+                    if channel not in desired:
+                        main_executor.submit(
+                            audio.stop,
+                            channel,
+                            fadeout=fadeout
+                        )
+
+                for channel, sound in iter_items(desired):
+                    if current.get(channel, MISSING) == sound:
+                        continue
+
+                    main_executor.submit(
+                        audio.play,
+                        sound,
+                        channel,
+                        fadein=fadein,
+                        fadeout=fadeout
+                    )
+
+                self._active_channels = dict(desired)
+
+        def stop_all(self, fadeout=0.5):
+            with self._lock:
+                channels = tuple(self._active_channels)
+
+                for channel in channels:
+                    main_executor.submit(
+                        audio.stop,
+                        channel,
+                        fadeout=fadeout
+                    )
+
+                self._active_channels.clear()
+
+        def get_active_channels(self):
+            with self._lock:
+                return dict(self._active_channels)
+
+    ambience_manager = AmbienceManager()

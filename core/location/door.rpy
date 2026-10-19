@@ -57,3 +57,6 @@ init python in v1FNaSR:
             self._door_button.force_unclick()
             self._open = True
 
+        def __repr__(self):
+            return "<store.v1FNaSR.{} is_open={} hex={}>".format(type(self).__name__, self._open, hex(id(self)))
+

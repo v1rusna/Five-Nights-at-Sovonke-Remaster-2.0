@@ -579,6 +579,20 @@ init -1 python in v1FNaSR:
             if stuck:
                 raise FNaSRException("Ночи никогда не откроются (взаимная блокировка зависимостей и порядка): {}.".format(", ".join(stuck)))
 
+    class NightHandler(GameObject):
+        def start(self):
+            self._time = require_system("time")
+            self._ns = require_system("night")
+            ns = self._ns
+            
+            for enemy in get_created_enemy():
+                if ns.loaded.id not in enemy.special_night or enemy.nights_start < ns.get_position(ns.loaded):
+                    enemy.enabled = False
+
+        def tick_update(self, dt, rt):
+            if self._time.clock.hour >= self._ns.loaded.end_of_shift:
+                main_executor.submit_and_wait(renpy.jump, "v1_win_label_FNaSR")
+
 
     register_system("night", NightSystem())
 

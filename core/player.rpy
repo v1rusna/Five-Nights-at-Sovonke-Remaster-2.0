@@ -1,4 +1,6 @@
 init -1 python in v1FNaSR:
+    from __future__ import division
+
     audio.register_channel("heartbeat", "ambience", loop=True)
     audio.register_channel("breathing", "ambience", loop=True)
 
@@ -13,8 +15,7 @@ init -1 python in v1FNaSR:
 
             self._id = to_text(id)
 
-            self._setattr("_current_location", None)
-            self._setattr("_open_tablet", None)
+            self._setattr("_open_tablet", False)
             self._setattr("_is_moving", False)
             self._setattr("_under_attack", False)
 
@@ -32,7 +33,7 @@ init -1 python in v1FNaSR:
 
         @property
         def is_open_tablet(self):
-            return self._open_tablet is not None
+            return self._open_tablet
 
         @property
         def has_tablet(self):
@@ -80,7 +81,7 @@ init -1 python in v1FNaSR:
             self._died = True
 
         def get_panic_text(self):
-            return "Паника: {}/{}".format(self._panic, self._max_panic)
+            return "{}/{}".format(self._panic, self._max_panic)
 
         def set_moving(self, value):
             self._is_moving = bool(value)
@@ -92,10 +93,10 @@ init -1 python in v1FNaSR:
             if self._current_location is None:
                 raise FNaSRValueError("The player is not in any location")
 
-            if self._open_tablet is None:
+            if not self._open_tablet:
                 return self._current_location.parallax_image
 
-            selected = self._open_tablet.selected
+            selected = self._current_location.tablet.selected
 
             if selected is None:
                 raise FNaSRException("No location has been selected on the tablet")
@@ -110,33 +111,20 @@ init -1 python in v1FNaSR:
 
             super(Player, self).move(location, allow_migrate)
 
-            if self.current_location.ambience is not None:
-                last_played = audio.get_last_played("location_ambience")
-                sound, _ = self.current_location.ambience
-                if sound != last_played:
-                    main_executor.submit(
-                        audio.play,
-                        sound,
-                        "location_ambience",
-                        fadein=0.5
-                    )
-            else:
-                main_executor.submit(
-                    audio.stop,
-                    "location_ambience",
-                    fadeout=0.5
-                )
+            ambience_manager.sync_player(self)
 
         def open_tablet(self):
             if self._current_location is None:
                 raise FNaSRValueError("The player is not in any location")
             if not self.has_tablet:
                 raise FNaSRException("There is no tablet in the current location({})".format(self._current_location.id))
-            self._open_tablet = self._current_location.tablet
-            self._open_tablet.safe_discharge(2)
+            self._open_tablet = True
+            self._current_location.tablet.safe_discharge(2)
+            ambience_manager.sync_player(self)
 
         def close_tablet(self):
-            self._open_tablet = None
+            self._open_tablet = False
+            ambience_manager.sync_player(self)
 
         def switch_tablet(self):
             if self.is_open_tablet:
@@ -171,14 +159,17 @@ init -1 python in v1FNaSR:
                     )
 
                 if self._panic >= self._max_panic:
+                    if not self._rollback:
+                        self._rollback = True
+                        main_executor.submit(
+                            audio.play,
+                            resources.sounds.sfx["panic_breathing_1"],
+                            "breathing",
+                            fadein=2
+                        )
+
+                if self._rollback:
                     door.button.force_unclick()
-                    self._rollback = True
-                    main_executor.submit(
-                        audio.play,
-                        resources.sounds.sfx["panic_breathing_1"],
-                        "heartbeat",
-                        fadein=2
-                    )
 
             elif self._panic > 0:
                 panic_changed = True
@@ -205,29 +196,17 @@ init -1 python in v1FNaSR:
             if self._rollback and door is not None and not door.is_open:
                 door.button.force_unclick()
 
-            tablet = self._open_tablet
+            if self._open_tablet:
+                tablet = self._current_location.tablet
 
-            if tablet is not None and tablet.out_battery:
-                if screen_manager.has_screen("tablet"):
-                    main_executor.submit(screen_manager.hide_screen, "tablet", player=self)
-                self.close_tablet()
+                if tablet.out_battery:
+                    if screen_manager.has_screen("tablet"):
+                        main_executor.submit(screen_manager.hide_screen, "tablet", player=self)
+                    self.close_tablet()
 
             if panic_changed:
                 update_ui()
 
-        def reset(self):
-            super(Player, self).reset()
-            if self._reset_to_default["_current_location"] is not None:
-                location_system = get_system("location")
-                if location_system is not None:
-                    location = location_system.get_location(self._reset_to_default["_current_location"])
-                    if location is not None:
-                        self.move(location)
-
-    # Изначально была задумка переключения между персонажами, например мини-режим где ты играешь за 2 охранников одновременно
-    # но дальнейший код был написал без оглядки на эту идея и теперь вряд ли задумка будет работать, здесь 2 варианта:
-    # 1 - убрать PlayerSystem
-    # 2 - переписать код и сделать эту идею жизнеспособной
     class PlayerSystem(object):
         def __init__(self):
             self._players = dict()
@@ -242,15 +221,12 @@ init -1 python in v1FNaSR:
         def current_player(self):
             return self._current_player
 
-        def create_player(self, id, max_panic=15, start_location=None, register_in_cycle=True):
+        def create_player(self, id, max_panic=15, register_in_cycle=True):
             id = to_text(id)
             if id in self._players:
                 raise FNaSRException("A character with ID '{}' has already been created.".format(id))
             
             player = Player(id, max_panic)
-            if start_location is not None:
-                player._setattr("_current_location", start_location.id)
-                player.move(start_location)
 
             if register_in_cycle:
                 require_system("cycle").register(player)
@@ -270,9 +246,10 @@ init -1 python in v1FNaSR:
 
             if self._current_player is player:
                 if self._players:
-                    self._current_player = next(iter(self._players.values()))
+                    self.switch_player(next(iter(self._players)))
                 else:
                     self._current_player = None
+                    ambience_manager.stop_all()
 
         def switch_player(self, id):
             id = to_text(id)
@@ -280,6 +257,7 @@ init -1 python in v1FNaSR:
                 raise FNaSRException("The character with ID '{}' does not exist".format(id))
 
             self._current_player = self._players[id]
+            ambience_manager.sync_player(self._current_player)
 
         def get_player(self, id):
             return self._players.get(to_text(id))
@@ -297,11 +275,11 @@ init python in v1FNaSR:
     order=0)
 
     _dsp2 = DebugSection(
-        DebugText(lambda context: "Паника: {}/{}".format(context.ps.current_player.panic, context.ps.current_player.max_panic), order=0, style="v1_text_16_style_FNaSR"),
+        DebugText(lambda context: "Паника: {}".format(context.ps.current_player.get_panic_text()), order=0, style="v1_text_16_style_FNaSR"),
         DebugText(lambda context: "rollback panic: {}".format(context.ps.current_player.is_rollback_panic), order=1),
         DebugText(lambda context: "rollback threshold: {}".format(context.ps.current_player.rollback_threshold), order=2),
         DebugText(lambda context: "magnitude change panic: {}".format(context.ps.current_player._magnitude_change_panic), order=3),
-        DebugText(lambda context: "дверь: {}".format("{color=#0ac80a}открыта{/color}" if context.ps.current_player.current_location.door.is_open else "{color=#c80a0a}закрыта{/color}"), order=4, condition=lambda context: context.ps.current_player.has_door),
+        DebugText(lambda context: "Дверь: {}".format("{color=#0ac80a}открыта{/color}" if context.ps.current_player.current_location.door.is_open else "{color=#c80a0a}закрыта{/color}"), order=4, condition=lambda context: context.ps.current_player.has_door),
     order=1)
 
     _ps = require_system("player")

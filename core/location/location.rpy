@@ -370,14 +370,38 @@ init python in v1FNaSR:
 
         def __init__(self, location_id, name, image, loc_connections=None, ambience=None, door=None, bulb=None, on_enter_fn=None):
             location_id = _normalize_id(location_id)
+            normalized_ambience = list()
             if ambience is not None:
-                if not isinstance(ambience, (list, tuple,)):
-                    raise FNaSRTypeError("'ambience' должен быть списком, передано: {}".format(type(ambience)))
-                if len(ambience) != 2:
-                    raise FNaSRTypeError("В 'ambience' должно быть строго 2 элемента: 1-путь к аудио, 2-флаг доступности аудио из камеры, передано: {}".format(len(ambience)))
-                if not is_string(ambience[0]) or not isinstance(ambience[1], bool):
-                    raise FNaSRTypeError("Первый элемент 'ambience' должен быть строкой, а второй булевым значением, передано: 1-{}; 2-{}".format(type(ambience[0]), type(ambience[1])))
-                ambience = tuple(ambience)
+                if not isinstance(ambience, (list, tuple)):
+                    raise FNaSRTypeError("'ambience' должен быть списком или кортежем, получено: {}".format(type(ambience)))
+
+                for index, s_data in enumerate(ambience):
+                    if not isinstance(s_data, (list, tuple)):
+                        raise FNaSRTypeError("Элемент ambience[{}] должен быть списком или кортежем, получено: {}".format(index, type(s_data)))
+
+                    if len(s_data) not in (2, 3):
+                        raise FNaSRValueError("Элемент ambience[{}] должен содержать 2 или 3 значения, получено: {}".format(index, len(s_data)))
+
+                    sound, camera_available = s_data[:2]
+
+                    if not is_string(sound):
+                        raise FNaSRTypeError("Путь к аудио в ambience[{}] должен быть строкой, получено: {}".format(index, type(sound)))
+
+                    if not isinstance(camera_available, bool):
+                        raise FNaSRTypeError("Флаг доступности звука из камеры в ambience[{}] должен быть bool, получено: {}".format(index, type(camera_available)))
+
+                    if len(s_data) == 2:
+                        channel = "location_ambience"
+                    else:
+                        channel = s_data[2]
+
+                        if not is_string(channel):
+                            raise FNaSRTypeError("Название канала в ambience[{}] должно быть строкой, получено: {}".format(index, type(channel)))
+
+                        if not audio.has_channel(channel):
+                            raise FNaSRKeyError("Звуковой канал '{}' в ambience[{}] не зарегистрирован.".format(channel, index))
+
+                    normalized_ambience.append((sound, camera_available, channel))
 
             if door is not None and not isinstance(door, Door):
                 raise FNaSRTypeError("'door' должен быть объектом класса 'Door', передано: {}".format(type(door)))
@@ -398,7 +422,7 @@ init python in v1FNaSR:
                 fill_viewport=True
             )
             self._tablet = None
-            self._ambience = ambience
+            self._ambience = tuple(normalized_ambience)
             self._door = door
             self._bulb = bulb
             self._on_enter_fn = on_enter_fn
@@ -521,6 +545,18 @@ init python in v1FNaSR:
                     tablet.safe_discharge(1)
                     audio.play(resources.sounds.sfx["blip3"], "sound")
 
+            def _action():
+            if tablet.selected != self._id:
+                tablet.select(self._id)
+                tablet.safe_discharge(1)
+                audio.play(resources.sounds.sfx["blip3"],"sound")
+
+                player_system = get_system("player")
+                if player_system is not None:
+                    player = player_system.current_player
+                    if player is not None and player.is_open_tablet:
+                        ambience_manager.sync_player(player)
+
             cam_button = renpy.store.Button(
                 child=cam_text,
                 idle_background=v1_camera_map_idle_t,
@@ -537,8 +573,15 @@ init python in v1FNaSR:
             self._camera_button = cam_button
 
         def __repr__(self):
-            return "Location(id=%r, name=%r, connections=%r)" % (
-                self._id, self._name, self._loc_connections.to_list()
+            return "<store.v1FNaSR.Location id=%r name=%r tablet=%r door=%r bulb=%r camera=%r connections=%r hex=%s>" % (
+                self._id,
+                self._name,
+                self._tablet,
+                self._door,
+                self._bulb,
+                self._camera,
+                self._loc_connections.to_list(),
+                hex(id(self))
             )
 
 
@@ -554,7 +597,7 @@ init python in v1FNaSR:
             return locations
 
         def get_location(self, location_id):
-            location_id = _normalize_id(location_id)
+            # location_id = _normalize_id(location_id)
             with self._lock:
                 location = self._locations.get(location_id)
             return location
@@ -634,36 +677,6 @@ init python in v1FNaSR:
 
                 except Exception:
                     self._restore_registry(backup, attached)
-                    raise
-
-        @main_thread_only
-        def unregister(self, location_id):
-            location_id = _normalize_id(location_id)
-            with self._lock:
-                location = self._locations.get(location_id)
-
-                if location is None:
-                    raise FNaSRKeyError("Локация с id '{}' не зарегистрирована".format(location_id))
-
-                location = self._locations[location_id]
-                if location.tablet is not None:
-                    raise FNaSRException(
-                        "Локация '{}' ещё содержит планшет '{}'; сначала переместите "
-                        "или удалите его через TabletManager".format(location_id, location.tablet.tag)
-                    )
-
-                removed = self._locations.pop(location_id)
-                removed._loc_sys = None
-                removed._loc_connections._reset_auto()
-
-                for loc in iter_values(self._locations):
-                    loc._loc_connections._purge_target(location_id)
-
-                try:
-                    self.generate_connections()
-                except Exception:
-                    removed._loc_sys = self
-                    self._locations[location_id] = removed
                     raise
 
         @main_thread_only

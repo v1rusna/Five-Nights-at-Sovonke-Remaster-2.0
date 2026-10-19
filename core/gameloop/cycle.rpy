@@ -109,13 +109,6 @@ init -5 python in v1FNaSR:
                 raise
 
     class GameObject(ResetLogic):
-        # __slots__ = (
-        #     "_accumulated_time",
-        #     "_enabled",
-        #     "_consecutive_errors",
-        #     "current_refresh_time",
-        # )
-
         def __init__(self):
             super(GameObject, self).__init__()
             
