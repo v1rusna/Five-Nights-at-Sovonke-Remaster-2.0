@@ -472,9 +472,9 @@ init python in v1FNaSR:
         condition=lambda context: context.cycle is not None,
         order=1),
         DebugRow(
-            DebugButton(lambda context: "+", lambda context: context.cycle.add_refresh_time()),
-            DebugText(lambda context: "refresh time: {}".format(context.cycle.refresh_time), order=1),
             DebugButton(lambda context: "-", lambda context: context.cycle.decrease_refresh_time(), order=2),
+            DebugText(lambda context: "refresh time: {}".format(context.cycle.refresh_time), order=1),
+            DebugButton(lambda context: "+", lambda context: context.cycle.add_refresh_time()),
         order=2),
         expanded=True
     )

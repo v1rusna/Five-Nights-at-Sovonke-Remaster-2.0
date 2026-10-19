@@ -299,6 +299,9 @@ init -2 python in v1FNaSR:
 
                 context.enemy.set_align()
                 update_ui()
+        
+        def reset(self, context):
+            context.stop_moving = False
 
         def _move(self, context, location=None):
             if location is None:
@@ -421,6 +424,9 @@ init -2 python in v1FNaSR:
             else:
                 self._current_safety_time = 0.0
 
+        def reset(self, context):
+            context.is_all_players_dead = False
+
         def _kill_player(self, context, player):
             player.to_kill()
             self._add_history_murders(context.enemy.tag)
@@ -430,7 +436,11 @@ init -2 python in v1FNaSR:
                     break
             else:
                 context.is_all_players_dead = True
-                main_executor.submit_and_wait(renpy.jump, "v1_screamer_label_FNaSR")
+                GlobalState.set("death_time", require_system("time").get_time())
+                try:
+                    main_executor.submit_and_wait(renpy.jump, "v1_screamer_label_FNaSR")
+                except FNaSRControlTransferError:
+                    pass
 
         def _add_history_murders(self, enemy_tag):
             history_murders = GlobalState.get("HistoryMurders")

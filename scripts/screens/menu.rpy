@@ -44,11 +44,11 @@ screen V1MainMenuFNaSR:
     use V1MainMenuFrameFNaSR()
 
     vbox align(0.15, 0.5) spacing 15:
-        add tt.button("Начать({})".format(target.title), (Hide('V1MainMenuFNaSR'), Jump('v1_play_FNaSR')))
-        add tt.button("Выбор ночи", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuChoiceNightFNaSR"))
-        add tt.button("Достижения", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuAchievementsFNaSR"))
-        add tt.button("Настройки", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuSettingsFNaSR"))
-        add tt.button("Выйти", (Hide('V1MainMenuFNaSR'), Jump('v1_quit_mm_FNaSR')))
+        add tt.textbutton("Начать({})".format(target.title), (Hide('V1MainMenuFNaSR'), Jump('v1_play_FNaSR')))
+        add tt.textbutton("Выбор ночи", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuChoiceNightFNaSR"))
+        add tt.textbutton("Достижения", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuAchievementsFNaSR"))
+        add tt.textbutton("Настройки", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuSettingsFNaSR"))
+        add tt.textbutton("Выйти", (Hide('V1MainMenuFNaSR'), Jump('v1_quit_mm_FNaSR')))
 
 screen V1MainMenuChoiceNightFNaSR(sequence=v1FNaSR.MAIN_SEQUENCE):
     tag v1menuFNaSR
@@ -102,7 +102,7 @@ screen V1MainMenuChoiceNightFNaSR(sequence=v1FNaSR.MAIN_SEQUENCE):
                         if not ns.is_unlocked(n):
                             add "v1_button_static_entire_FNaSR" at v1_button_static_hover_t_FNaSR()
         
-        add tt.button("Назад", Function(mm.screen_switching, "V1MainMenuChoiceNightFNaSR", "V1MainMenuFNaSR"))
+        add tt.textbutton("Назад", Function(mm.screen_switching, "V1MainMenuChoiceNightFNaSR", "V1MainMenuFNaSR"))
 
 screen V1MainMenuAchievementsFNaSR:
     tag v1menuFNaSR
@@ -119,7 +119,7 @@ screen V1MainMenuAchievementsFNaSR:
 
     vbox align(0.5, 0.5):
         add tt.text("В разработке") xalign 0.5
-        add tt.button("Назад", Function(mm.screen_switching, "V1MainMenuAchievementsFNaSR", "V1MainMenuFNaSR"), xalign=0.5)
+        add tt.textbutton("Назад", Function(mm.screen_switching, "V1MainMenuAchievementsFNaSR", "V1MainMenuFNaSR"), xalign=0.5)
 
 screen V1MainMenuSettingsFNaSR:
     tag v1menuFNaSR
@@ -136,7 +136,7 @@ screen V1MainMenuSettingsFNaSR:
 
     vbox align(0.5, 0.5):
         add tt.text("В разработке") xalign 0.5
-        add tt.button("Назад", Function(mm.screen_switching, "V1MainMenuSettingsFNaSR", "V1MainMenuFNaSR"), xalign=0.5)
+        add tt.textbutton("Назад", Function(mm.screen_switching, "V1MainMenuSettingsFNaSR", "V1MainMenuFNaSR"), xalign=0.5)
 
 
 
@@ -278,3 +278,4 @@ label v1_quit_mm_FNaSR:
     $ renpy.pause(0.18, hard=True)
     hide anim v1_tablet_close_entire_FNaSR
     $ renpy.pause(.1, hard=True)
+    jump v1_quit_FNaSR

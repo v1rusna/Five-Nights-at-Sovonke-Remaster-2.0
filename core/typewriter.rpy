@@ -67,7 +67,7 @@ init -5 python in v1FNaSR:
             self._is_immediately = True
             self.finished = True
             self.end_st = 0.0
-            self.current_index = builtins.len(self.chars) - 1
+            self.current_index = _builtins.len(self.chars) - 1
 
             renpy.redraw(self, 0.0)
 
@@ -121,7 +121,7 @@ init -5 python in v1FNaSR:
                 for char_index in range(self.current_index + 1):
                     char = self.chars[char_index]
                     char_render = renpy.render(char.char_displayable, width, height, st, at)
-                    render_obj.subpixel_blit(char_render, builtins.tuple(char.pos))
+                    render_obj.subpixel_blit(char_render, _builtins.tuple(char.pos))
 
                 renpy.music.play(filenames=self.typewriter_sfx, channel=self.audio_channel, relative_volume=0.75)
                 return render_obj

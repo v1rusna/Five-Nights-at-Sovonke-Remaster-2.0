@@ -586,14 +586,20 @@ init -1 python in v1FNaSR:
             ns = self._ns
             
             for enemy in get_created_enemy():
-                if ns.loaded.id not in enemy.special_night or enemy.nights_start < ns.get_position(ns.loaded):
+                if enemy.nights_start is None and not len(enemy.special_night):
+                    continue
+                if ns.loaded.id not in enemy.special_night and enemy.nights_start < ns.get_position(ns.loaded):
                     enemy.enabled = False
 
         def tick_update(self, dt, rt):
             if self._time.clock.hour >= self._ns.loaded.end_of_shift:
-                main_executor.submit_and_wait(renpy.jump, "v1_win_label_FNaSR")
+                try:
+                    main_executor.submit_and_wait(renpy.jump, "v1_win_label_FNaSR")
+                except FNaSRControlTransferError:
+                    pass
 
 
+    require_system("cycle").register(NightHandler())
     register_system("night", NightSystem())
 
     def _night_quit_fn():
@@ -608,6 +614,12 @@ init -1 python in v1FNaSR:
         settings.set_setting("nights_gone", require_system("night").export_progress())
     def _load_nights_progress():
         require_system("night").import_progress(settings.get_setting("nights_gone", list()))
+
+    settings.add_save_fn(_save_nights_progress)
+    settings.add_load_fn(_load_nights_progress)
+
+    del _save_nights_progress
+    del _load_nights_progress
 
 init python in v1FNaSR:
     _dsn = DebugSection(

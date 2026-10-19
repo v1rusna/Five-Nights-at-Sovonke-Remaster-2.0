@@ -21,7 +21,9 @@ init python in v1FNaSR:
 
 label v1_win_label_FNaSR:
     $ v1FNaSR.stop_game_helper(True)
+
     scene black
+    $ v1FNaSR.show_text("{}\nВремя: {}:00\nСмена окончена...".format(night, end_of_shift))
 
     $ v1FNaSR.GlobalState.clear()
     jump v1_main_menu_label_FNaSR
@@ -34,6 +36,9 @@ label v1_screamer_label_FNaSR:
         latest_killer, screamer = v1FNaSR.get_latest_killer()
         if latest_killer is not None:
             screamer()
+
+    $ renpy.pause(0.5, hard=True)
+    $ v1FNaSR.show_text("{}\nВремя: {}\nСмена окончена...".format(v1FNaSR.require_system("night").loaded.title, v1FNaSR.GlobalState.get("death_time", "00:00")))
 
     $ v1FNaSR.GlobalState.clear()
     jump v1_main_menu_label_FNaSR

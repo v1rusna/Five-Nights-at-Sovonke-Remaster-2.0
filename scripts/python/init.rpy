@@ -434,6 +434,9 @@ init python in v1FNaSR:
                         info.append("-{}".format(t))
                 return "\n".join(info)
 
+            def _enemy_change_status(context):
+                context.enemy.enabled = not context.enemy.enabled
+
             cycle = require_system("cycle")
             for i, enemy_data in enumerate(self._enemy_list):
                 try:
@@ -444,19 +447,23 @@ init python in v1FNaSR:
                     log.error("Ошибка создания врага '{}'".format(enemy_data.get("tag")))
                 else:
                     df = DebugFold(color_text(enemy.tag, enemy.color),
-                        DebugText(_debug_text),
-                        DebugFold("=== modules debug ===",
-                            DebugIf(lambda context: len(context.enemy.modules) > 0,
-                                DebugText(_debug_modules),
-                                DebugText(lambda context: "A fake enemy"),
-                            ),
-                        order=1),
-                        DebugFold("=== modules errors ===",
-                            DebugIf(lambda context: len(context.enemy.errors) > 0,
-                                DebugText(lambda context: "\n".join("-{}".format(err) for err in context.enemy.errors)),
-                                DebugText(lambda context: "There are no errors"),
-                            ),
-                        order=2),
+                        DebugIf(lambda context: context.enemy.enabled,
+                            DebugSection(DebugButton(lambda context: "disable enemy", _enemy_change_status, order=-1),
+                                DebugText(_debug_text),
+                                DebugFold("=== modules debug ===",
+                                    DebugIf(lambda context: len(context.enemy.modules) > 0,
+                                        DebugText(_debug_modules),
+                                        DebugText(lambda context: "A fake enemy"),
+                                    ),
+                                order=1),
+                                DebugFold("=== modules errors ===",
+                                    DebugIf(lambda context: len(context.enemy.errors) > 0,
+                                        DebugText(lambda context: "\n".join("-{}".format(err) for err in context.enemy.errors)),
+                                        DebugText(lambda context: "There are no errors"),
+                                    ),
+                                order=2),),
+                            DebugButton(lambda context: "enable enemy", _enemy_change_status)
+                        ),
                     order=i)
                     df.context.enemy = enemy
 

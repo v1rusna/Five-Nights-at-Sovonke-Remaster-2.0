@@ -543,19 +543,13 @@ init python in v1FNaSR:
                 if tablet.selected != self._id:
                     tablet.select(self._id)
                     tablet.safe_discharge(1)
-                    audio.play(resources.sounds.sfx["blip3"], "sound")
+                    audio.play(resources.sounds.sfx["blip3"],"sound")
 
-            def _action():
-            if tablet.selected != self._id:
-                tablet.select(self._id)
-                tablet.safe_discharge(1)
-                audio.play(resources.sounds.sfx["blip3"],"sound")
-
-                player_system = get_system("player")
-                if player_system is not None:
-                    player = player_system.current_player
-                    if player is not None and player.is_open_tablet:
-                        ambience_manager.sync_player(player)
+                    player_system = get_system("player")
+                    if player_system is not None:
+                        player = player_system.current_player
+                        if player is not None and player.is_open_tablet:
+                            ambience_manager.sync_player(player)
 
             cam_button = renpy.store.Button(
                 child=cam_text,

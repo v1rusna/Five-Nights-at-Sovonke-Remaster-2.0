@@ -31,54 +31,27 @@ init python in v1FNaSR:
         pass
 
     class FNaSRControlTransferError(FNaSRException):
-        u"""
-        Задача была прервана управляющим исключением Ren'Py (jump, call, restart, quit...).
-        Результата у такой задачи нет: управление ушло в движок в главном потоке.
-        Оригинальное исключение доступно в атрибуте `original`.
-        """
         def __init__(self, original):
             FNaSRException.__init__(self, "Задача прервана управляющим исключением Ren'Py: {}".format(type(original).__name__))
             self.original = original
 
     class ControlExceptionRegistry(object):
-        u"""
-        Реестр управляющих исключений для MainThreadExecutor.
-
-        Два уровня:
-            * базовые - исключения Ren'Py, найденные в renpy.game; неизменяемы;
-            * пользовательские - добавленные через register().
-
-        Исключение из реестра исполнитель не сохраняет как ошибку: ждущий поток
-        получает FNaSRControlTransferError, а оригинал перевыбрасывается
-        в главном потоке. Обработчик пользовательского исключения должен
-        находиться в стеке главного потока выше run_pending() (например,
-        вокруг renpy.pause или собственного цикла), иначе его перехватит
-        только обработчик ошибок Ren'Py.
-        """
-
         _FORBIDDEN_MODULES = ("builtins", "__builtin__", "exceptions")
 
         def __init__(self, base):
             base = tuple(base)
             if not base:
-                raise FNaSRException(
-                    "Не найдены управляющие исключения в renpy.game: "
-                    "MainThreadExecutor не сможет корректно передавать управление сценарием."
-                )
+                raise FNaSRException("Не найдены управляющие исключения в renpy.game: MainThreadExecutor не сможет корректно передавать управление сценарием.")
             self._lock = _threading.Lock()
             self._base = base
             self._user = ()
-            # Снимок читается без блокировки: присваивание атрибута атомарно.
             self._snapshot = base
 
         def _validate(self, cls):
             if not (isinstance(cls, type) and issubclass(cls, BaseException)):
                 raise FNaSRTypeError("Управляющее исключение должно быть классом-наследником BaseException, а не '{}'".format(cls))
             if cls.__module__ in self._FORBIDDEN_MODULES:
-                raise FNaSRTypeError(
-                    "Встроенный класс '{}' нельзя объявить управляющим: "
-                    "он перехватил бы обычные ошибки пользовательского кода".format(cls.__name__)
-                )
+                raise FNaSRTypeError("Встроенный класс '{}' нельзя объявить управляющим: он перехватил бы обычные ошибки пользовательского кода".format(cls.__name__))
             if isinstance(cls, FNaSRException):
                 raise FNaSRTypeError("Класс '{}' наследуется от 'FNaSRException'".format(cls.__name__))
 
