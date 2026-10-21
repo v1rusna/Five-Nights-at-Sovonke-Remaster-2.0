@@ -398,16 +398,13 @@ init python in v1FNaSR:
                     "tag": "us",
                     "name": "Ульяна",
                     "sprite": "us angry pioneer",
-                    "color": "#FF3200"
+                    "color": "#FF3200",
+                    "modules": [
+                        lambda: EnemyMoveModule(-3),
+                        lambda: EnemyAttackModule(EnemyScreamer("us angry pioneer", screamer_t=renpy.store.v1_uliana_screamer_t_FNaSR)),
+                    ]
                 }
             ]
-
-            self._modules = {
-                "us": [
-                    lambda: EnemyMoveModule(-3),
-                    lambda: EnemyAttackModule(EnemyScreamer("us angry pioneer", screamer_t=renpy.store.v1_uliana_screamer_t_FNaSR)),
-                ],
-            }
 
         def __call__(self):
             def _debug_text(context):
@@ -415,7 +412,7 @@ init python in v1FNaSR:
                 info = [
                     "name: {}".format(enemy.name),
                     "modules: {}".format(len(enemy.modules)),
-                    "sprite: {}".format(enemy.sprite),
+                    "sprite: {}".format(enemy.sprite_path),
                     "nights start: {}".format(enemy.nights_start),
                     "special night: {}".format(enemy.special_night),
                     "location id: {}".format(enemy.current_location.id),
@@ -440,8 +437,9 @@ init python in v1FNaSR:
             cycle = require_system("cycle")
             for i, enemy_data in enumerate(self._enemy_list):
                 try:
+                    modules = enemy_data.pop("modules", list())
                     enemy = Enemy(**enemy_data)
-                    for module in self._modules.get(enemy.tag, []):
+                    for module in modules:
                         enemy.add_module(module())
                 except Exception:
                     log.error("Ошибка создания врага '{}'".format(enemy_data.get("tag")))

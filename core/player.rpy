@@ -49,6 +49,10 @@ init -1 python in v1FNaSR:
         def under_attack(self):
             return self._under_attack
 
+        @under_attack.setter
+        def under_attack(self, value):
+            self._under_attack = bool(value)
+
         @property
         def panic(self):
             return self._panic
@@ -85,9 +89,6 @@ init -1 python in v1FNaSR:
 
         def set_moving(self, value):
             self._is_moving = bool(value)
-
-        def set_under_attack(self, value):
-            self._under_attack = bool(value)
 
         def get_sees_image(self):
             if self._current_location is None:
@@ -252,6 +253,8 @@ init -1 python in v1FNaSR:
                     ambience_manager.stop_all()
 
         def switch_player(self, id):
+            if is_initialized():
+                raise FNaSRException("Нельзя менять игрока после инициализации игры")
             id = to_text(id)
             if id not in self._players:
                 raise FNaSRException("The character with ID '{}' does not exist".format(id))

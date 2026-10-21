@@ -159,7 +159,7 @@ init -5 python in v1FNaSR:
                     self._replacements.pop(original_name, None)
 
             if errors:
-                message = ("При восстановлении экранов произошли исключения:\n")
+                message = "При восстановлении экранов произошли исключения:\n"
 
                 for original_name, replacement_name, error in errors:
                     message += "{} <- {}: {}\n".format(

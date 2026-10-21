@@ -23,6 +23,9 @@ init -3 python in v1FNaSR:
     class EnemyModule(ResetLogic):
         __slots__ = ("_error", "_freeze",)
 
+        dependent_modules = tuple()
+        conflicting_modules = tuple()
+
         def __init__(self):
             super(EnemyModule, self).__init__()
             self._error = None
@@ -49,6 +52,7 @@ init -3 python in v1FNaSR:
 
         def unfreeze(self):
             self._freeze = False
+
 
         def on_include(self, enemy):
             pass
@@ -96,22 +100,31 @@ init -3 python in v1FNaSR:
                     errors.append("{}: {}".format(repr(m), m.error))
             return tuple(errors)
 
-        def add_module(self, module, duplicate_obj=False, duplicate_type=False):
+        def add_module(self, module):
             if not isinstance(module, EnemyModule):
                 raise FNaSRTypeError("'module' должен быть наследником 'EnemyModule', получено: {}".format(type(module)))
 
             type_module = type(module)
 
             if type_module is EnemyModule:
-                raise FNaSRTypeError("Нельзя добавлять каркасный модуль 'EnemyModule'.")
+                raise FNaSRTypeError("Нельзя добавлять родительский модуль 'EnemyModule'.")
 
-            if not duplicate_type and type_module in self._types_modules:
+            if type_module in self._types_modules:
                 raise FNaSRTypeError("Модуль типа '{}' уже добавлен.".format(type_module))
 
-            if not duplicate_obj and self.has_module(module):
-                raise FNaSRValueError("Модуль '{}' уже добавлен.".format(repr(module)))
+            for cls_m in module.dependent_modules:
+                if cls_m not in self._types_modules:
+                    raise FNaSRValueError("Модуль '{!r}' зависит от модуля '{}' который не подключен.".format(module, cls_m))
 
-            self._safe_call(module, "on_include", self)
+            for cls_m in module.conflicting_modules:
+                if cls_m in self._types_modules:
+                    raise FNaSRValueError("Модуль '{!r}' конфликтует с уже подключённым модулем '{}'.".format(module, cls_m))
+
+            for m in self._modules:
+                if type_module in m.conflicting_modules:
+                    raise FNaSRValueError("Модуль '{!r}' конфликтует с уже подключённым модулем '{}'.".format(module, m))
+
+            module.on_include(self)
 
             self._modules.append(module)
             self._types_modules.add(type_module)
@@ -130,6 +143,25 @@ init -3 python in v1FNaSR:
 
             if not has_same_type:
                 self._types_modules.discard(type_module)
+
+        def remove_module(self, module):
+            if module not in self._modules:
+                raise FNaSRValueError("Модуль '{}' не подключён к противнику.".format(repr(module)))
+
+            type_module = type(module)
+
+            dependents = [
+                other
+                for other in self._modules
+                if other is not module
+                and type_module in other.dependent_modules
+            ]
+
+            if dependents:
+                raise FNaSRValueError("Нельзя удалить модуль '{}': от него зависят модули: {}.".format(repr(module), ", ".join(repr(other) for other in dependents)))
+
+            self._modules.remove(module)
+            self._types_modules.discard(type_module)
 
         def has_module(self, module):
             return module in self._modules
@@ -160,7 +192,7 @@ init -3 python in v1FNaSR:
 
         def reset(self):
             for module in self._modules:
-                self._safe_call(module, "reset")
+                self._safe_call(module, "reset", self._context)
 
             super(BaseEnemy, self).reset()
 
@@ -195,6 +227,7 @@ init -3 python in v1FNaSR:
             self._color = color
             self._setattr("_align", (0.5, 0.5))
 
+            self._sprite_path = sprite
             self._sprite = recolor_enemy_sprite(sprite)
             self._parallax_sprite = Parallax(
                 displayable=self._sprite,
@@ -230,6 +263,10 @@ init -3 python in v1FNaSR:
         @property
         def align(self):
             return self._align
+
+        @property
+        def sprite_path(self):
+            return self._sprite_path
 
         @property
         def sprite(self):
