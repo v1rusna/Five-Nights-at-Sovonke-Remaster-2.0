@@ -365,7 +365,8 @@ init python in v1FNaSR:
             "_id", "_name", "_image", "_loc_connections",
             "_tablet", "_ambience", "_camera", "_loc_sys",
             "_parallax_image", "_door", "_bulb", "_on_enter_fn",
-            "_camera_button",
+            "_camera_button", "_substituted_image",
+            "_substituted_dark_image",
         )
 
         def __init__(self, location_id, name, image, loc_connections=None, ambience=None, door=None, bulb=None, on_enter_fn=None):
@@ -430,6 +431,8 @@ init python in v1FNaSR:
             self._loc_sys = None
             self._loc_connections = _LocationConnections(self, loc_connections)
             self._camera_button = None
+            self._substituted_image = None
+            self._substituted_dark_image = None
 
         @property
         def location_system(self):
@@ -445,16 +448,11 @@ init python in v1FNaSR:
 
         @property
         def image(self):
-            if self._bulb is not None and not self._bulb.is_on:
-                return self._bulb.dark_image
-            return self._image
+            return self._get_effective_image()
 
         @property
         def parallax_image(self):
-            if self._bulb is not None and not self._bulb.is_on:
-                self._parallax_image.set_displayable(self._bulb.dark_image)
-            else:
-                self._parallax_image.set_displayable(self._image)
+            self._parallax_image.set_displayable(self._get_effective_image())
             return self._parallax_image
 
         @property
@@ -490,6 +488,44 @@ init python in v1FNaSR:
         @property
         def ui_camera_button(self):
             return self._camera_button
+
+        @property
+        def substituted_image(self):
+            return self._substituted_image
+
+        @property
+        def substituted_dark_image(self):
+            return self._substituted_dark_image
+
+        def replace_image(self, image, dark=False, all=False):
+            if all:
+                self._substituted_image = image
+                self._substituted_dark_image = image
+            elif dark:
+                self._substituted_dark_image = image
+            else:
+                self._substituted_image = image
+
+        def clear_substituted_image(self, dark=False, all=False):
+            if all:
+                self._substituted_image = None
+                self._substituted_dark_image = None
+            elif dark:
+                self._substituted_dark_image = None
+            else:
+                self._substituted_image = None
+
+        def _get_effective_image(self):
+            if self._bulb is not None and not self._bulb.is_on:
+                if self._substituted_dark_image is not None:
+                    return self._substituted_dark_image
+
+                return self._bulb.dark_image
+
+            if self._substituted_image is not None:
+                return self._substituted_image
+
+            return self._image
 
         def on_enter(self, entity):
             if self._on_enter_fn is None:
@@ -565,6 +601,15 @@ init python in v1FNaSR:
                 cam_button = renpy.store.At(cam_button, renpy.store.v1_cam_rotate_t_FNaSR(self._camera.rotate or 0))
 
             self._camera_button = cam_button
+
+        def reset(self):
+            if self._bulb is not None:
+                self._bulb.reset()
+
+            if self._door is not None:
+                self._door.button.force_unclick()
+
+            self.clear_substituted_image(all=True)
 
         def __repr__(self):
             return "<store.v1FNaSR.Location id=%r name=%r tablet=%r door=%r bulb=%r camera=%r connections=%r hex=%s>" % (
@@ -764,7 +809,14 @@ init python in v1FNaSR:
                 iter_locations = tuple(iter_values(self._locations))
             return iter(iter_locations)
 
+    class LocationsHandler(GameObject):
+        def reset(self):
+            ls = require_system("location")
+            for location in ls:
+                location.reset()
+
     register_system("location", LocationSystem())
+    require_system("cycle").register(LocationsHandler())
 
 init python in v1FNaSR:
     def _v1_location_info_FNaSR(context):

@@ -1,6 +1,8 @@
 # bulb.rpy
 init -1 python in v1FNaSR:
-    class Bulb(ResetLogic):
+    class Bulb(object):
+        __slots__ = ("_is_on", "_dark_image",)
+
         def __init__(self, dark_image):
             self._is_on = True
             self._dark_image = renpy.displayable(dark_image)

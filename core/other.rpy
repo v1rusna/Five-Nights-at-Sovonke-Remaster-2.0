@@ -61,7 +61,9 @@ init -12 python in v1FNaSR:
 
     MISSING = _MissingType()
 
-    class InfoObject(object): # Этот класс можно заменить на DebugContext
+    class InfoObject(object):
+        __slots__ = ("_v1data",)
+
         def __init__(self, **kwargs):
             object.__setattr__(self, "_v1data", {})
             self.update(kwargs)

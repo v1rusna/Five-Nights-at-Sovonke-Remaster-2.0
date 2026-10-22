@@ -16,9 +16,9 @@ screen V1MainGameInterfaceFNaSR:
     default xsize_button = int(viewport.scale_scalar(290))
     default ysize_button = int(viewport.scale_scalar(200))
 
-    default bulb_keys = v1FNaSR.settings.key_map["bulb"]
-    default door_keys = v1FNaSR.settings.key_map["door"]
-    default move_start_keys = v1FNaSR.settings.key_map["move_start"]
+    default bulb_keys = list(v1FNaSR.settings.key_map["bulb"])
+    default door_keys = list(v1FNaSR.settings.key_map["door"])
+    default move_start_keys = list(v1FNaSR.settings.key_map["move_start"])
 
     default ns = v1FNaSR.require_system("night")
 
@@ -73,7 +73,7 @@ screen V1TabletButtonScreenFNaSR(player):
     default viewport = v1FNaSR.ViewportManager.current()
     default xsize_tablet_button = int(viewport.scale_scalar(600))
     default ysize_tablet_button = int(viewport.scale_scalar(200))
-    default tablet_keys = v1FNaSR.settings.key_map["tablet"]
+    default tablet_keys = list(v1FNaSR.settings.key_map["tablet"])
 
     if player.current_location.tablet.out_battery:
         $ tablet_button_action = Function(v1FNaSR.audio.play, v1FNaSR.resources.sounds.sfx["error"], "sound")
@@ -132,7 +132,9 @@ screen V1CameraMapScreenFNaSR:
 
     add v1FNaSR.InitImages.camera_frame
 
-    text "{i}"+str(tablet.charge_percentage)+"%{/i}" style "v1_text_24_style_FNaSR" align (0.024, 0.034)
+    add v1FNaSR.InitImages.lightning align (0.022, 0.038)
+    text "{i}"+str(tablet.charge_percentage)+"%{/i}" style "v1_text_24_style_FNaSR" align (0.038, 0.035)
+    # text "{i}"+str(tablet.charge_percentage)+"%{/i}" style "v1_text_24_style_FNaSR" align (0.024, 0.034)
     text game_time.get_time() style "v1_text_24_style_FNaSR" align (0.98, 0.034)
     text text_cam_num style "v1_text_24_style_FNaSR" align (0.024, 0.97)
 
@@ -206,7 +208,7 @@ screen V1MoveDirectionFNaSR(config, locations, player):
 screen V1MoveScreenFNaSR:
     zorder 10
 
-    default move_stop_keys = v1FNaSR.settings.key_map["move_stop"]
+    default move_stop_keys = list(v1FNaSR.settings.key_map["move_stop"])
     python:
         player = v1FNaSR.require_system("player").current_player
         location_system = player.current_location.location_system

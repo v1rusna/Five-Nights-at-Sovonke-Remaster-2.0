@@ -6,7 +6,6 @@ init -1 python in v1FNaSR:
     MAIN_SEQUENCE = "main"
 
     def _check_text_id(value, what):
-        """Проверяет, что значение — непустая строка."""
         if not is_string(value):
             raise FNaSRTypeError("{} должен быть строкой, передано: {}.".format(what, type(value)))
 

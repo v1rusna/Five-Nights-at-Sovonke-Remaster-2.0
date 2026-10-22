@@ -32,6 +32,7 @@ init python in v1FNaSR:
             self.camera_frame = build_image(resources.images.other["FNaG_Cam_Frame"], width=1920, height=1080)
             self.door_hold_vignette = build_image(resources.images.other["door_hold_vignette"], width=1920, height=1080)
             self.tablet_button = build_image(resources.images.other["FNaG_Monitor_Button"], width=537, height=47)
+            self.lightning = build_image(resources.images.other["lightning"], width=25, height=32)
 
     InitImages = _InitImages()
 

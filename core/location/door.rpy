@@ -7,7 +7,9 @@ init python in v1FNaSR:
             super(DoorClose, self).__init__(location_id)
             self.location_id = location_id
 
-    class Door(ResetLogic):
+    class Door(object):
+        __slots__ = ("_open", "_door_button",)
+
         def __init__(self):
             vp = ViewportManager.current()
             self._open = True
@@ -28,6 +30,8 @@ init python in v1FNaSR:
             return self._door_button
 
         def open(self, play_sound=True, show_vignette=True):
+            if self._open:
+                return
             self._open = True
             if play_sound:
                 main_executor.submit(
@@ -39,6 +43,8 @@ init python in v1FNaSR:
                 main_executor.submit(self._show_vignette, [renpy.store.v1_door_hold_vignette_disappear_FNaSR])
 
         def close(self, play_sound=True, show_vignette=True):
+            if not self._open:
+                return
             self._open = False
             if play_sound:
                 main_executor.submit(

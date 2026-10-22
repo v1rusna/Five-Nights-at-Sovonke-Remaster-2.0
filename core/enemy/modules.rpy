@@ -667,6 +667,7 @@ init -2 python in v1FNaSR:
                 "attack target id: {}".format(self._attack_target_id),
             ]
 
-
-
+    class EnemySilentAttackModule(EnemyAttackModule):
+        def __init__(self, **kwargs):
+            super(EnemySilentAttackModule, self).__init__(**kwargs)
 

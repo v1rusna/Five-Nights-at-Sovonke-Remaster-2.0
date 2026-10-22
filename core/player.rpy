@@ -212,7 +212,6 @@ init -1 python in v1FNaSR:
         def __init__(self):
             self._players = dict()
             self._current_player = None
-            self._player_id_error = None
 
         @property
         def player_ids(self):

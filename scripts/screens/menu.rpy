@@ -13,7 +13,8 @@ screen V1MainMenuFrameFNaSR(time="23:57", show_elements=True):
     add "v1_C_static_entire_FNaSR" at v1_camera_static_t_FNaSR()
     add v1FNaSR.resources.images.other["FNaG_Cam_Frame"]
 
-    text "{i}100%{/i}" style "v1_text_24_style_FNaSR" align (0.024, 0.034)
+    add v1FNaSR.InitImages.lightning align (0.022, 0.038)
+    text "{i}100%{/i}" style "v1_text_24_style_FNaSR" align (0.038, 0.035)
     text time style "v1_text_24_style_FNaSR" align (0.98, 0.034) at v1_text_flicker_FNaSR()
     text mm.get_cam_num() style "v1_text_24_style_FNaSR" align (0.98, 0.97)
 
