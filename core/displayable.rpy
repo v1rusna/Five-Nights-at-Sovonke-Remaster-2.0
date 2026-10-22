@@ -154,18 +154,25 @@ init python in v1FNaSR:
         def visit(self):
             return [self.child]
 
-
     import pygame as _pygame
 
     class HoldingMouseImageButton(renpy.Displayable):
-        def __init__(self, idle, clicked=None, click_action=None, unclick_action=None, allow_alternate=False, **kwargs):
+        def __init__(
+            self,
+            idle,
+            clicked=None,
+            click_action=None,
+            unclick_action=None,
+            allow_alternate=False,
+            **kwargs
+        ):
             super(HoldingMouseImageButton, self).__init__(**kwargs)
 
             self.displayable = renpy.displayable(idle)
 
             self.idle = self.displayable
             self.clicked = renpy.displayable(clicked) if clicked is not None else self.idle
-        
+
             self.width = 0
             self.height = 0
 
@@ -174,21 +181,57 @@ init python in v1FNaSR:
             self.click_action = click_action if click_action is not None else NullAction()
             self.unclick_action = unclick_action if unclick_action is not None else NullAction()
 
+            self._mouse_pressed = False
+            self._keyboard_pressed = False
+
             self._clicked = False
+
+        def _update_pressed_state(self):
+            clicked = self._mouse_pressed or self._keyboard_pressed
+
+            if clicked == self._clicked:
+                return
+
+            self._clicked = clicked
+
+            if clicked:
+                self.displayable = self.clicked
+                action = self.click_action
+            else:
+                self.displayable = self.idle
+                action = self.unclick_action
+
+            renpy.display.behavior.run(action)
+            renpy.redraw(self, 0.0)
+
+        def keyboard_down(self):
+            if not self._keyboard_pressed:
+                self._keyboard_pressed = True
+                self._update_pressed_state()
+
+        def keyboard_up(self):
+            if self._keyboard_pressed:
+                self._keyboard_pressed = False
+                self._update_pressed_state()
 
         def force_unclick(self):
-            if self._clicked:
-                renpy.display.behavior.run(self.unclick_action)
+            was_clicked = self._clicked
 
+            self._mouse_pressed = False
+            self._keyboard_pressed = False
             self._clicked = False
+
             self.displayable = self.idle
+
+            if was_clicked:
+                renpy.display.behavior.run(self.unclick_action)
+                renpy.redraw(self, 0.0)
 
         def render(self, width, height, st, at):
             child_r = renpy.render(self.displayable, width, height, st, at)
             self.width, self.height = child_r.get_size()
 
             render = renpy.Render(self.width, self.height)
-
             render.blit(child_r, (0, 0))
 
             _pygame.time.set_timer(renpy.display.core.PERIODIC, renpy.display.core.PERIODIC_INTERVAL)
@@ -198,23 +241,19 @@ init python in v1FNaSR:
         def event(self, ev, x, y, st):
             if (0 <= x <= self.width) and (0 <= y <= self.height):
                 if ev.type == _pygame.MOUSEBUTTONDOWN and (ev.button == 1 or (ev.button == 3 and self.allow_alternate)):
-                    self._clicked = True
-                    self.displayable = self.clicked
-                    renpy.display.behavior.run(self.click_action)
-                    renpy.redraw(self, 0.0)
-                    return self.clicked.event(ev, x, y, st)
+                    self._mouse_pressed = True
+                    self._update_pressed_state()
 
-            if ev.type == _pygame.MOUSEBUTTONUP and self._clicked:
-                self._clicked = False
-                self.displayable = self.idle
-                renpy.display.behavior.run(self.unclick_action)
-                renpy.redraw(self, 0.0)
-                return self.idle.event(ev, x, y, st)
-            
+                    return self.displayable.event(ev, x, y, st)
+
+            if ev.type == _pygame.MOUSEBUTTONUP and self._mouse_pressed:
+                self._mouse_pressed = False
+                self._update_pressed_state()
+
+                return self.displayable.event(ev, x, y, st)
+
             return None
-        
+
         def visit(self):
-            return [ self.idle, self.clicked ]
-
-
+            return [self.idle, self.clicked]
 

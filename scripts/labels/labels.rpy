@@ -23,7 +23,7 @@ label v1_win_label_FNaSR:
     $ v1FNaSR.stop_game_helper(True)
 
     scene black
-    $ v1FNaSR.show_text("{}\nВремя: {}:00\nСмена окончена...".format(night, end_of_shift))
+    $ v1FNaSR.show_text("{}\nВремя: {}:00\nСмена окончена...".format(v1FNaSR.require_system("night").loaded.title, v1FNaSR.require_system("night").loaded.end_of_shift))
 
     $ v1FNaSR.GlobalState.clear()
     jump v1_main_menu_label_FNaSR

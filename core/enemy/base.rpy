@@ -210,20 +210,32 @@ init -3 python in v1FNaSR:
         def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None):
             super(Enemy, self).__init__()
 
+            if not is_string(tag):
+                raise FNaSRTypeError("'tag' должен быть строкой, получено: {}".format(type(tag)))
+
+            if not is_string(name):
+                raise FNaSRTypeError("'name' должен быть строкой, получено: {}".format(type(name)))
+
+            if not is_string(sprite):
+                raise FNaSRTypeError("'sprite' должен быть строкой, получено: {}".format(type(sprite)))
+
+            if color is not None and not is_string(color):
+                raise FNaSRTypeError("'color' должен быть строкой, получено: {}".format(type(color)))
+
             if special_night is None:
                 special_night = ()
             elif is_string(special_night):
                 special_night = (special_night,)
-            elif not isinstance(special_night, Iterable):
-                raise FNaSRTypeError("'special_night' должен быть итерируемым, получено: {}".format(type(special_night)))
+            elif not isinstance(special_night, (list, tuple, set,)):
+                raise FNaSRTypeError("'special_night' должен быть списком, кортежем или множеством, получено: {}".format(type(special_night)))
 
             if nights_start is not None:
                 nights_start = int(nights_start)
 
-            self._tag = to_text(tag)
+            self._tag = tag
             self._nights_start = nights_start
             self._special_night = set(special_night)
-            self._name = to_text(name)
+            self._name = name
             self._color = color
             self._setattr("_align", (0.5, 0.5))
 

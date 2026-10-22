@@ -16,6 +16,10 @@ screen V1MainGameInterfaceFNaSR:
     default xsize_button = int(viewport.scale_scalar(290))
     default ysize_button = int(viewport.scale_scalar(200))
 
+    default bulb_keys = v1FNaSR.settings.key_map["bulb"]
+    default door_keys = v1FNaSR.settings.key_map["door"]
+    default move_start_keys = v1FNaSR.settings.key_map["move_start"]
+
     default ns = v1FNaSR.require_system("night")
 
     $ player = v1FNaSR.require_system("player").current_player
@@ -26,6 +30,9 @@ screen V1MainGameInterfaceFNaSR:
     use V1InfoNightScreenFNaSR(player, ns)
 
     if not player.is_open_tablet and not player.is_moving and not player.under_attack:
+        key move_start_keys action (Function(player.set_moving, True), Function(v1FNaSR.screen_manager.show_screen, "move"))
+        if player.has_door:
+            key move_start_keys action Function(player.current_location.door.button.force_unclick)
         add v1FNaSR.DistanceButton(
             TextButton(
                 "Переместиться",
@@ -39,12 +46,16 @@ screen V1MainGameInterfaceFNaSR:
         ) align (0.5, -0.2)
 
     if not player.is_moving and player.has_door and not player.is_open_tablet:
+        for door_key in door_keys:
+            key door_key action Function(player.current_location.door.button.keyboard_down)
+            key "keyup_"+door_key action Function(player.current_location.door.button.keyboard_up)
         text "Паника: "+player.get_panic_text() style "v1_text_24_style_FNaSR" align (0.9, 0.8)
         add (v1FNaSR.InitImages.ui_door_open if player.current_location.door.is_open else v1FNaSR.InitImages.ui_door_close) align (0.75, 0.9)
         if not player.is_rollback_panic:
             add player.current_location.door.button align (0.75, 1.0)
 
     if not player.is_moving and player.has_bulb and not player.is_open_tablet:
+        key bulb_keys action Function(player.current_location.bulb.switch)
         button:
             align (0.25, 1.0)
             background None
@@ -62,13 +73,14 @@ screen V1TabletButtonScreenFNaSR(player):
     default viewport = v1FNaSR.ViewportManager.current()
     default xsize_tablet_button = int(viewport.scale_scalar(600))
     default ysize_tablet_button = int(viewport.scale_scalar(200))
+    default tablet_keys = v1FNaSR.settings.key_map["tablet"]
 
     if player.current_location.tablet.out_battery:
         $ tablet_button_action = Function(v1FNaSR.audio.play, v1FNaSR.resources.sounds.sfx["error"], "sound")
     else:
         $ tablet_button_action = Function(v1FNaSR.Tools.switch_tablet, player)
 
-    key "K_SPACE" action tablet_button_action
+    key tablet_keys action tablet_button_action
     button:
         align(0.5, 1.0)
         background None
@@ -194,6 +206,7 @@ screen V1MoveDirectionFNaSR(config, locations, player):
 screen V1MoveScreenFNaSR:
     zorder 10
 
+    default move_stop_keys = v1FNaSR.settings.key_map["move_stop"]
     python:
         player = v1FNaSR.require_system("player").current_player
         location_system = player.current_location.location_system
@@ -202,6 +215,10 @@ screen V1MoveScreenFNaSR:
             location_system
         )
 
+    key move_stop_keys action (
+        Function(player.set_moving, False),
+        Function(v1FNaSR.screen_manager.hide_screen, "move")
+    )
     add v1FNaSR.DistanceButton(
         TextButton(
             "Остановится",

@@ -2,7 +2,10 @@
 init python in v1FNaSR:
     audio.register_channel("door_sound", "sound", loop=False)
 
-    class DoorClose(FNaSRException): pass
+    class DoorClose(FNaSRException):
+        def __init__(self, location_id):
+            super(DoorClose, self).__init__(location_id)
+            self.location_id = location_id
 
     class Door(ResetLogic):
         def __init__(self):

@@ -26,6 +26,7 @@ init -1 python in v1FNaSR:
             if player.is_open_tablet:
                 screen_manager.hide_screen("tablet", player=player, fast_switch=fast_switch)
             else:
+                player.current_location.door.button.force_unclick()
                 screen_manager.show_screen("tablet", player=player, fast_switch=fast_switch)
 
         @staticmethod

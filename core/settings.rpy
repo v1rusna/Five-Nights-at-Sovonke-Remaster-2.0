@@ -276,13 +276,13 @@ init -5 python in v1FNaSR:
 
         def __len__(self):
             with self._lock:
-                s_len = len(self._settings)
-            return s_len
+                return len(self._settings)
 
     settings = Settings()
 
     settings.create_setting("game_difficulty", 2)
     settings.create_setting("nights_gone", list())
+    settings.create_setting("key_map", dict((["tablet", {"K_SPACE"}], ["bulb", {"K_z"}], ["door", {"K_x"}], ["move_start", {"K_w"}], ["move_stop", {"K_s"}],)))
 
     add_start_fn(settings.load, order=1)
     add_quit_fn(settings.save, order=1)

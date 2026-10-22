@@ -372,7 +372,7 @@ init python in v1FNaSR:
             for i in range(1, self._nights+1):
                 ns.register_night(
                     "night_{}".format(i),
-                    title="Night {}".format(i),
+                    title="Ночь {}".format(i),
                     start_location_id=self._start_location_id,
                     sequence=MAIN_SEQUENCE
                 )
@@ -403,7 +403,17 @@ init python in v1FNaSR:
                         lambda: EnemyMoveModule(-3),
                         lambda: EnemyAttackModule(EnemyScreamer("us angry pioneer", screamer_t=renpy.store.v1_uliana_screamer_t_FNaSR)),
                     ]
-                }
+                },
+                {
+                    "tag": "un",
+                    "name": "Лена",
+                    "sprite": "un evil_smile pioneer",
+                    "color": "#B956FF",
+                    "modules": [
+                        lambda: EnemyMoveModule(),
+                        lambda: EnemyAttackModule(EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR)),
+                    ]
+                },
             ]
 
         def __call__(self):
