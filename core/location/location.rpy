@@ -837,9 +837,10 @@ init python in v1FNaSR:
         return "\n".join(info)
 
     _dsp = DebugSection(
-        DebugText(lambda context: "Локация: {}".format(context.ps.current_player.current_location.id), order=0, style="v1_text_16_style_FNaSR"),
-        DebugText(_v1_location_info_FNaSR, order=1),
-    order=0)
+        DebugText(lambda context: "Локация: {}".format(context.ps.current_player.current_location.id), style="v1_text_16_style_FNaSR"),
+        DebugText(_v1_location_info_FNaSR),
+        order=0
+    )
 
     _dsp.context.ps = require_system("player")
 

@@ -23,6 +23,18 @@ init -12 python in v1FNaSR:
         def get_len(cls):
             return len(cls._flags)
 
+        @classmethod
+        def items(cls):
+            return iter_items(cls._flags)
+
+        @classmethod
+        def values(cls):
+            return iter_values(cls._flags)
+
+        @classmethod
+        def keys(cls):
+            return iter_keys(cls._flags)
+
     class BaseAI(object):
         def __init__(self):
             super(BaseAI, self).__init__()
@@ -220,8 +232,12 @@ init -12 python in v1FNaSR:
 init python in v1FNaSR:
     add_quit_fn(GlobalState.clear)
 
-    debug.add_element(DebugSection(
-        DebugText(lambda context: "GlobalState: {}".format(GlobalState.get_len()), order=0, style="v1_text_16_style_FNaSR"),
-        DebugText(lambda context: "\n".join("'{}': {}".format(k, repr(v)) for k, v in iter_items(GlobalState._flags)), order=1),
-    order=3), group="System")
+    debug.add_element(
+        DebugSection(
+            DebugText(lambda context: "GlobalState: {}".format(GlobalState.get_len()), style="v1_text_16_style_FNaSR"),
+            DebugText(lambda context: "\n".join("'{}': {}".format(k, repr(v)) for k, v in GlobalState.items())),
+            order=3
+        ),
+        group="System"
+    )
 

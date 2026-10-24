@@ -1171,34 +1171,44 @@ init python in v1FNaSR:
         enabled, disabled = debug.count_element_states()
         return "total elements: {}\nenabled elements: {}\ndisabled elements: {}".format(enabled+disabled, enabled, disabled)
 
-    debug.add_element(DebugText(lambda context: "calls per second: {}".format(debug.calls_per_second), style="v1_text_16_style_FNaSR"), group="Debug")
-    debug.add_element(DebugText(_text_count_element_states, order=1), group="Debug")
-    debug.add_element(DebugButton(
-        lambda context: "Debug update: {}".format("{color=#0ac80a}active{/color}" if debug.is_activity else "{color=#c80a0a}inactive{/color}"),
-        _button_debug_activate, order=2),
-        group="Debug")
+    debug.add_element(
+        DebugFold(
+            "v1FNaSR.debug",
+            DebugText(lambda context: "calls per second: {}".format(debug.calls_per_second), style="v1_text_16_style_FNaSR"),
+            DebugText(_text_count_element_states),
+            DebugButton(
+                lambda context: "Debug update: {}".format("{color=#0ac80a}active{/color}" if debug.is_activity else "{color=#c80a0a}inactive{/color}"),
+                _button_debug_activate
+            ),
+            expanded=True
+        ),
+        group="Debug"
+    )
 
-    debug.add_element(DebugFold(
-        "Timers",
-        DebugText(lambda context: timers.report()+"\n------------", order=0),
-        DebugRow(
-            DebugButton(lambda context: "Reset", lambda context: timers.reset(), order=0),
-            DebugButton(lambda context: "{}".format("ON" if timers.enabled else "OFF"),
-                        lambda context: timers.toggle(), order=1),
-            order=1),
-        expanded=True,
-        order=3
-    ), group="Debug")
+    debug.add_element(
+        DebugFold(
+            "Timers",
+            DebugText(lambda context: timers.report()+"\n------------"),
+            DebugRow(
+                DebugButton(lambda context: "Reset", lambda context: timers.reset()),
+                DebugButton(lambda context: "{}".format("ON" if timers.enabled else "OFF"),
+                            lambda context: timers.toggle()),
+            ),
+            expanded=True,
+            order=1
+        ),
+        group="Debug"
+    )
 
     debug.add_element(DebugFold(
         "Render / GC",
-        DebugText(lambda context: "render fps: {:.2f}".format(get_render_fps()), order=-3),
-        DebugText(lambda context: "average render fps: {:.2f}".format(get_average_render_fps()), order=-2),
-        DebugText(lambda context: "Количество мусора: {}".format(_len(renpy.gc.garbage)), order=-1),
-        DebugText(lambda context: "redraw queue: {}".format(_len(renpy.display.render.redraw_queue)), order=0),
-        DebugText(lambda context: "Уникальных displayables: {}".format(_len(set(id(d) for _, d in renpy.display.render.redraw_queue))), order=1),
-        DebugText(lambda context: "Размер кэша displayables: {}".format(_len(renpy.display.render.render_cache)), order=2),
-        DebugText(lambda context: "Размер кэша renders: {}".format(sum(_len(renders) for renders in renpy.display.render.render_cache.values())), order=3),
+        DebugText(lambda context: "render fps: {:.2f}".format(get_render_fps())),
+        DebugText(lambda context: "average render fps: {:.2f}".format(get_average_render_fps())),
+        DebugText(lambda context: "Количество мусора: {}".format(_len(renpy.gc.garbage))),
+        DebugText(lambda context: "redraw queue: {}".format(_len(renpy.display.render.redraw_queue))),
+        DebugText(lambda context: "Уникальных displayables: {}".format(_len(set(id(d) for _, d in renpy.display.render.redraw_queue)))),
+        DebugText(lambda context: "Размер кэша displayables: {}".format(_len(renpy.display.render.render_cache))),
+        DebugText(lambda context: "Размер кэша renders: {}".format(sum(_len(renders) for renders in renpy.display.render.render_cache.values()))),
         expanded=True
     ))
 

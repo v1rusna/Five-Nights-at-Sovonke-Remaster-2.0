@@ -141,9 +141,13 @@ init python in v1FNaSR:
             info.append("%s(name={color=#7aa83a}'%s'{/color}, ident={color=#407cb4}%r{/color}, daemon={color=#235873}%r{/color}, alive{color=#235873}=%r{/color})" % (cls_name, t.name, t.ident, t.daemon, t.is_alive()))
         return "\n".join(info)
 
-    debug.add_element(DebugSection(
-        DebugText(lambda context: "threads: {color=#407cb4}%s{/color}" % len(get_thread_list()), order=0, style="v1_text_16_style_FNaSR"),
-        DebugText(_v1_thread_info_FNaSR, order=1),
-    order=2),group="System")
+    debug.add_element(
+        DebugSection(
+            DebugText(lambda context: "threads: {color=#407cb4}%s{/color}" % len(get_thread_list()), style="v1_text_16_style_FNaSR"),
+            DebugText(_v1_thread_info_FNaSR),
+            order=2
+        ),
+        group="System"
+    )
 
     del _v1_thread_info_FNaSR

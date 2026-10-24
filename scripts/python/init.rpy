@@ -414,7 +414,7 @@ init python in v1FNaSR:
                     "sprite": "un evil_smile pioneer",
                     "color": "#B956FF",
                     "modules": [
-                        lambda: EnemyMoveModule(),
+                        lambda: EnemyMoveModule(factors=ALL_ENEMY_MOVING_FACTORS+(factor_not_watch,)),
                         lambda: EnemySilentAttackModule(
                                     enemy_screamer=EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR),
                                     silent_locations={

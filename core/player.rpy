@@ -292,23 +292,22 @@ init python in v1FNaSR:
         player.god_mode = not player.god_mode
 
     _dsp1 = DebugSection(
-        DebugText(lambda context: "Player: {}".format(context.ps.current_player.id), order=0, style="v1_text_16_style_FNaSR"),
-        DebugText(lambda context: "is moving: {}".format(context.ps.current_player.is_moving), order=1),
-        DebugText(lambda context: "under attack: {}".format(context.ps.current_player.under_attack), order=2),
+        DebugText(lambda context: "Player: {}".format(context.ps.current_player.id), style="v1_text_16_style_FNaSR"),
+        DebugText(lambda context: "is moving: {}".format(context.ps.current_player.is_moving)),
+        DebugText(lambda context: "under attack: {}".format(context.ps.current_player.under_attack)),
         DebugButton(
             lambda context: "god mode: {}".format(context.ps.current_player.god_mode),
-            _switch_player_god_mode,
-            order=3
+            _switch_player_god_mode
         ),
         order=0
     )
 
     _dsp2 = DebugSection(
-        DebugText(lambda context: "Паника: {}".format(context.ps.current_player.get_panic_text()), order=0, style="v1_text_16_style_FNaSR"),
-        DebugText(lambda context: "rollback panic: {}".format(context.ps.current_player.is_rollback_panic), order=1),
-        DebugText(lambda context: "rollback threshold: {}".format(context.ps.current_player.rollback_threshold), order=2),
-        DebugText(lambda context: "magnitude change panic: {}".format(context.ps.current_player._magnitude_change_panic), order=3),
-        DebugText(lambda context: "Дверь: {}".format("{color=#0ac80a}открыта{/color}" if context.ps.current_player.current_location.door.is_open else "{color=#c80a0a}закрыта{/color}"), order=4, condition=lambda context: context.ps.current_player.has_door),
+        DebugText(lambda context: "Паника: {}".format(context.ps.current_player.get_panic_text()), style="v1_text_16_style_FNaSR"),
+        DebugText(lambda context: "rollback panic: {}".format(context.ps.current_player.is_rollback_panic)),
+        DebugText(lambda context: "rollback threshold: {}".format(context.ps.current_player.rollback_threshold)),
+        DebugText(lambda context: "magnitude change panic: {}".format(context.ps.current_player._magnitude_change_panic)),
+        DebugText(lambda context: "Дверь: {}".format("{color=#0ac80a}открыта{/color}" if context.ps.current_player.current_location.door.is_open else "{color=#c80a0a}закрыта{/color}"), condition=lambda context: context.ps.current_player.has_door),
     order=1)
 
     _ps = require_system("player")

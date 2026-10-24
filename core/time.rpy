@@ -255,12 +255,13 @@ init python in v1FNaSR:
 init python in v1FNaSR:
     _dst = DebugSection(
         DebugText(lambda context: "Время: {}".format(context.gt.get_time()), style="v1_text_16_style_FNaSR"),
-        DebugText(lambda context: "Таймеров: {}".format(len(context.gt.timers)), order=1),
-        DebugText(lambda context: "Сломанных таймеров: {}".format(len(context.gt.error_timers)), order=2),
-        DebugText(lambda context: "Прогресс часа: {:.1f}".format(context.gt.progress), order=3),
-        DebugText(lambda context: "Всего часов: {}".format(context.gt.total_hours), order=4),
-        DebugText(lambda context: "Продолжительность часа: {}".format(context.gt.hour_time), order=5),
-    order=1)
+        DebugText(lambda context: "Таймеров: {}".format(len(context.gt.timers))),
+        DebugText(lambda context: "Сломанных таймеров: {}".format(len(context.gt.error_timers))),
+        DebugText(lambda context: "Прогресс часа: {:.1f}".format(context.gt.progress)),
+        DebugText(lambda context: "Всего часов: {}".format(context.gt.total_hours)),
+        DebugText(lambda context: "Продолжительность часа: {}".format(context.gt.hour_time)),
+        order=1
+    )
 
     _dst.context.gt = require_system("time")
 

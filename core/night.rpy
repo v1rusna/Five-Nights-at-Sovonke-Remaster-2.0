@@ -622,13 +622,14 @@ init -1 python in v1FNaSR:
 
 init python in v1FNaSR:
     _dsn = DebugSection(
-        DebugText(lambda context: "Ночь: {}".format(context.ns.loaded.id), style="v1_text_16_style_FNaSR", order=0),
-        DebugText(lambda context: "Следующая: {}".format(context.ns.get_next_night(context.ns.loaded).id if context.ns.get_next_night(context.ns.loaded) else "нет"), order=1),
-        DebugText(lambda context: "Прошлая: {}".format(context.ns.get_previous_night(context.ns.loaded).id if context.ns.get_previous_night(context.ns.loaded) else "нет"), order=2),
-        DebugText(lambda context: "title: {}".format(context.ns.loaded.title), order=3),
-        DebugText(lambda context: "Конец смены в {}ч.".format(context.ns.loaded.end_of_shift), order=4),
-        DebugText(lambda context: "Зависит от ночей: {}".format(context.ns.loaded.requires), order=5, condition=lambda context: len(context.ns.loaded.requires) > 0),
-        order=0)
+        DebugText(lambda context: "Ночь: {}".format(context.ns.loaded.id), style="v1_text_16_style_FNaSR"),
+        DebugText(lambda context: "Следующая: {}".format(context.ns.get_next_night(context.ns.loaded).id if context.ns.get_next_night(context.ns.loaded) else "нет")),
+        DebugText(lambda context: "Прошлая: {}".format(context.ns.get_previous_night(context.ns.loaded).id if context.ns.get_previous_night(context.ns.loaded) else "нет")),
+        DebugText(lambda context: "title: {}".format(context.ns.loaded.title)),
+        DebugText(lambda context: "Конец смены в {}ч.".format(context.ns.loaded.end_of_shift)),
+        DebugText(lambda context: "Зависит от ночей: {}".format(context.ns.loaded.requires), condition=lambda context: len(context.ns.loaded.requires) > 0),
+        order=0
+    )
 
     _dsn.context.ns = require_system("night")
 

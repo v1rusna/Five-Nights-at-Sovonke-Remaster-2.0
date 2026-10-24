@@ -446,29 +446,33 @@ init -5 python in v1FNaSR:
 
 init python in v1FNaSR:
     _dsc = DebugSection(
-        DebugText(lambda context: "Cycle state: {}".format(context.cycle.state), order=0, style="v1_text_16_style_FNaSR"),
-        DebugText(lambda context: "current fps: {:.2f}".format(context.cycle.fps), order=1),
-        DebugText(lambda context: "target fps: {}".format(context.cycle.fps_controller.target_fps), order=2),
-        DebugText(lambda context: "mode: {}".format("precise" if context.cycle.fps_controller.precise else "fast"), order=3),
-        DebugText(lambda context: "dt: {}".format(context.cycle.fps_controller.dt), order=4),
-        DebugText(lambda context: "errors: {}".format(len(context.cycle.errors)), order=5),
-        DebugText(lambda context: "frozen: {}".format(context.cycle.is_frozen), order=6),
-        DebugText(lambda context: "total obj: {}".format(len(context.cycle._objects)), order=7),
-    condition=lambda context: context.cycle is not None, order=0)
+        DebugText(lambda context: "Cycle state: {}".format(context.cycle.state), style="v1_text_16_style_FNaSR"),
+        DebugText(lambda context: "current fps: {:.2f}".format(context.cycle.fps)),
+        DebugText(lambda context: "target fps: {}".format(context.cycle.fps_controller.target_fps)),
+        DebugText(lambda context: "mode: {}".format("precise" if context.cycle.fps_controller.precise else "fast")),
+        DebugText(lambda context: "dt: {}".format(context.cycle.fps_controller.dt)),
+        DebugText(lambda context: "errors: {}".format(len(context.cycle.errors))),
+        DebugText(lambda context: "frozen: {}".format(context.cycle.is_frozen)),
+        DebugText(lambda context: "total obj: {}".format(len(context.cycle._objects))),
+
+        condition=lambda context: context.cycle is not None,
+        order=0
+    )
 
     _bfc = DebugFold(
         "Cycle Control",
         DebugButton(
-        lambda context: "Разморозить цикл" if context.cycle.is_frozen else "Заморозить цикл",
-        lambda context: context.cycle.unfreeze() if context.cycle.is_frozen else context.cycle.freeze(),
-        condition=lambda context: context.cycle is not None,
-        order=1),
+            lambda context: "Разморозить цикл" if context.cycle.is_frozen else "Заморозить цикл",
+            lambda context: context.cycle.unfreeze() if context.cycle.is_frozen else context.cycle.freeze(),
+            condition=lambda context: context.cycle is not None,
+        ),
         DebugRow(
-            DebugButton(lambda context: "-", lambda context: context.cycle.decrease_refresh_time(), order=2),
-            DebugText(lambda context: "refresh time: {}".format(context.cycle.refresh_time), order=1),
+            DebugButton(lambda context: "-", lambda context: context.cycle.decrease_refresh_time()),
+            DebugText(lambda context: "refresh time: {}".format(context.cycle.refresh_time)),
             DebugButton(lambda context: "+", lambda context: context.cycle.add_refresh_time()),
-        order=2),
-        expanded=True
+        ),
+        expanded=True,
+        order=1
     )
 
     _cycle = require_system("cycle")

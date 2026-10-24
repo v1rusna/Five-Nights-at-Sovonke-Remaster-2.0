@@ -352,12 +352,15 @@ init python in v1FNaSR:
         ]
         return "\n".join(info)
 
-    _df = DebugIf(lambda context: context.ps.current_player.current_location.tablet is not None,
+    _df = DebugIf(
+        lambda context: context.ps.current_player.current_location.tablet is not None,
         DebugSection(
-            DebugText(lambda context: "tablet: {}".format(context.ps.current_player.current_location.tablet.tag), order=0, style="v1_text_16_style_FNaSR"),
-            DebugText(_v1_tablet_info_FNaSR, order=1),
+            DebugText(lambda context: "tablet: {}".format(context.ps.current_player.current_location.tablet.tag), style="v1_text_16_style_FNaSR"),
+            DebugText(_v1_tablet_info_FNaSR),
         ),
-        DebugText(lambda context: "Планшет отсутствует"), order=1)
+        DebugText(lambda context: "Планшет отсутствует"),
+        order=1
+    )
 
     _df.context.ps = require_system("player")
 

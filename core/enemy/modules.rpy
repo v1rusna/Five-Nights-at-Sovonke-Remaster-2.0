@@ -77,6 +77,14 @@ init -2 python in v1FNaSR:
     def factor_time(module, context):
         return 1.0 + module.TIME_GAIN * (1.0 - _math.exp(-_hours(context) / module.TIME_TAU))
 
+    def factor_not_watch(module, context):
+        if not isinstance(module, EnemyMoveModule):
+            return 1.0
+        player = context.player_manager.current_player
+        if player.is_open_tablet and player.current_location.tablet.selected == module.current_location_id:
+            return 0.0
+        return 1.0
+
     ALL_ENEMY_MOVING_START_FACTORS = (
         factor_difficulty,
         factor_night
@@ -725,7 +733,7 @@ init -2 python in v1FNaSR:
             self._attack_target_id = location_id
             context.stop_moving = True
             data = self._silent_locations.get(self._attack_target_id, None)
-            if data is not None and not location.is_replaced_image and not (data[0] is None and data[1] is None)
+            if data is not None and not location.is_replaced_image and not (data[0] is None and data[1] is None):
                 self._replace_image(context)
             else:
                 main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)

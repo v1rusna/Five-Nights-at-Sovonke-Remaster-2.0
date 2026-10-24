@@ -295,7 +295,11 @@ init python in v1FNaSR:
             info.append(" {}: {}".format(name, value).replace("{", "{{").replace("}", "}}"))
         return "\n".join(info)
 
-    debug.add_element(DebugSection(
-        DebugText(lambda context: "Настроек: {}".format(len(settings)), style="v1_text_16_style_FNaSR"),
-        DebugText(_v1_settings_debug, order=1),
-    order=4), group="System")
+    debug.add_element(
+        DebugSection(
+            DebugText(lambda context: "Настроек: {}".format(len(settings)), style="v1_text_16_style_FNaSR"),
+            DebugText(_v1_settings_debug),
+            order=4
+        ),
+        group="System"
+    )
