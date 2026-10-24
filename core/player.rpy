@@ -1,3 +1,4 @@
+# player.rpy
 init -1 python in v1FNaSR:
     from __future__ import division
 
@@ -17,7 +18,7 @@ init -1 python in v1FNaSR:
 
             self._setattr("_open_tablet", False)
             self._setattr("_is_moving", False)
-            self._setattr("_under_attack", False)
+            self._under_attack = ElementContainer()
 
             self._setattr("_panic", 0)
             self._setattr("_max_panic", max_panic)
@@ -26,6 +27,7 @@ init -1 python in v1FNaSR:
             self._setattr("_rollback_threshold", round(self._max_panic * 2 / 3))
             self._setattr("_is_play_heartbeat", False)
             self._setattr("_died", False)
+            self._setattr("_god_mode", False)
 
         @property
         def id(self):
@@ -48,10 +50,6 @@ init -1 python in v1FNaSR:
         @property
         def under_attack(self):
             return self._under_attack
-
-        @under_attack.setter
-        def under_attack(self, value):
-            self._under_attack = bool(value)
 
         @property
         def panic(self):
@@ -81,8 +79,22 @@ init -1 python in v1FNaSR:
         def is_died(self):
             return self._died
 
-        def to_kill(self):
+        @property
+        def god_mode(self):
+            return self._god_mode
+
+        @god_mode.setter
+        def god_mode(self, value):
+            if is_debug():
+                self._god_mode = bool(value)
+            else:
+                self._god_mode = False
+
+        def try_kill(self):
+            if self._god_mode:
+                return False
             self._died = True
+            return True
 
         def get_panic_text(self):
             return "{}/{}".format(self._panic, self._max_panic)
@@ -133,6 +145,7 @@ init -1 python in v1FNaSR:
             else:
                 self.open_tablet()
 
+        @timed("player.update", budget=lambda: 1.0 / max(require_system("cycle").fps_controller.target_fps, 1.0), log_every=1)
         def update(self):
             if self._died:
                 return
@@ -208,6 +221,10 @@ init -1 python in v1FNaSR:
             if panic_changed:
                 update_ui()
 
+        def reset(self):
+            super(Player, self).reset()
+            self._under_attack.clear()
+
     class PlayerSystem(object):
         def __init__(self):
             self._players = dict()
@@ -270,11 +287,21 @@ init -1 python in v1FNaSR:
     register_system("player", PlayerSystem())
 
 init python in v1FNaSR:
+    def _switch_player_god_mode(context):
+        player = context.ps.current_player
+        player.god_mode = not player.god_mode
+
     _dsp1 = DebugSection(
         DebugText(lambda context: "Player: {}".format(context.ps.current_player.id), order=0, style="v1_text_16_style_FNaSR"),
         DebugText(lambda context: "is moving: {}".format(context.ps.current_player.is_moving), order=1),
         DebugText(lambda context: "under attack: {}".format(context.ps.current_player.under_attack), order=2),
-    order=0)
+        DebugButton(
+            lambda context: "god mode: {}".format(context.ps.current_player.god_mode),
+            _switch_player_god_mode,
+            order=3
+        ),
+        order=0
+    )
 
     _dsp2 = DebugSection(
         DebugText(lambda context: "Паника: {}".format(context.ps.current_player.get_panic_text()), order=0, style="v1_text_16_style_FNaSR"),
@@ -294,5 +321,6 @@ init python in v1FNaSR:
     del _ps
     del _dsp1
     del _dsp2
+    del _switch_player_god_mode
 
 

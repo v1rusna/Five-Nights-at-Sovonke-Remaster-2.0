@@ -1,5 +1,10 @@
 # other.rpy
 init -12 python in v1FNaSR:
+    try:
+        from collections.abc import MutableSequence as _MutableSequence
+    except ImportError:
+        from collections import MutableSequence as _MutableSequence
+
     class GlobalState(object):
         _flags = dict()
         @classmethod
@@ -162,6 +167,55 @@ init -12 python in v1FNaSR:
                 self.__class__.__name__,
                 self._v1data
             )
+
+    class ElementContainer(_MutableSequence):
+        __slots__ = ("_elements",)
+
+        def __init__(self, initial=None):
+            self._elements = list(initial) if initial is not None else []
+
+        def insert(self, index, value):
+            self._elements.insert(index, value)
+
+        def _add(self, item):
+            if isinstance(item, (list, tuple)):
+                self._elements.extend(item)
+            else:
+                self._elements.append(item)
+            return self
+
+        def _sub(self, item):
+            items_to_remove = item if isinstance(item, (list, tuple)) else [item]
+            for x in items_to_remove:
+                while x in self._elements:
+                    self._elements.remove(x)
+            return self
+
+        def __add__(self, item):
+            self._add(item)
+
+        def __sub__(self, item):
+            self._sub(item)
+
+        def __isub__(self, item):
+            return self._sub(item)
+
+        def __getitem__(self, index):
+            if isinstance(index, slice):
+                return self.__class__(self._elements[index])
+            return self._elements[index]
+
+        def __setitem__(self, index, value):
+            self._elements[index] = value
+
+        def __delitem__(self, index):
+            del self._elements[index]
+
+        def __len__(self):
+            return len(self._elements)
+
+        def __repr__(self):
+            return "ElementContainer({})".format(self._elements)
 
 init python in v1FNaSR:
     add_quit_fn(GlobalState.clear)

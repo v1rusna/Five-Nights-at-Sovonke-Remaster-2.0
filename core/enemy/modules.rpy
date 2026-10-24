@@ -325,7 +325,7 @@ init -2 python in v1FNaSR:
         
         def reset(self, context):
             context.stop_moving = False
-            super(EnemyMoveModule, self).reset(context)
+            super(EnemyMoveModule, self).reset()
 
         def _move(self, context, location=None):
             if location is None:
@@ -438,7 +438,7 @@ init -2 python in v1FNaSR:
             "_r_t_m", "_sound_channel",
         )
 
-        def __init__(self, enemy_screamer, pre_attack=True, safety_time=0.5, random_time_murder=(3,5,), sound_channel="enemy_channel"):
+        def __init__(self, enemy_screamer, pre_attack=True, safety_time=0.5, random_time_murder=(4,6,), sound_channel="enemy_channel"):
             if not isinstance(enemy_screamer, EnemyScreamer):
                 raise FNaSRTypeError("'enemy_screamer' должен быть 'EnemyScreamer', получено: {}".format(type(enemy_screamer)))
 
@@ -490,11 +490,11 @@ init -2 python in v1FNaSR:
             if context.get("location_system") is None:
                 context.location_system = require_system("location")
 
-            if context.get("is_all_players_dead") is None:
-                context.is_all_players_dead = False
+            if context.get("is_player_dead") is None:
+                context.is_player_dead = False
 
         def tick_update(self, context, dt):
-            if context.is_all_players_dead:
+            if context.is_player_dead:
                 return
             player = context.player_manager.current_player
             if player.current_location is None:
@@ -527,22 +527,11 @@ init -2 python in v1FNaSR:
             self._handle_attack(context)
 
         def reset(self, context):
-            context.is_all_players_dead = False
-            super(EnemyAttackModule, self).reset(context)
+            context.is_player_dead = False
+            super(EnemyAttackModule, self).reset()
 
         def _handle_attack(self, context):
-            if self._attack_target_id is not None:
-                player = context.player_manager.current_player
-
-                if player is not None:
-                    player_location = player.current_location
-
-                    player.under_attack = (
-                        player_location is not None
-                        and player_location.id == self._attack_target_id
-                    )
-
-                self._attack(context)
+            if self._handle_attack_target_id(context):
                 return
 
             location_id = self._move_module.get_next_location_id()
@@ -550,6 +539,8 @@ init -2 python in v1FNaSR:
                 return
 
             player = context.player_manager.current_player
+            if player.current_location is None:
+                return
             if player.current_location.id != location_id:
                 return
 
@@ -559,13 +550,28 @@ init -2 python in v1FNaSR:
             if location.door is None:
                 return
 
-            # if player.is_moving:
-            #     return
-
             self._attack_target_id = location_id
             context.stop_moving = True
             main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
             self._attack(context)
+
+        def _handle_attack_target_id(self, context):
+            if self._attack_target_id is None:
+                return False
+
+            player = context.player_manager.current_player
+
+            if player is not None:
+                player_location = player.current_location
+
+                if player_location is not None and player_location.id == self._attack_target_id:
+                    if context.enemy.tag not in player.under_attack:
+                        player.under_attack + context.enemy.tag
+                elif context.enemy.tag in player.under_attack:
+                    player.under_attack - context.enemy.tag
+
+            self._attack(context)
+            return True
 
         def _attack(self, context):
             target_id = self._attack_target_id
@@ -598,7 +604,9 @@ init -2 python in v1FNaSR:
             main_executor.submit(audio.play, renpy.store.sfx_campus_door_rattle, self._sound_channel)
             player = context.player_manager.current_player
 
-            if self._move_module.start_location_id is not None and player.current_location.id != self._move_module.start_location_id:
+            if player.current_location is None:
+                self._move_module.generate_new_path()
+            elif self._move_module.start_location_id is not None and player.current_location.id != self._move_module.start_location_id:
                 self._move_module.generate_new_path()
             else:
                 self._move_module.generate_new_path(None)
@@ -621,7 +629,8 @@ init -2 python in v1FNaSR:
             self._attack_target_id = None
             self._murder_countdown = None
             context.stop_moving = False
-            player.under_attack = False
+            if context.enemy.tag in player.under_attack:
+                player.under_attack - context.enemy.tag
 
         def _get_time_murder(self):
             return renpy.random.randint(self._r_t_m[0], self._r_t_m[1])
@@ -638,26 +647,18 @@ init -2 python in v1FNaSR:
                 return True
 
         def _kill_player(self, context, player):
-            player.to_kill()
-            self._add_history_murders(context.enemy.tag)
-            for player in context.player_manager:
-                if not player.is_died:
-                    context.player_manager.switch_player(player.id)
-                    break
-            else:
-                context.is_all_players_dead = True
-                GlobalState.set("death_time", require_system("time").get_time())
+            if player.try_kill():
+                self._set_killed_player(context.enemy.tag)
+                context.is_player_dead = True
                 try:
                     main_executor.submit_and_wait(renpy.jump, "v1_screamer_label_FNaSR")
                 except FNaSRControlTransferError:
                     pass
 
-        def _add_history_murders(self, enemy_tag):
-            history_murders = GlobalState.get("HistoryMurders")
+        def _set_killed_player(self, enemy_tag):
+            history_murders = GlobalState.get("OpponentKilledPlayer")
             if history_murders is None:
-                GlobalState.set("HistoryMurders", list())
-
-            GlobalState.get("HistoryMurders").append((enemy_tag, self._enemy_screamer,))
+                GlobalState.set("OpponentKilledPlayer", (enemy_tag, self._enemy_screamer, require_system("time").get_time(),))
 
         def get_debug_list_texts(self, enemy_context):
             return [
@@ -668,6 +669,112 @@ init -2 python in v1FNaSR:
             ]
 
     class EnemySilentAttackModule(EnemyAttackModule):
-        def __init__(self, **kwargs):
-            super(EnemySilentAttackModule, self).__init__(**kwargs)
+        __slots__ = ("_silent_locations",)
+
+        def __init__(self, enemy_screamer, silent_locations=None, **kwargs):
+            super(EnemySilentAttackModule, self).__init__(enemy_screamer, **kwargs)
+
+            if silent_locations is None:
+                silent_locations = {}
+
+            if not isinstance(silent_locations, dict):
+                raise FNaSRTypeError("'silent_locations' должен быть словарём, получено: {}".format(type(silent_locations)))
+
+            normalized = {}
+
+            for location_id, images in iter_items(silent_locations):
+                if not is_strict_integer(location_id):
+                    raise FNaSRTypeError("ID локации должен быть int, получено: {!r}".format(location_id))
+
+                if not isinstance(images, (list, tuple)) or len(images) != 2:
+                    raise FNaSRValueError("silent_locations[{}] должен содержать ровно два изображения: (свет включён, свет выключен).".format(location_id))
+
+                # for i, image in enumerate(images):
+                #     if image is not None and not is_string(image):
+                #         raise FNaSRTypeError("Путь к изображению silent_locations[{}][{}] должен быть строкой или None, получено: {}".format(location_id, i, type(image)))
+
+                normalized[_normalize_id(location_id)] = tuple(images)
+
+            self._silent_locations = normalized
+            self._setattr("_replaced", False)
+
+        def tick_update(self, context, dt):
+            self._replace_image(context)
+            super(EnemySilentAttackModule, self).tick_update(context, dt)
+
+        def _handle_attack(self, context):
+            if self._handle_attack_target_id(context):
+                return
+
+            location_id = self._move_module.get_next_location_id()
+            if location_id is None:
+                return
+
+            player = context.player_manager.current_player
+            if player.current_location is None:
+                return
+            if player.current_location.id != location_id:
+                return
+
+            location = context.location_system.get_location(location_id)
+            if location is None:
+                return
+            if location.door is None:
+                return
+
+            self._attack_target_id = location_id
+            context.stop_moving = True
+            data = self._silent_locations.get(self._attack_target_id, None)
+            if data is not None and not location.is_replaced_image and not (data[0] is None and data[1] is None)
+                self._replace_image(context)
+            else:
+                main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
+            self._attack(context)
+
+        def _finish_attack(self, context):
+            if self._attack_target_id is not None:
+                location = context.location_system.get_location(self._attack_target_id)
+                if location is not None and self._replaced:
+                    location.clear_substituted_image(all=True)
+            super(EnemySilentAttackModule, self)._finish_attack(context)
+            self._replaced = False
+
+        def _replace_image(self, context):
+            target_id = self._attack_target_id
+
+            if target_id is None or target_id not in self._silent_locations:
+                return
+
+            location = context.location_system.get_location(target_id)
+            if location is None:
+                return
+
+            player = context.player_manager.current_player
+            player_location = player.current_location if player is not None else None
+
+            if player_location is None or player_location.id != target_id:
+                if self._replaced:
+                    location.clear_substituted_image(all=True)
+                    self._replaced = False
+                return
+
+            if self._replaced or location.is_replaced_image:
+                return
+
+            data = self._silent_locations[target_id]
+
+            if data[0] is not None:
+                location.replace_image(data[0])
+                self._replaced = True
+
+            if data[1] is not None:
+                location.replace_image(data[1], dark=True)
+                self._replaced = True
+
+        def get_debug_list_texts(self, enemy_context):
+            return super(EnemySilentAttackModule, self).get_debug_list_texts(enemy_context) + [
+                "silent locations: {}".format(self._silent_locations.keys()),
+                "replaced: {}".format(self._replaced)
+            ]
+
 

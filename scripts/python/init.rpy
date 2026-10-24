@@ -225,8 +225,9 @@ init python in v1FNaSR:
                     {
                         "location_id": -4,
                         "name": "внутрь кружков",
-                        "image": resources.images.bg["int_clubs_male_night_7dl"],
+                        "image": resources.images.bg["int_clubs_night_light"],
                         "door": Door(),
+                        "bulb": Bulb(resources.images.bg["int_clubs_night"]),
                         "loc_connections": [(9,5)],
                     },
                     None,
@@ -264,6 +265,7 @@ init python in v1FNaSR:
                         "name": "внутрь библиотеки",
                         "image": resources.images.bg["int_library_night_light"],
                         "door": Door(),
+                        "bulb": Bulb(resources.images.bg["int_library_night"]),
                         "loc_connections": [(3,5)],
                     },
                     None,
@@ -345,7 +347,7 @@ init python in v1FNaSR:
             location_system = get_system("location")
 
             if location_system is None:
-                renpy.log("FNaSR | LocationCreateHook | location_system не был зарегистрирован")
+                log.write("LocationCreateHook | location_system не был зарегистрирован")
                 return
 
             tablet_manager = get_system("tablet")
@@ -381,7 +383,7 @@ init python in v1FNaSR:
             ns.register_night("custom", title="Custom Night", requires="night_6")
 
         def handle_exception(self, exc):
-            renpy.log("FNaSR | NightCreateHook | {}".format(exc))
+            log.write("NightCreateHook | %s", exc)
             ns = get_system("night")
             if ns is None:
                 return
@@ -401,7 +403,9 @@ init python in v1FNaSR:
                     "color": "#FF3200",
                     "modules": [
                         lambda: EnemyMoveModule(-3),
-                        lambda: EnemyAttackModule(EnemyScreamer("us angry pioneer", screamer_t=renpy.store.v1_uliana_screamer_t_FNaSR)),
+                        lambda: EnemyAttackModule(
+                                    enemy_screamer=EnemyScreamer("us angry pioneer", screamer_t=renpy.store.v1_uliana_screamer_t_FNaSR)
+                                ),
                     ]
                 },
                 {
@@ -411,7 +415,16 @@ init python in v1FNaSR:
                     "color": "#B956FF",
                     "modules": [
                         lambda: EnemyMoveModule(),
-                        lambda: EnemyAttackModule(EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR)),
+                        lambda: EnemySilentAttackModule(
+                                    enemy_screamer=EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR),
+                                    silent_locations={
+                                        -1: (resources.images.Lena["R_int_mt_house_night_light_un"], resources.images.Lena["R_int_mt_house_night_un"],),
+                                        -3: (resources.images.Lena["int_dining_hall_night_un"], resources.images.Lena["int_dining_hall_night_un"],), # TODO: Не хватает темного варианта
+                                        -4: (resources.images.Lena["int_clubs_night_light_un"], resources.images.Lena["int_clubs_night_un"],),
+                                        -5: (resources.images.Lena["int_musclub_night_nolight_un"], resources.images.Lena["int_musclub_night_nolight_un"],), # TODO: Не хватает светлого варианта
+                                        -8: (resources.images.Lena["int_library_night_light_un"], resources.images.Lena["int_library_night_un"],),
+                                    }
+                                ),
                     ]
                 },
             ]
@@ -433,10 +446,11 @@ init python in v1FNaSR:
             def _debug_modules(context):
                 info = []
                 for m in context.enemy.modules:
-                    m_info = m.get_debug_list_texts(context.enemy.context)
-                    if not m_info:
-                        continue
                     info.append(color_text("={}=".format(type(m).__name__), "#8ab4ff"))
+                    if m.error:
+                        info.append(m.error)
+                        continue
+                    m_info = m.get_debug_list_texts(context.enemy.context)
                     for t in m_info:
                         info.append("-{}".format(t))
                 return "\n".join(info)
@@ -456,20 +470,18 @@ init python in v1FNaSR:
                 else:
                     df = DebugFold(color_text(enemy.tag, enemy.color),
                         DebugIf(lambda context: context.enemy.enabled,
-                            DebugSection(DebugButton(lambda context: "disable enemy", _enemy_change_status, order=-1),
+                            DebugSection(
                                 DebugText(_debug_text),
-                                DebugFold("=== modules debug ===",
-                                    DebugIf(lambda context: len(context.enemy.modules) > 0,
+                                DebugButton(lambda context: "disable enemy", _enemy_change_status, order=1),
+                                DebugFold(
+                                    "=== modules ===",
+                                    DebugIf(
+                                        lambda context: len(context.enemy.modules) > 0,
                                         DebugText(_debug_modules),
                                         DebugText(lambda context: "A fake enemy"),
                                     ),
-                                order=1),
-                                DebugFold("=== modules errors ===",
-                                    DebugIf(lambda context: len(context.enemy.errors) > 0,
-                                        DebugText(lambda context: "\n".join("-{}".format(err) for err in context.enemy.errors)),
-                                        DebugText(lambda context: "There are no errors"),
-                                    ),
-                                order=2),),
+                                order=2),
+                            ),
                             DebugButton(lambda context: "enable enemy", _enemy_change_status)
                         ),
                     order=i)
@@ -482,8 +494,14 @@ init python in v1FNaSR:
                     else:
                         debug.add_element(df, group="Enemy")
 
+                    try:
+                        enemy.tick_update = timed(color_text("Enemy.{}.tick_update".format(enemy.tag), enemy.color), budget=lambda: 1.0 / require_system("cycle").fps_controller.target_fps, log_every=1)(enemy.tick_update)
+                        enemy.update = timed(color_text("Enemy.{}.update".format(enemy.tag), enemy.color), budget=lambda: 1.0 / require_system("cycle").fps_controller.target_fps, log_every=1)(enemy.update)
+                    except:
+                        log.error("error set timed for {}".format(enemy.tag))
+
         def handle_exception(self, exc):
-            log("EnemyCreateHook | handle_exception: {}".format(exc))
+            log.write("EnemyCreateHook | handle_exception: %s", exc)
         
 
     def _init_other():

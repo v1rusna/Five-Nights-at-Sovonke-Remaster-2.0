@@ -73,12 +73,16 @@ init -3 python in v1FNaSR:
             return "<{} error={} freezed={}>".format(type(self).__name__, self._error is not None, self._freeze)
 
     class BaseEnemy(GameObject, BaseAI):
-        def __init__(self):
+        def __init__(self, modules=None):
             super(BaseEnemy, self).__init__()
  
             self._modules = list()
             self._types_modules = set()
             self._context = EnemyContext(self)
+
+            if isinstance(modules, (list, tuple,)):
+                for module in modules:
+                    self.add_module(module)
 
         @property
         def context(self):
@@ -207,8 +211,8 @@ init -3 python in v1FNaSR:
 
 
     class Enemy(BaseEnemy):
-        def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None):
-            super(Enemy, self).__init__()
+        def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None, **kwargs):
+            super(Enemy, self).__init__(**kwargs)
 
             if not is_string(tag):
                 raise FNaSRTypeError("'tag' должен быть строкой, получено: {}".format(type(tag)))

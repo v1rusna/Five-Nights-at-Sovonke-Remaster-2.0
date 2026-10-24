@@ -94,6 +94,17 @@ init -7 python in v1FNaSR:
             """
             pass
 
+        def clear_hook(self):
+            """
+            Служебный метод используемый lifecycle для очистки хука в целях экономии памяти.
+            Его можно переопределить если нужно чтобы хук сохранял состояние между запусками
+            и/или очищался себя по собственному алгоритму.
+            """
+            try:
+                self.__dict__.clear()
+            except AttributeError:
+                pass
+
     def add_start_fn(fn, order=0, once=False):
         order = int(order)
         if not callable(fn):
@@ -297,30 +308,43 @@ init -7 python in v1FNaSR:
     def _run_hook(fn, log):
         hook_name = getattr(fn, "__name__", repr(fn))
 
-        init = getattr(fn, "init", None)
-
-        if init is not None:
-            try:
-                init()
-            except Exception:
-                log("Хук не смог инициализироваться ({}):".format(hook_name))
-                return
-
         try:
-            fn()
-        except Exception as exc:
-            log("Ошибка в хуке ({}):".format(hook_name))
+            init = getattr(fn, "init", None)
 
-            handle_exception = getattr(fn, "handle_exception", None)
-
-            if handle_exception is not None:
+            if init is not None:
                 try:
-                    if not callable(handle_exception):
-                        raise FNaSRTypeError("handle_exception хука '{}' должен быть вызываемым объектом".format(hook_name))
-
-                    handle_exception(exc)
+                    init()
                 except Exception:
-                    log("Хук не смог обработать исключение ({}):".format(hook_name))
+                    log("Хук не смог инициализироваться ({}):".format(hook_name))
+                    return
+
+            try:
+                fn()
+            except Exception as exc:
+                log("Ошибка в хуке ({}):".format(hook_name))
+
+                handle_exception = getattr(fn, "handle_exception", None)
+
+                if handle_exception is not None:
+                    try:
+                        if not callable(handle_exception):
+                            raise FNaSRTypeError("handle_exception хука '{}' должен быть вызываемым объектом".format(hook_name))
+
+                        handle_exception(exc)
+                    except Exception:
+                        log("Хук не смог обработать исключение ({}):".format(hook_name))
+
+        finally:
+            clear_hook = getattr(fn, "clear_hook", None)
+
+            if clear_hook is not None:
+                try:
+                    if not callable(clear_hook):
+                        raise FNaSRTypeError("clear_hook хука '{}' должен быть вызываемым объектом".format(hook_name))
+
+                    clear_hook()
+                except Exception:
+                    log("Хук не смог очиститься ({}):".format(hook_name))
 
     def after_load_FNaSR():
         if "FNaSR" in renpy.store.save_name:

@@ -256,6 +256,7 @@ init python in v1FNaSR:
             )
             self._tablets[tag] = tablet
             if register_in_cycle:
+                tablet.update = timed("tablet.{}.update".format(tag), budget=lambda: 1.0 / max(require_system("cycle").fps_controller.target_fps, 1.0), log_every=1)(tablet.update)
                 require_system("cycle").register(tablet)
             return tablet
 

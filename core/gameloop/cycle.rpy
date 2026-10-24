@@ -1,4 +1,3 @@
-
 # cycle.rpy
 init -5 python in v1FNaSR:
     import sys as _sys
@@ -44,29 +43,7 @@ init -5 python in v1FNaSR:
         exec(code, namespace)
         return namespace['reset']
 
-    class FNaSRCycleError(FNaSRRuntimeError):
-        pass
-
-    class CycleState(object):
-        STOPPED = "stopped"
-        STARTING = "starting"
-        RUNNING = "running"
-        STOPPING = "stopping"
-        FAILED = "failed"
-
-    class ErrorPolicy(object):
-        LOG_AND_CONTINUE = "log_and_continue"
-        DISABLE_OBJECT = "disable_object"
-        STOP_CYCLE = "stop_cycle"
-
     class ResetLogic(object):
-        """
-        Класс для автоматической генерации метода reset для сброса состояния до первоначального при создании объекта
-        _reset_to_default - это словарь на который опирается reset, содержание должно быть: 'attr': self.attr
-        _reset_to_default должен сформироваться до первого вызова reset, желательно чтобы он был готов после __init__
-        """
-        # __slots__ = ("_fast_reset", "_reset_to_default")
-
         def __init__(self):
             super(ResetLogic, self).__init__()
             self._reset_to_default = dict()
@@ -104,9 +81,24 @@ init -5 python in v1FNaSR:
 
             try:
                 fast_reset(self)
-            except Exception as e:
-                renpy.log("FNaSR | ResetLogic | fast_reset error: {}".format(e))
+            except Exception:
+                log.error("ResetLogic | fast_reset error")
                 raise
+
+    class FNaSRCycleError(FNaSRRuntimeError):
+        pass
+
+    class CycleState(object):
+        STOPPED = "stopped"
+        STARTING = "starting"
+        RUNNING = "running"
+        STOPPING = "stopping"
+        FAILED = "failed"
+
+    class ErrorPolicy(object):
+        LOG_AND_CONTINUE = "log_and_continue"
+        DISABLE_OBJECT = "disable_object"
+        STOP_CYCLE = "stop_cycle"
 
     class GameObject(ResetLogic):
         def __init__(self):
@@ -366,12 +358,12 @@ init -5 python in v1FNaSR:
                         dt = self._fps_controller.tick()
                         is_frozen = self._freeze_event.is_set()
 
-
-                        for obj in self._objects:
-                            if self._stop_event.is_set() or is_frozen:
-                                break
-                            if getattr(obj, "enabled", True):
-                                self._safe_call(obj, "tick_update", dt, self._refresh_time)
+                        with timer_block("cycle tick", budget=lambda: 1.0 / self._fps_controller.target_fps):
+                            for obj in self._objects:
+                                if self._stop_event.is_set() or is_frozen:
+                                    break
+                                if getattr(obj, "enabled", True):
+                                    self._safe_call(obj, "tick_update", dt, self._refresh_time)
 
                         if self._fatal_exc_info is not None:
                             break

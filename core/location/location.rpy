@@ -497,6 +497,10 @@ init python in v1FNaSR:
         def substituted_dark_image(self):
             return self._substituted_dark_image
 
+        @property
+        def is_replaced_image(self):
+            return self._substituted_image is not None or self._substituted_dark_image is not None
+
         def replace_image(self, image, dark=False, all=False):
             if all:
                 self._substituted_image = image

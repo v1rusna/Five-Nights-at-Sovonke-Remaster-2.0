@@ -1,4 +1,4 @@
-
+# parallax.rpy
 init python in v1FNaSR:
     class Parallax(renpy.Displayable):
         __slots__ = [

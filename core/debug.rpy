@@ -1,8 +1,25 @@
-# debug.rpy
+
 init -5 python in v1FNaSR:
     import traceback as _traceback
     import time as _time
     import sys as _sys
+    import functools as _functools
+    import collections as _collections
+    import operator as _operator
+
+    try:
+        _thread_time = _time.thread_time   # только Py3.7+ (Ren'Py 8)
+    except AttributeError:
+        _thread_time = None
+
+    FRAME_BUDGET = 1.0 / 60   # бюджет по умолчанию: один кадр при 60 FPS, сек
+
+    if hasattr(_time, "perf_counter"):
+        _timer = _time.perf_counter
+    elif renpy.windows and hasattr(_time, "clock"):
+        _timer = _time.clock
+    else:
+        _timer = _time.time
 
     def color_text(text, color):
         if color is None:
@@ -44,22 +61,26 @@ init -5 python in v1FNaSR:
 
         return (len(recent) - 1) / dt if dt > 0 else 0.0
 
+    def _noop(*args, **kwargs):
+        pass
+
     class LogSystem(object):
         _conditions = {
-            "==": lambda a, b: a == b,
-            "!=": lambda a, b: a != b,
-            ">":  lambda a, b: a > b,
-            "<":  lambda a, b: a < b,
-            ">=": lambda a, b: a >= b,
-            "<=": lambda a, b: a <= b,
+            "==": _operator.eq,
+            "!=": _operator.ne,
+            ">":  _operator.gt,
+            "<":  _operator.lt,
+            ">=": _operator.ge,
+            "<=": _operator.le,
             "in": lambda item, container: item in container,
-            "is": lambda a, b: a is b
+            "is": _operator.is_,
         }
 
         def __init__(self):
             self._enable = False
             self._log_error = True
             self._log_traceback = True
+            self.write = _noop
 
         @property
         def is_enable(self):
@@ -75,9 +96,11 @@ init -5 python in v1FNaSR:
 
         def enable(self):
             self._enable = True
+            self.write = self._write
 
         def disable(self):
             self._enable = False
+            self.write = _noop
 
         def enable_log_error(self):
             self._log_error = True
@@ -100,6 +123,12 @@ init -5 python in v1FNaSR:
             self.disable()
             self.disable_log_error()
             self.disable_log_traceback()
+
+        def _write(self, msg, *args):
+            text = to_text(msg)
+            if args:
+                text = text % args
+            renpy.log("FNaSR | " + text)
 
         def error(self, msg=None, format_exc=None):
             if not self._log_error:
@@ -125,26 +154,162 @@ init -5 python in v1FNaSR:
                 renpy.log(format_exc)
 
         def condition(self, obj1, operator, obj2):
-            if not is_string(operator):
-                raise FNaSRValueError("Unsupported condition operator: {!r}".format(operator))
-            fn = self._conditions.get(operator)
-            if fn is None:
+            try:
+                fn = self._conditions[operator]
+            except (KeyError, TypeError):
                 raise FNaSRValueError("Unsupported condition operator: {!r}".format(operator))
 
             result = fn(obj1, obj2)
 
             if self._enable:
-                self("Result of the condition '{!r} {} {!r}': {}".format(obj1, operator, obj2, result))
+                self._write("Result of the condition '%r %s %r': %s",
+                            obj1, operator, obj2, result)
 
             return result
 
-        def __call__(self, msg):
+        def __call__(self, msg, *args):
             if not self._enable:
                 return
-            text = to_text(msg)
-            renpy.log("FNaSR | "+text)
+            self._write(msg, *args)
 
     log = LogSystem()
+
+
+
+
+
+    class TimerStats(object):
+        def __init__(self, name, window=300, budget=None):
+            self.name = name
+            self.budget = budget   # число (сек) или callable, возвращающий секунды
+            self.window = _collections.deque(maxlen=window)
+            self.reset()
+
+        def reset(self):
+            self.count = 0
+            self.total = 0.0
+            self.last = 0.0
+            self.max = 0.0
+            self.started = None
+            self.window.clear()
+
+        def add(self, dt):
+            if self.started is None:
+                self.started = _timer() - dt
+            self.count += 1
+            self.total += dt
+            self.last = dt
+            if dt > self.max:
+                self.max = dt
+            self.window.append(dt)
+
+        def get_budget(self):
+            b = self.budget
+            if callable(b):
+                try:
+                    b = b()
+                except Exception:
+                    b = None
+            return b if b else FRAME_BUDGET
+
+        def summary(self):
+            win = sorted(self.window)
+            n = len(win)
+            if not self.count or not n:
+                return "%s: нет данных" % self.name
+
+            win_avg = sum(win) / n
+            p95 = win[min(n - 1, int(n * 0.95))]
+            budget = self.get_budget()
+
+            elapsed = _timer() - self.started
+            load = self.total / elapsed * 100.0 if elapsed > 0 else 0.0
+
+            return (
+                "%s: n=%d | avg(all) %.3f | avg(win) %.3f | p95 %.3f | max %.3f ms\n"
+                "    %.2f%% бюджета (%.1f ms) в среднем, %.1f%% в пике | load %.2f%%"
+            ) % (
+                self.name, self.count,
+                self.total / self.count * 1000.0, win_avg * 1000.0,
+                p95 * 1000.0, self.max * 1000.0,
+                win_avg / budget * 100.0, budget * 1000.0,
+                self.max / budget * 100.0,
+                load,
+            )
+
+    class TimerRegistry(object):
+        def __init__(self):
+            self.enabled = True
+            self._stats = {}
+
+        def get(self, name, window=300, budget=None):
+            stats = self._stats.get(name)
+            if stats is None:
+                stats = self._stats[name] = TimerStats(name, window, budget)
+            return stats
+
+        def all(self):
+            return [self._stats[k] for k in sorted(self._stats)]
+
+        def reset(self):
+            for stats in list(self._stats.values()):
+                stats.reset()
+
+        def toggle(self):
+            self.enabled = not self.enabled
+
+        def report(self):
+            return "\n".join(s.summary() for s in self.all()) or "нет таймеров"
+
+    timers = TimerRegistry()
+
+    def timed(name=None, budget=None, window=300, log_every=0, cpu=False):
+        """
+        name      - имя в отчёте (лучше задавать явно)
+        budget    - сколько времени отведено, сек: число или callable
+        window    - размер скользящего окна для avg(win) и p95
+        log_every - писать сводку в лог раз в N вызовов (0 - не писать)
+        cpu       - мерить CPU-время потока (только Py3.7+), без ожидания GIL
+        """
+        def decorate(fn):
+            label = name or getattr(fn, "__qualname__", None) or fn.__name__
+            stats = timers.get(label, window, budget)
+            clock = _thread_time if (cpu and _thread_time) else _timer
+
+            @_functools.wraps(fn)
+            def wrapper(*args, **kwargs):
+                if not timers.enabled:
+                    return fn(*args, **kwargs)
+                t0 = clock()
+                try:
+                    return fn(*args, **kwargs)
+                finally:
+                    stats.add(clock() - t0)
+                    if log_every and stats.count % log_every == 0:
+                        if log.is_enable:
+                            log.write(stats.summary())
+
+            wrapper.stats = stats
+            return wrapper
+
+        if callable(name):
+            fn, name = name, None
+            return decorate(fn)
+        return decorate
+
+    class timer_block(object):
+        def __init__(self, name, budget=None, window=300, cpu=False):
+            self._stats = timers.get(name, window, budget)
+            self._clock = _thread_time if (cpu and _thread_time) else _timer
+
+        def __enter__(self):
+            self._t0 = self._clock()
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            if timers.enabled:
+                self._stats.add(self._clock() - self._t0)
+            return False
 
     def _safe_element_get(element, disable_error=True):
         try:
@@ -465,6 +630,11 @@ init -5 python in v1FNaSR:
                 active += a
                 inactive += i
 
+            if self:
+                active += 1
+            else:
+                inactive += 1
+
             return active, inactive
 
         def _safe_get(self, element, disable_error=True):
@@ -634,12 +804,9 @@ init -5 python in v1FNaSR:
             return element.matches(query)
 
         def count_element_states(self):
-            element = (
-                self._element
-                if self.is_if_condition
-                else self._else_element
-            )
-            return element.count_element_states()
+            active1, inactive1 = self._element.count_element_states()
+            active2, inactive2 = self._else_element.count_element_states()
+            return active1 + active2, inactive1 + inactive2
 
     class DebugGroup(object):
         __slots__ = (
@@ -862,7 +1029,7 @@ init -5 python in v1FNaSR:
                 group.enable()
 
         def _update_fps(self):
-            now = _time.time()
+            now = _timer()
             self._fps_timestamps.append(now)
 
             cutoff = now - 1.0
@@ -905,6 +1072,7 @@ init -5 python in v1FNaSR:
         def has_element(self, element, group="General", group_autocreate=False):
             return self._get_and_validate_group(group, group_autocreate).has_element(element)
 
+        @timed("debug.iteration_content", budget=lambda: 1.0 / max(get_render_fps(), 1.0), log_every=10)
         def iteration_content(self, disable_error=True):
             self._update_fps()
             query = self._query
@@ -1011,6 +1179,18 @@ init python in v1FNaSR:
         group="Debug")
 
     debug.add_element(DebugFold(
+        "Timers",
+        DebugText(lambda context: timers.report()+"\n------------", order=0),
+        DebugRow(
+            DebugButton(lambda context: "Reset", lambda context: timers.reset(), order=0),
+            DebugButton(lambda context: "{}".format("ON" if timers.enabled else "OFF"),
+                        lambda context: timers.toggle(), order=1),
+            order=1),
+        expanded=True,
+        order=3
+    ), group="Debug")
+
+    debug.add_element(DebugFold(
         "Render / GC",
         DebugText(lambda context: "render fps: {:.2f}".format(get_render_fps()), order=-3),
         DebugText(lambda context: "average render fps: {:.2f}".format(get_average_render_fps()), order=-2),
@@ -1106,3 +1286,4 @@ screen V1DebugScreenFNaSR(target_cps=15, elements_in_row=4, max_len_name_group=1
                             add content xalign 0.0
                             if show_separators:
                                 text "---------------" style "v1_text_16_style_FNaSR"
+

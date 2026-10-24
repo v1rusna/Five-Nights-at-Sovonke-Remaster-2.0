@@ -291,7 +291,8 @@ init python in v1FNaSR:
     def _v1_settings_debug(context):
         info = []
         for name in settings:
-            info.append(" {}: {}".format(name, settings.get_setting(name)))
+            value = settings.get_setting(name)
+            info.append(" {}: {}".format(name, value).replace("{", "{{").replace("}", "}}"))
         return "\n".join(info)
 
     debug.add_element(DebugSection(
