@@ -498,6 +498,9 @@ init -2 python in v1FNaSR:
             if context.get("location_system") is None:
                 context.location_system = require_system("location")
 
+            if context.get("cycle") is None:
+                context.cycle = require_system("cycle")
+
             if context.get("is_player_dead") is None:
                 context.is_player_dead = False
 
@@ -656,17 +659,12 @@ init -2 python in v1FNaSR:
 
         def _kill_player(self, context, player):
             if player.try_kill():
-                self._set_killed_player(context.enemy.tag)
+                self._set_killed_player(context)
                 context.is_player_dead = True
-                try:
-                    main_executor.submit_and_wait(renpy.jump, "v1_screamer_label_FNaSR")
-                except FNaSRControlTransferError:
-                    pass
+                context.cycle.request_transition("v1_night_screamer_label_FNaSR")
 
-        def _set_killed_player(self, enemy_tag):
-            history_murders = GlobalState.get("OpponentKilledPlayer")
-            if history_murders is None:
-                GlobalState.set("OpponentKilledPlayer", (enemy_tag, self._enemy_screamer, require_system("time").get_time(),))
+        def _set_killed_player(self, context):
+            GlobalState.set_if_absent("OpponentKilledPlayer", (context.enemy.tag, self._enemy_screamer, require_system("time").get_time(),))
 
         def get_debug_list_texts(self, enemy_context):
             return [

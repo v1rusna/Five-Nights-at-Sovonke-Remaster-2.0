@@ -582,6 +582,8 @@ init -1 python in v1FNaSR:
         def start(self):
             self._time = require_system("time")
             self._ns = require_system("night")
+            self._cycle = require_system("cycle")
+            self._stop = False
             ns = self._ns
             
             for enemy in get_created_enemy():
@@ -591,11 +593,15 @@ init -1 python in v1FNaSR:
                     enemy.enabled = False
 
         def tick_update(self, dt, rt):
+            if self._stop:
+                return
             if self._time.clock.hour >= self._ns.loaded.end_of_shift:
-                try:
-                    main_executor.submit_and_wait(renpy.jump, "v1_win_label_FNaSR")
-                except FNaSRControlTransferError:
-                    pass
+                self._stop = True
+                self._cycle.request_transition("v1_night_win_label_FNaSR")
+
+        def reset(self):
+            self._stop = False
+
 
 
     require_system("cycle").register(NightHandler())

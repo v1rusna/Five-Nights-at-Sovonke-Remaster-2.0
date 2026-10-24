@@ -173,6 +173,12 @@ init -5 python in v1FNaSR:
             self._fns = list()
             self._fns_lock = _threading.Lock()
 
+            self._transition_lock = _threading.Lock()
+            self._transition_requested = False
+            self._transition_label = None
+            self._transition_queued = False
+            self._run_finished = True
+
         @property
         def fps(self):
             return self._fps_controller.current_fps
@@ -252,6 +258,7 @@ init -5 python in v1FNaSR:
 
         def _handle_object_error(self, obj, exc_info):
             text = "Объект {0} вызвал исключение:\n{1}".format(repr(obj), "".join(_traceback.format_exception(*exc_info)))
+            log.error("Cycle | error", format_exc=text)
             self._error_log.append(text)
 
             on_error = getattr(obj, "on_error", None)
@@ -297,6 +304,11 @@ init -5 python in v1FNaSR:
                     raise FNaSRCycleError("Нельзя запустить GameCycle из состояния '{0}'".format(self._state))
                 self._state = CycleState.STARTING
                 self._stop_event.clear()
+                with self._transition_lock:
+                    self._transition_requested = False
+                    self._transition_label = None
+                    self._transition_queued = False
+                    self._run_finished = False
                 self._fatal_exc_info = None
 
             if threaded:
@@ -310,18 +322,51 @@ init -5 python in v1FNaSR:
 
         @main_thread_only
         def stop(self, wait=False, timeout=None):
-            error_text = None
             with self._state_lock:
-                if self._error_log:
-                    error_text = "\n".join(self._error_log)
                 if self._state == CycleState.STOPPED:
                     return
                 self._stop_event.set()
             if wait:
                 self.join(timeout)
 
-            if error_text:
-                renpy.log("FNaSR | GameCycle Errors:\n{}".format(error_text))
+        def request_transition(self, label):
+            if not is_string(label) or not label:
+                raise FNaSRTypeError("'label' должен быть непустой строкой, получено: {!r}".format(label))
+
+            submit_now = False
+            is_new_request = False
+
+            with self._transition_lock:
+                if not self._transition_requested:
+                    self._transition_requested = True
+                    self._transition_label = label
+                    is_new_request = True
+
+                    self._stop_event.set()
+
+                    if self._run_finished:
+                        self._transition_queued = True
+                        submit_now = True
+
+                elif self._run_finished and not self._transition_queued:
+                    label = self._transition_label
+                    self._transition_queued = True
+                    submit_now = True
+                else:
+                    return False
+
+            if submit_now:
+                self._submit_transition(label)
+
+            return is_new_request
+
+        def _submit_transition(self, label):
+            try:
+                main_executor.submit(renpy.jump, label)
+            except BaseException:
+                with self._transition_lock:
+                    self._transition_queued = False
+                raise
 
         @main_thread_only
         def join(self, timeout=None):
@@ -364,7 +409,6 @@ init -5 python in v1FNaSR:
                                     break
                                 if getattr(obj, "enabled", True):
                                     self._safe_call(obj, "tick_update", dt, self._refresh_time)
-
                         if self._fatal_exc_info is not None:
                             break
                 except Exception:
@@ -386,6 +430,18 @@ init -5 python in v1FNaSR:
 
             with self._fns_lock:
                 del self._fns[:]
+
+            transition_label = None
+
+            with self._transition_lock:
+                self._run_finished = True
+
+                if self._transition_requested and not self._transition_queued:
+                    transition_label = self._transition_label
+                    self._transition_queued = True
+
+            if transition_label is not None:
+                self._submit_transition(transition_label)
 
             if self._fatal_exc_info is not None:
                 self._error_log.append("GameCycle перешёл в FAILED:\n" +"".join(_traceback.format_exception(*self._fatal_exc_info)))

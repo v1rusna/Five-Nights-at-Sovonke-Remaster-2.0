@@ -2,7 +2,6 @@
 init python in v1FNaSR:
     @main_thread_only
     def stop_game_helper(is_win):
-        require_system("cycle").stop(True)
         audio.stop_all(0.5)
         screen_manager.hide_all_screen(True)
         require_system("night").finish(bool(is_win))
@@ -19,7 +18,12 @@ init python in v1FNaSR:
 
         return None, None, None
 
-label v1_win_label_FNaSR:
+label v1_night_stop_label_FNaSR:
+    $ v1FNaSR.stop_game_helper(False)
+    scene black
+    jump v1_main_menu_label_FNaSR
+
+label v1_night_win_label_FNaSR:
     $ v1FNaSR.stop_game_helper(True)
 
     scene black
@@ -28,7 +32,7 @@ label v1_win_label_FNaSR:
     $ v1FNaSR.GlobalState.clear()
     jump v1_main_menu_label_FNaSR
 
-label v1_screamer_label_FNaSR:
+label v1_night_screamer_label_FNaSR:
     $ v1FNaSR.stop_game_helper(False)
     scene black
     

@@ -1,39 +1,58 @@
 # other.rpy
 init -12 python in v1FNaSR:
+    import threading as _threading
     try:
         from collections.abc import MutableSequence as _MutableSequence
     except ImportError:
         from collections import MutableSequence as _MutableSequence
 
     class GlobalState(object):
+        lock = _threading.RLock()
         _flags = dict()
+
         @classmethod
         def get(cls, key, default=None):
-            return cls._flags.get(key, default)
+            with cls.lock:
+                return cls._flags.get(key, default)
 
         @classmethod
         def set(cls, key, value):
-            cls._flags[key] = value
+            with cls.lock:
+                cls._flags[key] = value
+
+        @classmethod
+        def set_if_absent(cls, key, value):
+            with cls.lock:
+                if key in cls._flags:
+                    return False
+
+                cls._flags[key] = value
+                return True
 
         @classmethod
         def clear(cls):
-            cls._flags.clear()
+            with cls.lock:
+                cls._flags.clear()
 
         @classmethod
         def get_len(cls):
-            return len(cls._flags)
+            with cls.lock:
+                return len(cls._flags)
 
         @classmethod
         def items(cls):
-            return iter_items(cls._flags)
+            with cls.lock:
+                return iter(tuple(iter_items(cls._flags)))
 
         @classmethod
         def values(cls):
-            return iter_values(cls._flags)
+            with cls.lock:
+                return iter(tuple(iter_values(cls._flags)))
 
         @classmethod
         def keys(cls):
-            return iter_keys(cls._flags)
+            with cls.lock:
+                return iter(tuple(iter_keys(cls._flags)))
 
     class BaseAI(object):
         def __init__(self):
@@ -189,6 +208,10 @@ init -12 python in v1FNaSR:
         def insert(self, index, value):
             self._elements.insert(index, value)
 
+        if PY2:
+            def clear(self):
+                del self._elements[:]
+
         def _add(self, item):
             if isinstance(item, (list, tuple)):
                 self._elements.extend(item)
@@ -240,4 +263,3 @@ init python in v1FNaSR:
         ),
         group="System"
     )
-

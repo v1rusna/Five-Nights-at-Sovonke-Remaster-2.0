@@ -139,10 +139,7 @@ init -5 python in v1FNaSR:
 
             renpy.log("FNaSR | %s:" % msg)
 
-            if not self._log_traceback:
-                return
-
-            if format_exc is None:
+            if self._log_traceback and format_exc is None:
                 exc_info = _sys.exc_info()
 
                 if exc_info[0] is None:

@@ -148,6 +148,8 @@ screen V1GameMenuSelectorFNaSR:
     zorder 999
     modal True
 
+    default cycle = v1FNaSR.require_system("cycle")
+
     default tt = v1FNaSR.TextTools
     default settings = False
     default is_running = v1FNaSR.require_system("night").is_running
@@ -159,8 +161,8 @@ screen V1GameMenuSelectorFNaSR:
 
     key ["K_ESCAPE", "mouseup_3"] action Return()
 
-    on "show" action Function(lambda: v1FNaSR.require_system("cycle").freeze())
-    on "hide" action Function(lambda: v1FNaSR.require_system("cycle").unfreeze())
+    on "show" action Function(cycle.freeze)
+    on "hide" action Function(cycle.unfreeze)
 
     add "black" alpha 0.5
 
@@ -185,7 +187,7 @@ screen V1GameMenuSelectorFNaSR:
                         background None xalign 0.5
                         hover_sound v1FNaSR.resources.sounds.ui["button_h"]
                         activate_sound v1FNaSR.resources.sounds.ui["button_c"]
-                        action SetScreenVariable("confirmation_action", [Return(), Function(renpy.jump, "v1_quit_FNaSR")]) # TODO: реализовать
+                        action SetScreenVariable("confirmation_action", [Return(), Function(cycle.request_transition, "v1_night_stop_label_FNaSR")])
                     
                 textbutton tt.text("Настройки"):
                     background None xalign 0.5

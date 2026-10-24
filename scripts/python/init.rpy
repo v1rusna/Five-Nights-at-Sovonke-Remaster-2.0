@@ -4,7 +4,7 @@ init python in v1FNaSR:
             def _on_enter_escape(self, entity):
                 if isinstance(entity, Player):
                     require_system("night").finish(False)
-                    renpy.jump("v1_quit_FNaSR")
+                    require_system("cycle").request_transition("v1_quit_FNaSR")
 
             self._locations = [
                 # Локации с камерой.

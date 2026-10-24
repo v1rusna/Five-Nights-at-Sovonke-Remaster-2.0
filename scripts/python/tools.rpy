@@ -22,6 +22,16 @@ init -1 python in v1FNaSR:
 
     class Tools(object):
         @staticmethod
+        def safe_call(fn, *args, **kwargs):
+            exceptions = kwargs.pop("exceptions", None)
+            if exceptions is None:
+                exceptions = (Exception,)
+            try:
+                fn(*args, **kwargs)
+            except exceptions:
+                pass
+
+        @staticmethod
         def switch_tablet(player, fast_switch=False):
             if player.is_open_tablet:
                 screen_manager.hide_screen("tablet", player=player, fast_switch=fast_switch)

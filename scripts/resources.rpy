@@ -45,9 +45,9 @@ init python in v1FNaSR:
                     build_image(original, width=1920, height=1080)
                 )
         for im_name in resources.images.Lena.list_files():
-            original = resources.images.bg[im_name]
+            original = resources.images.Lena[im_name]
             if is_string(original):
-                resources.images.bg.add_file(
+                resources.images.Lena.add_file(
                     im_name,
                     build_image(original, width=1920, height=1080)
                 )

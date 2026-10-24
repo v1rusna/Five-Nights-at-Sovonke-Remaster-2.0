@@ -1,4 +1,4 @@
-# mainExecutor.rpy  (заменяемая часть) 
+# mainExecutor.rpy
 init python in v1FNaSR:
     import threading as _threading
     import collections as _collections

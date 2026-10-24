@@ -50,7 +50,7 @@ init -5 python in v1FNaSR:
                 if name in self._settings:
                     raise FNaSRValueError("Настройка '{}' уже существует.".format(name))
 
-                if not hasattr(renpy.persistent, persistent_name):
+                if getattr(renpy.store.persistent, persistent_name) is None:
                     self._set_value(persistent_name, value)
 
                 self._settings[name] = self._copy(value)
@@ -63,8 +63,9 @@ init -5 python in v1FNaSR:
                 persistent_name = self._require(name)
 
                 try:
-                    if hasattr(renpy.persistent, persistent_name):
-                        delattr(renpy.persistent, persistent_name)
+                    delattr(renpy.store.persistent, persistent_name)
+                except AttributeError:
+                    pass
                 except Exception as e:
                     raise SettingError("Не удалось удалить настройку '{}': {}".format(name, e))
 
@@ -82,7 +83,7 @@ init -5 python in v1FNaSR:
             with self._lock:
                 if name not in self._settings:
                     return default
-                return self._copy(getattr(renpy.persistent, self._get_persistent_name(name), default))
+                return self._copy(getattr(renpy.store.persistent, self._get_persistent_name(name), default))
 
         @main_thread_only
         def set_setting(self, name, new_value):
@@ -130,7 +131,7 @@ init -5 python in v1FNaSR:
             self._check_name(name)
 
             with self._lock:
-                s = getattr(renpy.persistent, self._require(name))
+                s = getattr(renpy.store.persistent, self._require(name))
                 is_in = value in s
 
             return is_in
@@ -200,7 +201,7 @@ init -5 python in v1FNaSR:
             value = self._copy(value)
 
             try:
-                setattr(renpy.persistent, persistent_name, value)
+                setattr(renpy.store.persistent, persistent_name, value)
             except Exception as e:
                 raise SettingError("Не удалось изменить настройку '{}': {}".format(persistent_name, e))
 
@@ -214,7 +215,7 @@ init -5 python in v1FNaSR:
 
             with self._lock:
                 persistent_name = self._require(name)
-                s = getattr(renpy.persistent, persistent_name)
+                s = getattr(renpy.store.persistent, persistent_name)
 
                 fn = getattr(s, method_name, None)
                 if not callable(fn):
@@ -232,7 +233,7 @@ init -5 python in v1FNaSR:
             self._check_name(name)
 
             with self._lock:
-                s = getattr(renpy.persistent, self._require(name))
+                s = getattr(renpy.store.persistent, self._require(name))
 
             for method_name in method_names:
                 fn = getattr(s, method_name, None)
@@ -253,9 +254,9 @@ init -5 python in v1FNaSR:
                     raise FNaSRAttributeError("Settings object has no attribute {!r}".format(attr))
 
                 try:
-                    return self._copy(getattr(renpy.persistent, self._get_persistent_name(attr)))
+                    return self._copy(getattr(renpy.store.persistent, self._get_persistent_name(attr)))
                 except AttributeError:
-                    raise SettingError("'renpy.persistent' has no setting {!r}.".format(attr))
+                    raise SettingError("'renpy.store.persistent' has no setting {!r}.".format(attr))
 
         def __setattr__(self, attr, value):
             if attr in self.__slots__:
