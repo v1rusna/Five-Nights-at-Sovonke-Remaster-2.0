@@ -438,8 +438,8 @@ init python in v1FNaSR:
                     "sprite: {}".format(enemy.sprite_path),
                     "nights start: {}".format(enemy.nights_start),
                     "special night: {}".format(enemy.special_night),
-                    "location id: {}".format(enemy.current_location.id),
-                    "location name: {}".format(enemy.current_location.name),
+                    "location id: {}".format(enemy.current_location.id if enemy.current_location is not None else None),
+                    "location name: {}".format(enemy.current_location.name if enemy.current_location is not None else None),
                 ]
                 return color_text("\n".join(info), enemy.color)
 
@@ -495,7 +495,6 @@ init python in v1FNaSR:
                         debug.add_element(df, group="Enemy")
 
                     try:
-                        enemy.tick_update = timed(color_text("Enemy.{}.tick_update".format(enemy.tag), enemy.color), budget=lambda: 1.0 / require_system("cycle").fps_controller.target_fps, log_every=1)(enemy.tick_update)
                         enemy.update = timed(color_text("Enemy.{}.update".format(enemy.tag), enemy.color), budget=lambda: 1.0 / require_system("cycle").fps_controller.target_fps, log_every=1)(enemy.update)
                     except:
                         log.error("error set timed for {}".format(enemy.tag))

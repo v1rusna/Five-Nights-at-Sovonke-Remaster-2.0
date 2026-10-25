@@ -75,6 +75,9 @@ init python in v1FNaSR:
         def disable(self):
             self._active = False
 
+        def reset(self):
+            self._break_time = 0.0
+
 
 
 

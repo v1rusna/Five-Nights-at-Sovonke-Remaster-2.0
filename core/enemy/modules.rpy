@@ -78,9 +78,9 @@ init -2 python in v1FNaSR:
         return 1.0 + module.TIME_GAIN * (1.0 - _math.exp(-_hours(context) / module.TIME_TAU))
 
     def factor_not_watch(module, context):
-        if not isinstance(module, EnemyMoveModule):
-            return 1.0
         player = context.player_manager.current_player
+        if player.current_location is None:
+            return 1.0
         if player.is_open_tablet and player.current_location.tablet.selected == module.current_location_id:
             return 0.0
         return 1.0
@@ -282,6 +282,8 @@ init -2 python in v1FNaSR:
             if context.get("stop_moving") is None:
                 context.stop_moving = False
 
+            if context.get("move_wait_door_open") is None:
+                context.move_wait_door_open = False
 
         def start(self, context):
             path = self.generate_new_path()
@@ -301,16 +303,12 @@ init -2 python in v1FNaSR:
             if path:
                 self._move(context)
 
-        def update(self, context):
-            path = tuple(self._path)
-
-            if not path:
+        def update(self, context, dt):
+            if not self._path:
                 return
 
-            if self._cursor >= len(path) - 1:
+            if self._cursor >= len(self._path) - 1:
                 return
-
-            dt = 1.0 # context.enemy.current_refresh_time
 
             if self._stun_left > 0.0:
                 self._stun_left = max(0.0, self._stun_left - dt)
@@ -319,24 +317,27 @@ init -2 python in v1FNaSR:
             if context.stop_moving:
                 return
 
-            if self.move_change(context):
+            if self.move_change(context, dt):
                 self._idle = 0.0
 
                 self.step_forward()
 
                 if not self._move(context):
-                    self.generate_new_path()
-                    self._move(context)
+                    if not context.move_wait_door_open:
+                        self.generate_new_path()
+                        self._move(context)
 
                 context.enemy.set_align()
                 update_ui()
         
         def reset(self, context):
             context.stop_moving = False
-            super(EnemyMoveModule, self).reset()
+            super(EnemyMoveModule, self).reset(context)
 
         def _move(self, context, location=None):
             if location is None:
+                if self.current_location_id is None:
+                    return False
                 location = context.location_system.require_location(self.current_location_id)
             try:
                 context.enemy.move(location)
@@ -352,13 +353,7 @@ init -2 python in v1FNaSR:
 
             return rate
 
-        def move_change(self, context, consider_refresh_time=False):
-            dt = (
-                context.enemy.current_refresh_time
-                if consider_refresh_time
-                else 1.0
-            )
-
+        def move_change(self, context, dt):
             if dt <= 0.0:
                 return False
 
@@ -377,10 +372,7 @@ init -2 python in v1FNaSR:
 
             rate = min(rate, 1.0 / self.MIN_INTERVAL)
 
-            if consider_refresh_time:
-                return renpy.random.random() < 1.0 - _math.exp(-rate * context.enemy.current_refresh_time)
-            else:
-                return renpy.random.random() < 1.0 - _math.exp(-rate)
+            return renpy.random.random() < 1.0 - _math.exp(-rate * dt)
 
         def get_next_location_id(self):
             path = tuple(self._path)
@@ -446,7 +438,10 @@ init -2 python in v1FNaSR:
             "_r_t_m", "_sound_channel",
         )
 
+        optional_modules = (EnemyMoveModule,)
+
         def __init__(self, enemy_screamer, pre_attack=True, safety_time=0.5, random_time_murder=(4,6,), sound_channel="enemy_channel"):
+            super(EnemyAttackModule, self).__init__()
             if not isinstance(enemy_screamer, EnemyScreamer):
                 raise FNaSRTypeError("'enemy_screamer' должен быть 'EnemyScreamer', получено: {}".format(type(enemy_screamer)))
 
@@ -470,8 +465,6 @@ init -2 python in v1FNaSR:
 
             if not is_string(sound_channel):
                 raise FNaSRTypeError("'sound_channel' должен быть строкой, получено: {}".format(type(sound_channel)))
-
-            super(EnemyAttackModule, self).__init__()
 
             self._enemy_screamer = enemy_screamer
 
@@ -504,7 +497,7 @@ init -2 python in v1FNaSR:
             if context.get("is_player_dead") is None:
                 context.is_player_dead = False
 
-        def tick_update(self, context, dt):
+        def update(self, context, dt):
             if context.is_player_dead:
                 return
             player = context.player_manager.current_player
@@ -520,26 +513,27 @@ init -2 python in v1FNaSR:
             else:
                 self._current_safety_time = 0.0
 
-        def update(self, context):
-            if not self._pre_attack and self._attack_target_id is None:
-                return
-            if self._is_not_move_module:
-                return
-
-            if self._move_module is None:
-                for m in context.enemy.modules:
-                    if isinstance(m, EnemyMoveModule):
-                        self._move_module = m
-                        break
-                else:
-                    self._is_not_move_module = True
+            self._accumulated_time += dt
+            while self.interval():
+                if not self._pre_attack and self._attack_target_id is None:
+                    return
+                if self._is_not_move_module:
                     return
 
-            self._handle_attack(context)
+                if self._move_module is None:
+                    for m in context.enemy.modules:
+                        if isinstance(m, EnemyMoveModule):
+                            self._move_module = m
+                            break
+                    else:
+                        self._is_not_move_module = True
+                        return
+
+                self._handle_attack(context)
 
         def reset(self, context):
             context.is_player_dead = False
-            super(EnemyAttackModule, self).reset()
+            super(EnemyAttackModule, self).reset(context)
 
         def _handle_attack(self, context):
             if self._handle_attack_target_id(context):
@@ -650,12 +644,13 @@ init -2 python in v1FNaSR:
             if self._murder_countdown is None:
                 self._murder_countdown = self._get_time_murder()
 
-            if self._murder_countdown:
-                self._murder_countdown -= 1
+            self._murder_countdown -= 1
+
+            if self._murder_countdown > 0:
                 return False
-            else:
-                self._murder_countdown = None
-                return True
+
+            self._murder_countdown = None
+            return True
 
         def _kill_player(self, context, player):
             if player.try_kill():
@@ -675,7 +670,7 @@ init -2 python in v1FNaSR:
             ]
 
     class EnemySilentAttackModule(EnemyAttackModule):
-        __slots__ = ("_silent_locations",)
+        __slots__ = ("_silent_locations", "_replaced",)
 
         def __init__(self, enemy_screamer, silent_locations=None, **kwargs):
             super(EnemySilentAttackModule, self).__init__(enemy_screamer, **kwargs)
@@ -704,9 +699,9 @@ init -2 python in v1FNaSR:
             self._silent_locations = normalized
             self._setattr("_replaced", False)
 
-        def tick_update(self, context, dt):
+        def update(self, context, dt):
             self._replace_image(context)
-            super(EnemySilentAttackModule, self).tick_update(context, dt)
+            super(EnemySilentAttackModule, self).update(context, dt)
 
         def _handle_attack(self, context):
             if self._handle_attack_target_id(context):
@@ -736,6 +731,11 @@ init -2 python in v1FNaSR:
             else:
                 main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
             self._attack(context)
+
+        def _loss_attack(self, context):
+            super(EnemySilentAttackModule, self)._loss_attack(context)
+            if renpy.random.random() < 0.01:
+                main_executor.submit(audio.play, renpy.store.sfx_knock_glass, self._sound_channel)
 
         def _finish_attack(self, context):
             if self._attack_target_id is not None:
@@ -783,4 +783,71 @@ init -2 python in v1FNaSR:
                 "replaced: {}".format(self._replaced)
             ]
 
+    class EnemyAssistantModule(EnemyModule):
+        optional_modules = (EnemyMoveModule,)
+
+        def __init__(
+            self,
+            assistant_fn,
+            condition_withdrawal_fn = None,
+            withdrawal_fn = None,
+            time_until_assistance=0.0,
+        ):
+            super(EnemyAssistantModule, self).__init__()
+
+            if condition_withdrawal_fn is None:
+                condition_withdrawal_fn = _noop
+            if withdrawal_fn is None:
+                withdrawal_fn = _noop
+            if not callable(assistant_fn):
+                raise FNaSRTypeError("'assistant_fn' должен быть вызываемым, получено: {}".format(type(assistant_fn)))
+            if not callable(condition_withdrawal_fn):
+                raise FNaSRTypeError("'condition_withdrawal_fn' должен быть вызываемым, получено: {}".format(type(condition_withdrawal_fn)))
+            if not callable(withdrawal_fn):
+                raise FNaSRTypeError("'withdrawal_fn' должен быть вызываемым, получено: {}".format(type(withdrawal_fn)))
+            if not is_number(time_until_assistance) or time_until_assistance < 0:
+                raise FNaSRTypeError("'time_until_assistance' должен быть положительным числом, получено: {}".format(type(time_until_assistance)))
+
+            self._assistant_fn = assistant_fn
+            self._condition_withdrawal_fn = condition_withdrawal_fn
+            self._withdrawal_fn = withdrawal_fn
+            self._setattr("_time_until_assistance", float(time_until_assistance))
+            self._setattr("_current_time", 0.0)
+            self._setattr("_move_module", None)
+            self._setattr("_flags", dict())
+
+        def set_flag(self, key, value):
+            if not is_string(key):
+                raise FNaSRTypeError("'key' должен быть строкой, получено: {}".format(type(key)))
+            self._flags[key] = value
+
+        def get_flag(self, key, default=None):
+            if not is_string(key):
+                raise FNaSRTypeError("'key' должен быть строкой, получено: {}".format(type(key)))
+            return self._flags.get(key, default)
+
+        def start(self, context):
+            for m in context.enemy.modules:
+                if isinstance(m, EnemyMoveModule):
+                    self._move_module = m
+                    context.move_wait_door_open = True
+                    break
+
+        def update(self, context, dt):
+            if self._move_module is None:
+                return
+
+            if not self._move_module.is_last:
+                return
+
+            if self._condition_withdrawal_fn(self, context):
+                self._withdrawal_fn(self, context)
+                self._current_time = 0.0
+                return
+
+            self._current_time += dt
+
+            if self._current_time >= self._time_until_assistance:
+                self._current_time -= self._time_until_assistance
+                self._assistant_fn(self, context)
 

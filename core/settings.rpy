@@ -298,8 +298,19 @@ init python in v1FNaSR:
 
     debug.add_element(
         DebugSection(
-            DebugText(lambda context: "Настроек: {}".format(len(settings)), style="v1_text_16_style_FNaSR"),
-            DebugText(_v1_settings_debug),
+            DebugText(
+                lambda context: "Настроек: {}".format(len(settings)),
+                style="v1_text_16_style_FNaSR"
+            ),
+            *[
+                DebugButton(
+                    lambda context, name=name: " {}: {}".format(
+                        name, settings.get_setting(name)
+                    ).replace("{", "{{").replace("}", "}}"),
+                    lambda context, name=name: settings.reset_setting(name)
+                )
+                for name in settings
+            ],
             order=4
         ),
         group="System"

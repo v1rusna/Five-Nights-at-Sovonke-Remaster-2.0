@@ -538,7 +538,8 @@ init -5 python in v1FNaSR:
                     clicked=self._clicked,
                     xalign=0.0,
                     style=self._style,
-                    text_style=self._text_style
+                    text_style=self._text_style,
+                    text_substitute=False
                 )
 
             return self._renpy_obj
@@ -940,7 +941,7 @@ init -5 python in v1FNaSR:
             self._fps_timestamps = list()
             self._fps = 0.0
 
-            self._active = True
+            self._active = False
 
             self._solo = True
 
@@ -983,7 +984,7 @@ init -5 python in v1FNaSR:
         def enable_input_mode(self):
             self._input_mode = True
 
-        def disenable_input_mode(self):
+        def disable_input_mode(self):
             self._input_mode = False
 
         def set_query(self, text):
@@ -1174,7 +1175,7 @@ init python in v1FNaSR:
             DebugText(lambda context: "calls per second: {}".format(debug.calls_per_second), style="v1_text_16_style_FNaSR"),
             DebugText(_text_count_element_states),
             DebugButton(
-                lambda context: "Debug update: {}".format("{color=#0ac80a}active{/color}" if debug.is_activity else "{color=#c80a0a}inactive{/color}"),
+                lambda context: "Debug restart interaction: {}".format("{color=#0ac80a}active{/color}" if debug.is_activity else "{color=#c80a0a}inactive{/color}"),
                 _button_debug_activate
             ),
             expanded=True
@@ -1226,7 +1227,7 @@ init python in v1FNaSR:
     del _text_count_element_states
     del _v1_debug_screen_callback
 
-screen V1DebugScreenFNaSR(target_cps=15, elements_in_row=4, max_len_name_group=10, panel_width=0.3, panel_height=0.8, panel_background=None, scroll_drag=False, show_search=True, show_separators=False):
+screen V1DebugScreenFNaSR(target_cps=10, elements_in_row=4, max_len_name_group=10, panel_width=0.3, panel_height=0.8, panel_background=None, scroll_drag=False, show_search=True, show_separators=False):
     zorder 100
     default target_dt = v1FNaSR.get_target_dt(target_cps)
     default show_menu = True
@@ -1258,8 +1259,7 @@ screen V1DebugScreenFNaSR(target_cps=15, elements_in_row=4, max_len_name_group=1
                     hbox:
                         spacing 8
                         if v1FNaSR.debug.is_input_mode:
-                            key "game_menu" action Function(v1FNaSR.debug.disenable_input_mode)
-                            key "K_KP_ENTER" action Function(v1FNaSR.debug.disenable_input_mode)
+                            key ["K_ESCAPE", "mouseup_3"] action Function(v1FNaSR.debug.disable_input_mode)
                             text "Поиск:" style "v1_text_16_style_FNaSR"
                             input:
                                 value v1FNaSR.debug_query_input

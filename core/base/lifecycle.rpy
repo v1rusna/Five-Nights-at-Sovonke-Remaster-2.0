@@ -1,5 +1,6 @@
 # lifecycle.rpy
 init -7 python in v1FNaSR:
+
     class BaseHook(object):
         """
         Базовый класс для хуков жизненного цикла, выполняемых при запуске и завершении работы FNaSR.
@@ -146,6 +147,66 @@ init -7 python in v1FNaSR:
         with _store_lock:
             return int(order) in _store["quit_fn"]
 
+    def add_key(event, key):
+        if not is_string(event):
+            raise FNaSRTypeError("'event' должен быть строкой, получено: {}".format(type(event)))
+        if not is_string(key) and not isinstance(key, (list, tuple)):
+            raise FNaSRTypeError("'key' должен быть строкой, списком или кортежем, получено: {}".format(type(key)))
+
+        keys = [key] if is_string(key) else list(key)
+        for k in keys:
+            if not is_string(k):
+                raise FNaSRTypeError("Каждый элемент 'key' должен быть строкой, получено: {}".format(type(k)))
+
+        with _store_lock:
+            current = _store["keymap"].setdefault(event, [])
+
+            for k in keys:
+                if k not in current:
+                    current.append(k)
+
+    def remove_key(event, key):
+        if not is_string(event):
+            raise FNaSRTypeError("'event' должен быть строкой, получено: {}".format(type(event)))
+        if not is_string(key) and not isinstance(key, (list, tuple)):
+            raise FNaSRTypeError("'key' должен быть строкой, списком или кортежем, получено: {}".format(type(key)))
+
+        keys = [key] if is_string(key) else list(key)
+        for k in keys:
+            if not is_string(k):
+                raise FNaSRTypeError("Каждый элемент 'key' должен быть строкой, получено: {}".format(type(k)))
+
+        with _store_lock:
+            if event not in _store["keymap"]:
+                return
+
+            for k in keys:
+                try:
+                    _store["keymap"][event].remove(k)
+                except ValueError:
+                    pass
+
+    def update_key_cache():
+        with _store_lock:
+            if "config_keymap" not in _store["old"]:
+                raise FNaSRException("Стандартный keymap не был сохранен.")
+
+        keymap = renpy.store.config.keymap
+        disabled_keymap = dict((name, []) for name in keymap)
+        default_keymap = getattr(renpy.store.config, "default_keymap", {})
+
+        for name in default_keymap:
+            disabled_keymap[name] = []
+
+        with _store_lock:
+            disabled_keymap.update(
+                (name, list(keys))
+                for name, keys in _store["keymap"].items()
+            )
+        
+        renpy.store.config.keymap = disabled_keymap
+        renpy.display.behavior.clear_keymap_cache()
+
 
     def start_mod():
         if renpy.game.context().init_phase:
@@ -179,6 +240,10 @@ init -7 python in v1FNaSR:
             _store["old"]["config_window_title"] = renpy.store.config.window_title
             _store["old"]["config_name"] = renpy.store.config.name
             _store["old"]["config_version"] = renpy.store.config.version
+            _store["old"]["config_keymap"] = dict(
+                (name, list(keys))
+                for name, keys in renpy.store.config.keymap.items()
+            )
 
         try:
             renpy.store._errorhandling.ignore = False
@@ -222,7 +287,9 @@ init -7 python in v1FNaSR:
         renpy.store.config.has_quicksave = False
         renpy.store.config.window_title = "Пять Ночей в Совёнке Remaster"
         renpy.store.config.name = "FNaSR"
-        renpy.store.config.version = "v19.09.2026"
+        renpy.store.config.version = "v25.10.2026"
+
+        update_key_cache()
 
         renpy.store.night_time()
         renpy.store.persistent.sprite_time = "night"
@@ -274,6 +341,13 @@ init -7 python in v1FNaSR:
             renpy.store.config.window_title =        _store["old"]["config_window_title"]
             renpy.store.config.name =                _store["old"]["config_name"]
             renpy.store.config.version =             _store["old"]["config_version"]
+
+            renpy.store.config.keymap = dict(
+                (name, list(keys))
+                for name, keys in _store["old"]["config_keymap"].items()
+            )
+
+        renpy.display.behavior.clear_keymap_cache()
 
         try:
             renpy.store._errorhandling.ignore = True

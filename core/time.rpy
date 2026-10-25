@@ -131,6 +131,7 @@ init python in v1FNaSR:
             self._setattr("_error_timers", dict())
             self._setattr("_total_hours", 0)
             self._setattr("_hour_time", 89)
+            self._setattr("_speed_cycle", 1.0)
 
         @property
         def clock(self):
@@ -154,7 +155,7 @@ init python in v1FNaSR:
 
         @property
         def hour_time(self):
-            return float(self._hour_time * self.current_refresh_time)
+            return float(self._hour_time * self._speed_cycle)
 
         @hour_time.setter
         def hour_time(self, value):
@@ -218,24 +219,18 @@ init python in v1FNaSR:
         def start(self):
             self._error_timers.clear()
 
-        def tick_update(self, dt, refresh_time):
-            self.current_refresh_time = refresh_time
-            self.update(dt)
-
         def update(self, dt):
             new_status = False
+            hour_time = self.hour_time
             self._accumulated_time += dt
 
-            hour_time = self.hour_time
-
-            while self._accumulated_time >= hour_time:
-                self._accumulated_time -= hour_time
+            while self.interval(hour_time):
                 self._clock.next_hour()
                 self._total_hours += 1
                 new_status = True
 
-            if new_status:
-                update_ui()
+                if new_status:
+                    update_ui()
 
             for timer in tuple(self._timers):
                 if timer in self._error_timers or timer.is_worked:

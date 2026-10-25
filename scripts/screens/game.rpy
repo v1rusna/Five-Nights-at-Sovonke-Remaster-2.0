@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 # game.rpy
 screen V1BaseUIScreenFNaSR:
     key "K_a" action NullAction()
-    key ["K_ESCAPE", "mouseup_3"] action ShowMenu("V1GameMenuSelectorFNaSR")
+    key "K_ESCAPE" action Show("V1GameMenuSelectorFNaSR", transition=dspr)
 
 screen V1InfoNightScreenFNaSR(player=None, night_system=None):
     default ns = night_system if night_system is not None else v1FNaSR.require_system("night")

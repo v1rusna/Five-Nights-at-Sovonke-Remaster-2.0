@@ -106,7 +106,6 @@ init -5 python in v1FNaSR:
             
             self._setattr("_accumulated_time", 0.0)
             self._setattr("_enabled", True)
-            self.current_refresh_time = 0.0
 
         @property
         def enabled(self):
@@ -119,36 +118,29 @@ init -5 python in v1FNaSR:
         def start(self):
             pass
 
-        def update(self):
+        def update(self, dt):
             pass
 
-        def tick_update(self, dt, refresh_time):
-            self.current_refresh_time = refresh_time
-            self._accumulated_time += dt
+        def interval(self, seconds=1.0):
+            if seconds <= 0:
+                raise FNaSRCycleError("'seconds' must be strictly positive.")
 
-            while self._consume_refresh(refresh_time):
-                self.update()
-
-        def _consume_refresh(self, refresh_time):
-            if refresh_time <= 0:
-                raise FNaSRCycleError("'refresh_time' must be strictly positive.")
-
-            if self._accumulated_time < refresh_time:
+            if self._accumulated_time < seconds:
                 return False
 
-            self._accumulated_time -= refresh_time
+            self._accumulated_time -= seconds
             return True
 
         def on_error(self, exc_info):
             pass
 
     class GameCycle(object):
-        def __init__(self, fps_controller, refresh_time=1.0,
+        def __init__(self, fps_controller, speed_cycle=1.0,
                     error_policy=ErrorPolicy.DISABLE_OBJECT,
                     max_consecutive_errors=1):
 
             self._fps_controller = fps_controller
-            self._refresh_time = refresh_time
+            self._speed_cycle = speed_cycle
 
             self._error_policy = error_policy
             self._max_consecutive_errors = max_consecutive_errors
@@ -188,23 +180,23 @@ init -5 python in v1FNaSR:
             return self._fps_controller
 
         @property
-        def refresh_time(self):
-            return self._refresh_time
+        def speed_cycle(self):
+            return self._speed_cycle
 
-        @refresh_time.setter
-        def refresh_time(self, value):
+        @speed_cycle.setter
+        def speed_cycle(self, value):
             value = float(value)
 
             if value <= 0:
-                raise FNaSRCycleError("'refresh_time' must be strictly positive.")
+                raise FNaSRCycleError("'speed_cycle' must be strictly positive.")
 
-            self._refresh_time = value
+            self._speed_cycle = value
 
         # ---- object registry -------------------------------------------------
 
         def register(self, obj):
-            if not hasattr(obj, "tick_update"):
-                raise FNaSRAttributeError("объект '{}' должен иметь метод 'tick_update'".format(repr(obj)))
+            if not hasattr(obj, "update"):
+                raise FNaSRAttributeError("объект '{}' должен иметь метод 'update'".format(repr(obj)))
             with self._objects_lock:
                 with self._state_lock:
                     running = self._state != CycleState.STOPPED
@@ -299,17 +291,24 @@ init -5 python in v1FNaSR:
         @main_thread_only
         def start(self, threaded=True):
             with self._state_lock:
-                self._error_log.clear()
                 if self._state != CycleState.STOPPED:
-                    raise FNaSRCycleError("Нельзя запустить GameCycle из состояния '{0}'".format(self._state))
+                    raise FNaSRCycleError("Нельзя запустить GameCycle из состояния '{}'".format(self._state))
+
+                with self._transition_lock:
+                    if not self._run_finished:
+                        raise FNaSRCycleError("Предыдущий запуск GameCycle ещё не завершён.")
+
                 self._state = CycleState.STARTING
                 self._stop_event.clear()
+
                 with self._transition_lock:
                     self._transition_requested = False
                     self._transition_label = None
                     self._transition_queued = False
                     self._run_finished = False
+
                 self._fatal_exc_info = None
+                self._error_log.clear()
 
             if threaded:
                 self._run_in_current_thread = False
@@ -397,10 +396,12 @@ init -5 python in v1FNaSR:
                 self._fps_controller.reset()
 
                 try:
+                    UIUpdater.reset()
                     while not self._stop_event.is_set():
                         self._apply_pending_objects()
                         self._apply_fns()
                         dt = self._fps_controller.tick()
+                        dt_speed = dt * self._speed_cycle
                         is_frozen = self._freeze_event.is_set()
 
                         with timer_block("cycle tick", budget=lambda: 1.0 / self._fps_controller.target_fps):
@@ -408,10 +409,13 @@ init -5 python in v1FNaSR:
                                 if self._stop_event.is_set() or is_frozen:
                                     break
                                 if getattr(obj, "enabled", True):
-                                    self._safe_call(obj, "tick_update", dt, self._refresh_time)
+                                    self._safe_call(obj, "update", dt_speed)
+                        
+                        UIUpdater.draw(dt)
+
                         if self._fatal_exc_info is not None:
                             break
-                except Exception:
+                except BaseException:
                     self._fatal_exc_info = _sys.exc_info()
 
                 with self._state_lock:
@@ -450,26 +454,26 @@ init -5 python in v1FNaSR:
 
         # ---- Experimentally -----------------------------------------------
 
-        def add_refresh_time(self, value=0.1):
+        def add_speed_cycle(self, value=0.1):
             if not is_number(value):
                 raise FNaSRValueError("value должен быть числом, получено: {}".format(type(value)))
 
             if value > 0:
-                self.refresh_time += float(value)
+                self._speed_cycle += float(value)
 
-        def decrease_refresh_time(self, value=0.1):
+        def decrease_speed_cycle(self, value=0.1):
             if not is_number(value):
                 raise FNaSRValueError("value должен быть числом, получено: {}".format(type(value)))
 
             if value <= 0:
                 return
 
-            new_value = self._refresh_time - float(value)
+            new_value = self._speed_cycle - float(value)
 
             if new_value <= 0.1:
                 return
 
-            self._refresh_time = new_value
+            self._speed_cycle = new_value
 
         def call_in_cycle(self, fn):
             if not callable(fn):
@@ -523,9 +527,9 @@ init python in v1FNaSR:
             condition=lambda context: context.cycle is not None,
         ),
         DebugRow(
-            DebugButton(lambda context: "-", lambda context: context.cycle.decrease_refresh_time()),
-            DebugText(lambda context: "refresh time: {}".format(context.cycle.refresh_time)),
-            DebugButton(lambda context: "+", lambda context: context.cycle.add_refresh_time()),
+            DebugButton(lambda context: "-", lambda context: context.cycle.decrease_speed_cycle()),
+            DebugText(lambda context: "speed cycle: {}".format(context.cycle.speed_cycle)),
+            DebugButton(lambda context: "+", lambda context: context.cycle.add_speed_cycle()),
         ),
         expanded=True,
         order=1

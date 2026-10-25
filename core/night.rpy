@@ -592,7 +592,7 @@ init -1 python in v1FNaSR:
                 if ns.loaded.id not in enemy.special_night and enemy.nights_start < ns.get_position(ns.loaded):
                     enemy.enabled = False
 
-        def tick_update(self, dt, rt):
+        def update(self, dt):
             if self._stop:
                 return
             if self._time.clock.hour >= self._ns.loaded.end_of_shift:

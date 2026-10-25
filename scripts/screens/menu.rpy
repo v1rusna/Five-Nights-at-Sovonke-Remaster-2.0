@@ -1,5 +1,4 @@
-
-
+# menu.rpy
 screen V1MainMenuFrameFNaSR(time="23:57", show_elements=True):
     default mm = v1FNaSR.MainMenuTools
     default tt = v1FNaSR.TextTools
@@ -158,8 +157,9 @@ screen V1GameMenuSelectorFNaSR:
 
     default bar_null = Frame(v1FNaSR.resources.images.other["bar_null"],36,36)
     default bar_full = Frame(v1FNaSR.resources.images.other["bar_full"],36,36)
+    default hide_gms = Hide("V1GameMenuSelectorFNaSR", transition=dspr)
 
-    key ["K_ESCAPE", "mouseup_3"] action Return()
+    key ["K_ESCAPE", "mouseup_3"] action hide_gms
 
     on "show" action Function(cycle.freeze)
     on "hide" action Function(cycle.unfreeze)
@@ -174,20 +174,20 @@ screen V1GameMenuSelectorFNaSR:
     vbox align(0.5, 0.5) spacing 15:
         if confirmation_action is None:
             if not settings:
-                textbutton tt.text("Продолжить") background None xalign 0.5 hover_sound v1FNaSR.resources.sounds.ui["button_h"] activate_sound v1FNaSR.resources.sounds.ui["button_c"] action Return()
+                textbutton tt.text("Продолжить") background None xalign 0.5 hover_sound v1FNaSR.resources.sounds.ui["button_h"] activate_sound v1FNaSR.resources.sounds.ui["button_c"] action hide_gms
 
                 if is_running:
                     textbutton tt.text("Начать ночь заново"):
                         background None xalign 0.5
                         hover_sound v1FNaSR.resources.sounds.ui["button_h"]
                         activate_sound v1FNaSR.resources.sounds.ui["button_c"]
-                        action SetScreenVariable("confirmation_action", [Return(), Function(v1FNaSR.Tools.restart_night, loaded)])
+                        action SetScreenVariable("confirmation_action", [hide_gms, Function(v1FNaSR.Tools.restart_night, loaded)])
 
                     textbutton tt.text("В меню"):
                         background None xalign 0.5
                         hover_sound v1FNaSR.resources.sounds.ui["button_h"]
                         activate_sound v1FNaSR.resources.sounds.ui["button_c"]
-                        action SetScreenVariable("confirmation_action", [Return(), Function(cycle.request_transition, "v1_night_stop_label_FNaSR")])
+                        action SetScreenVariable("confirmation_action", [hide_gms, Function(cycle.request_transition, "v1_night_stop_label_FNaSR")])
                     
                 textbutton tt.text("Настройки"):
                     background None xalign 0.5
@@ -199,7 +199,7 @@ screen V1GameMenuSelectorFNaSR:
                     background None xalign 0.5
                     hover_sound v1FNaSR.resources.sounds.ui["button_h"]
                     activate_sound v1FNaSR.resources.sounds.ui["button_c"]
-                    action SetScreenVariable("confirmation_action", [Return(), Function(renpy.jump, "v1_quit_FNaSR")])
+                    action SetScreenVariable("confirmation_action", [hide_gms, Function(renpy.jump, "v1_quit_FNaSR")])
             else:
                 for volume_type, label in (("music volume", "Музыка"), ("sound volume", "Звуки"), ("voice volume", "Эмбиент")):
                     add tt.text(label) xalign 0.5

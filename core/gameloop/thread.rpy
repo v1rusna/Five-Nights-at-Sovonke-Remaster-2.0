@@ -95,14 +95,9 @@ init -6 python in v1FNaSR:
             return obj(*args, **kwargs)
         return wrapper
 
-    def update_ui():
-        if is_main_thread():
-            renpy.restart_interaction()
-        else:
-            main_executor.submit(renpy.restart_interaction)
-
     start_mod = main_thread_only(start_mod)
     quit_mod = main_thread_only(quit_mod)
+    update_key_cache = main_thread_only(update_key_cache)
 
     def _wrapped_fn():
         _store["old"]["renpy_show"] = renpy.show

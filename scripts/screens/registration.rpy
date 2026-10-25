@@ -53,7 +53,7 @@ init python:
                 renpy.show_screen(screen_names[1], player=player, move_to=move_to, speed=speed, **kwargs)
 
     v1FNaSR.screen_manager.register_screen("tablet", ["_v1_show_camera_map_screen_FNaSR", "V1CameraMapScreenFNaSR"], callback=_v1_tablet_screen_callback)
-    v1FNaSR.screen_manager.register_screen("game_interface", ["V1BaseUIScreenFNaSR", "V1MainGameInterfaceFNaSR"])
+    v1FNaSR.screen_manager.register_screen("game_interface", "V1MainGameInterfaceFNaSR")
     v1FNaSR.screen_manager.register_screen("move", ["V1MoveScreenFNaSR", "V1MovingAnotherLocationFNaSR"], callback=_v1_move_screen_callback)
 
     del _v1_tablet_screen_callback

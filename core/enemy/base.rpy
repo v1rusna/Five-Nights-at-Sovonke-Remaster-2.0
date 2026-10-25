@@ -21,15 +21,17 @@ init -3 python in v1FNaSR:
         return renpy.store.Transform(sprite, matrixcolor=renpy.store.SaturationMatrix(0.4))
 
     class EnemyModule(ResetLogic):
-        __slots__ = ("_error", "_freeze",)
+        __slots__ = ("_error", "_freeze", "_accumulated_time",)
 
         dependent_modules = tuple()
         conflicting_modules = tuple()
+        optional_modules = tuple()
 
         def __init__(self):
             super(EnemyModule, self).__init__()
             self._error = None
-            self._freeze = False
+            self._setattr("_freeze", False)
+            self._setattr("_accumulated_time", 0.0)
 
         @property
         def error(self):
@@ -60,12 +62,22 @@ init -3 python in v1FNaSR:
         def start(self, context):
             pass
 
-        def tick_update(self, context, dt):
+        def update(self, context, dt):
             pass
 
-        def update(self, context):
-            pass
-        
+        def reset(self, context):
+            super(EnemyModule, self).reset()
+
+        def interval(self, seconds=1.0):
+            if seconds <= 0:
+                raise FNaSRCycleError("'seconds' must be strictly positive.")
+
+            if self._accumulated_time < seconds:
+                return False
+
+            self._accumulated_time -= seconds
+            return True
+
         def get_debug_list_texts(self, enemy_context):
             return tuple()
 
@@ -134,21 +146,6 @@ init -3 python in v1FNaSR:
             self._types_modules.add(type_module)
 
         def remove_module(self, module):
-            try:
-                self._modules.remove(module)
-            except ValueError as e:
-                raise FNaSRValueError(e)
-
-            type_module = type(module)
-            has_same_type = any(
-                type(other) is type_module
-                for other in self._modules
-            )
-
-            if not has_same_type:
-                self._types_modules.discard(type_module)
-
-        def remove_module(self, module):
             if module not in self._modules:
                 raise FNaSRValueError("Модуль '{}' не подключён к противнику.".format(repr(module)))
 
@@ -176,23 +173,11 @@ init -3 python in v1FNaSR:
                     continue
                 self._safe_call(module, "start", self._context)
 
-        def tick_update(self, dt, refresh_time):
-            self.current_refresh_time = refresh_time
-            self._accumulated_time += dt
-
+        def update(self, dt):
             for module in self._modules:
                 if module.error or module.freezing:
                     continue
-                self._safe_call(module, "tick_update", self._context, dt)
-
-            while self._consume_refresh(refresh_time):
-                self.update()
-
-        def update(self):
-            for module in self._modules:
-                if module.error or module.freezing:
-                    continue
-                self._safe_call(module, "update", self._context)
+                self._safe_call(module, "update", self._context, dt)
 
         def reset(self):
             for module in self._modules:

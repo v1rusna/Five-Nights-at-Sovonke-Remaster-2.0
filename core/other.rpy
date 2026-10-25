@@ -252,6 +252,74 @@ init -12 python in v1FNaSR:
         def __repr__(self):
             return "ElementContainer({})".format(self._elements)
 
+    class UIUpdater(object):
+        MIN_INTERVAL = 1.0 / 60.0
+        MAX_INTERVAL = 1.0
+        DEFAULT_INTERVAL = 1.0 / 10.0
+
+        _interval = DEFAULT_INTERVAL
+        _new_interval = None
+
+        _time_since_update = MAX_INTERVAL
+
+        _ui_dirty = False
+
+        _lock = _threading.Lock()
+
+        @classmethod
+        def set_interval(cls, new_interval):
+            if is_number(new_interval):
+                raise FNaSRTypeError("'new_interval' должен быть числом, получено: {}".format(type(new_interval)))
+
+            new_interval = float(new_interval)
+
+            if not cls.MIN_INTERVAL <= new_interval <= cls.MAX_INTERVAL:
+                raise FNaSRValueError("'new_interval' должен быть в диапазоне от {} до {} секунд, получено: {}".format(cls.MIN_INTERVAL,cls.MAX_INTERVAL,new_interval))
+
+            with cls._lock:
+                cls._new_interval = new_interval
+
+        @classmethod
+        def update_ui(cls):
+            with cls._lock:
+                cls._ui_dirty = True
+
+        @classmethod
+        def draw(cls, dt):
+            with cls._lock:
+                if dt > 0:
+                    cls._time_since_update = min(cls._time_since_update + dt, cls.MAX_INTERVAL)
+
+                if cls._new_interval is not None:
+                    cls._interval = cls._new_interval
+                    cls._new_interval = None
+
+                if not cls._ui_dirty or cls._time_since_update < cls._interval:
+                    return
+
+                cls._ui_dirty = False
+                cls._time_since_update = 0.0
+
+            cls._restart_interaction()
+
+        @staticmethod
+        def _restart_interaction():
+            if is_main_thread():
+                renpy.restart_interaction()
+            else:
+                main_executor.submit(renpy.restart_interaction)
+
+        @classmethod
+        def reset(cls):
+            with cls._lock:
+                cls._interval = cls.DEFAULT_INTERVAL
+                cls._new_interval = None
+                cls._time_since_update = cls.MAX_INTERVAL
+                cls._ui_dirty = False
+
+    def update_ui():
+        UIUpdater.update_ui()
+
 init python in v1FNaSR:
     add_quit_fn(GlobalState.clear)
 

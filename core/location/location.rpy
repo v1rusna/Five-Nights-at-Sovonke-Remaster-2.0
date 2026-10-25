@@ -582,7 +582,6 @@ init python in v1FNaSR:
             def _action():
                 if tablet.selected != self._id:
                     tablet.select(self._id)
-                    tablet.safe_discharge(1)
                     audio.play(resources.sounds.sfx["blip3"],"sound")
 
                     player_system = get_system("player")
@@ -611,7 +610,7 @@ init python in v1FNaSR:
                 self._bulb.reset()
 
             if self._door is not None:
-                self._door.button.force_unclick()
+                self._door.reset()
 
             self.clear_substituted_image(all=True)
 

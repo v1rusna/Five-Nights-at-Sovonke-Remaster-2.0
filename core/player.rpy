@@ -13,6 +13,8 @@ init -1 python in v1FNaSR:
             magnitude_change_panic = int(magnitude_change_panic)
             if max_panic <= 0:
                 raise FNaSRValueError("'max_panic' cannot be less than or equal to zero")
+            if magnitude_change_panic < 0:
+                raise FNaSRValueError("'magnitude_change_panic' cannot be less than zero")
 
             self._id = to_text(id)
 
@@ -61,6 +63,8 @@ init -1 python in v1FNaSR:
 
         @property
         def has_door(self):
+            if self._current_location is None:
+                return False
             return self._current_location.door is not None
 
         @property
@@ -73,6 +77,8 @@ init -1 python in v1FNaSR:
 
         @property
         def has_bulb(self):
+            if self._current_location is None:
+                return False
             return self._current_location.bulb is not None
 
         @property
@@ -132,11 +138,16 @@ init -1 python in v1FNaSR:
             if not self.has_tablet:
                 raise FNaSRException("There is no tablet in the current location({})".format(self._current_location.id))
             self._open_tablet = True
-            self._current_location.tablet.safe_discharge(2)
+            self._current_location.tablet.is_open = True
             ambience_manager.sync_player(self)
 
         def close_tablet(self):
+            if self._current_location is None:
+                raise FNaSRValueError("The player is not in any location")
+            if not self.has_tablet:
+                raise FNaSRException("There is no tablet in the current location({})".format(self._current_location.id))
             self._open_tablet = False
+            self._current_location.tablet.is_open = False
             ambience_manager.sync_player(self)
 
         def switch_tablet(self):
@@ -146,7 +157,7 @@ init -1 python in v1FNaSR:
                 self.open_tablet()
 
         @timed("player.update", budget=lambda: 1.0 / max(require_system("cycle").fps_controller.target_fps, 1.0), log_every=1)
-        def update(self):
+        def update(self, dt):
             if self._died:
                 return
             
@@ -155,71 +166,73 @@ init -1 python in v1FNaSR:
             if location is None:
                 return
 
-            door = location.door
-            panic_step = self._magnitude_change_panic
-            panic_changed = False
+            self._accumulated_time += dt
+            while self.interval():
+                door = location.door
+                panic_step = self._magnitude_change_panic
+                panic_changed = False
 
-            if door is not None and not door.is_open:
-                panic_changed = True
-                self._panic += panic_step
+                if door is not None and not door.is_open:
+                    panic_changed = True
+                    self._panic += panic_step
 
-                if not self._is_play_heartbeat and self._panic >= self._max_panic / 2:
-                    self._is_play_heartbeat = True
-                    main_executor.submit(
-                        audio.play,
-                        renpy.store.sfx_head_heartbeat,
-                        "heartbeat",
-                        fadein=2
-                    )
-
-                if self._panic >= self._max_panic:
-                    if not self._rollback:
-                        self._rollback = True
+                    if not self._is_play_heartbeat and self._panic >= self._max_panic / 2:
+                        self._is_play_heartbeat = True
                         main_executor.submit(
                             audio.play,
-                            resources.sounds.sfx["panic_breathing_1"],
-                            "breathing",
+                            renpy.store.sfx_head_heartbeat,
+                            "heartbeat",
                             fadein=2
                         )
 
-                if self._rollback:
+                    if self._panic >= self._max_panic:
+                        if not self._rollback:
+                            self._rollback = True
+                            main_executor.submit(
+                                audio.play,
+                                resources.sounds.sfx["panic_breathing_1"],
+                                "breathing",
+                                fadein=2
+                            )
+
+                    if self._rollback:
+                        door.button.force_unclick()
+
+                elif self._panic > 0:
+                    panic_changed = True
+                    self._panic -= panic_step
+
+                    if self._is_play_heartbeat and self._panic < self._max_panic / 2:
+                        self._is_play_heartbeat = False
+                        main_executor.submit(
+                            audio.stop,
+                            "heartbeat",
+                            fadeout=2
+                        )
+
+                    if self._rollback and self._panic <= self._rollback_threshold:
+                        self._rollback = False
+                        main_executor.submit(
+                            audio.stop,
+                            "breathing",
+                            fadeout=2
+                        )
+
+                self._panic = min(max(self._panic, 0), self._max_panic)
+
+                if self._rollback and door is not None and not door.is_open:
                     door.button.force_unclick()
 
-            elif self._panic > 0:
-                panic_changed = True
-                self._panic -= panic_step
+                if self._open_tablet:
+                    tablet = self._current_location.tablet
 
-                if self._is_play_heartbeat and self._panic < self._max_panic / 2:
-                    self._is_play_heartbeat = False
-                    main_executor.submit(
-                        audio.stop,
-                        "heartbeat",
-                        fadeout=2
-                    )
+                    if tablet.out_battery:
+                        if screen_manager.has_screen("tablet"):
+                            main_executor.submit(screen_manager.hide_screen, "tablet", player=self)
+                        self.close_tablet()
 
-                if self._rollback and self._panic <= self._rollback_threshold:
-                    self._rollback = False
-                    main_executor.submit(
-                        audio.stop,
-                        "breathing",
-                        fadeout=2
-                    )
-
-            self._panic = min(max(self._panic, 0), self._max_panic)
-
-            if self._rollback and door is not None and not door.is_open:
-                door.button.force_unclick()
-
-            if self._open_tablet:
-                tablet = self._current_location.tablet
-
-                if tablet.out_battery:
-                    if screen_manager.has_screen("tablet"):
-                        main_executor.submit(screen_manager.hide_screen, "tablet", player=self)
-                    self.close_tablet()
-
-            if panic_changed:
-                update_ui()
+                if panic_changed:
+                    update_ui()
 
         def reset(self):
             super(Player, self).reset()
@@ -259,7 +272,16 @@ init -1 python in v1FNaSR:
             if id not in self._players:
                 raise FNaSRException("The character with ID '{}' does not exist".format(id))
 
-            player = self._players.pop(id)
+            player = self._players[id]
+
+            if self._current_player is player:
+                raise FNaSRException("Cannot remove the current player({}).".format(id))
+
+            cycle = require_system("cycle")
+            if cycle.is_registered(player):
+                cycle.unregister(player)
+
+            self._players.pop(id)
 
             if self._current_player is player:
                 if self._players:

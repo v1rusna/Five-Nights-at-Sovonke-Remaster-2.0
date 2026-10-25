@@ -16,6 +16,10 @@ init python in v1FNaSR:
             "_available_locations", "_selected_location_id",
             "_location_id"
         )
+
+        DEFAULT_DISCHARGE_SELECT = 1
+        DEFAULT_DISCHARGE_OPEN = 2
+        DEFAULT_DISCHARGE_FACTOR_OPEN = 1
         
         def __init__(self, tag, charge=1000, max_charge=1000, discharge=1):
             super(Tablet, self).__init__()
@@ -39,10 +43,13 @@ init python in v1FNaSR:
 
             self._tag = tag
 
+            self._setattr("_open", False)
+            self._setattr("_memory_open", False)
             self._setattr("_charge", charge)
             self._setattr("_max_charge", max_charge)
             self._setattr("_discharge", discharge)
             self._setattr("_selected_location_id", discharge)
+            self._setattr("_speed_cycle", discharge)
 
             self._available_locations = set()
 
@@ -89,14 +96,42 @@ init python in v1FNaSR:
         def registered_locations(self):
             return sorted(self._available_locations)
 
+        @property
+        def is_open(self):
+            return self._open
+
+        @is_open.setter
+        def is_open(self, value):
+            discharge = True
+            
+            if isinstance(value, tuple):
+                if len(value) >= 2:
+                    value, discharge = value[0], value[1]
+                elif len(value) == 1:
+                    value = value[0]
+                    
+            value = bool(value)
+            discharge = bool(discharge)
+            
+            if value:
+                if discharge:
+                    self.safe_discharge(self.DEFAULT_DISCHARGE_OPEN)
+                self._memory_open = True
+                
+            self._open = value
+
         def get_remaining_time(self):
             if self._charge <= 0:
                 return 0.0
 
-            if self._discharge <= 0:
+            discharge = self._discharge
+            if self._open:
+                discharge += self.DEFAULT_DISCHARGE_FACTOR_OPEN
+
+            if discharge <= 0:
                 return float('inf')
 
-            seconds_left = (self._charge / self._discharge) * self.current_refresh_time
+            seconds_left = (self._charge / discharge) * self._speed_cycle
             return seconds_left
 
         def get_formatted_time(self):
@@ -171,24 +206,31 @@ init python in v1FNaSR:
             for loc_id in tablet.registered_locations:
                 self.register(loc_id)
 
-        def select(self, location_id):
+        def select(self, location_id, discharge=True):
             location_id = int(location_id)
 
             if location_id not in self._available_locations:
                 raise FNaSRValueError("Location '{}' не зарегистрирован в планшете".format(location_id))
 
             self._selected_location_id = location_id
+            if discharge:
+                self.safe_discharge(self.DEFAULT_DISCHARGE_SELECT)
 
-        def update(self):
+        def update(self, dt):
             if self._discharge == 0:
                 return
 
             if self._charge <= _MIN_CHARGE:
                 return
 
-            self._charge = max(_MIN_CHARGE, min(self._max_charge, self._charge-self._discharge))
+            self._accumulated_time += dt
+            while self.interval():
+                self._charge = max(_MIN_CHARGE, min(self._max_charge, self._charge-self._discharge))
+                if self._open or self._memory_open:
+                    self._memory_open = False
+                    self.safe_discharge(self.DEFAULT_DISCHARGE_FACTOR_OPEN)
 
-            update_ui()
+                update_ui()
 
         def reset(self):
             if self._reset_to_default["_location_id"] != self._location_id:
