@@ -887,10 +887,14 @@ init -2 python in v1FNaSR:
             self._replaced = variant.light_image is not None or variant.dark_image is not None
 
         def get_debug_list_texts(self, enemy_context):
-            variants_text = ""
-            for loc_id, variants in iter_items(silent_locations)
+            lines = []
+            for loc_id, variants in iter_items(self._silent_locations):
+                lines.append(" {}: {}\n".format(loc_id, len(variants)))
+            #     lines.append(" - ({})\n".format(loc_id))
+            #     for variant in variants:
+            #         lines.append("  {}\n".format(repr(variant)))
             return super(EnemySilentAttackModule, self).get_debug_list_texts(enemy_context) + [
-                "silent locations: {}".format(self._silent_locations.keys()),
+                "silent locations:\n{}".format("".join(lines)),
                 "replaced: {}".format(self._replaced)
             ]
 

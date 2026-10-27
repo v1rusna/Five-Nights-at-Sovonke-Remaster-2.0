@@ -424,13 +424,13 @@ init python in v1FNaSR:
                                         -3: SilentImageVariant(resources.images.Lena["int_dining_hall_night_un"], resources.images.Lena["int_dining_hall_night_un"]), # TODO: Не хватает темного варианта
                                         -4: SilentImageVariant(resources.images.Lena["int_clubs_night_light_un"], resources.images.Lena["int_clubs_night_un"]),
                                         -5: [
-                                            SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un"], resources.images.Lena["int_music_club_mattresses_night_un"], change=50),
-                                            SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un2"], resources.images.Lena["int_music_club_mattresses_night_un2"], change=50)
+                                            SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un"], resources.images.Lena["int_music_club_mattresses_night_un"], chance=50),
+                                            SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un2"], resources.images.Lena["int_music_club_mattresses_night_un2"], chance=50)
                                         ],
                                         -8: SilentImageVariant(resources.images.Lena["int_library_night_light_un"], resources.images.Lena["int_library_night_un"]),
                                         -9: [
-                                            SilentImageVariant(resources.images.Lena["med_un1"], resources.images.Lena["med_un2"], change=50),
-                                            SilentImageVariant(resources.images.Lena["med_un1_2"], resources.images.Lena["med_un2_2"], change=50)
+                                            SilentImageVariant(resources.images.Lena["med_un1"], resources.images.Lena["med_un2"], chance=50),
+                                            SilentImageVariant(resources.images.Lena["med_un1_2"], resources.images.Lena["med_un2_2"], chance=50)
                                         ],
                                     }
                                 ),

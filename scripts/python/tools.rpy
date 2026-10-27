@@ -161,7 +161,7 @@ init -1 python in v1FNaSR:
         @classmethod
         def get_enemy(cls):
             if cls._show_enemy is None:
-                cls._show_enemy = renpy.random.choice(require_system("enemy").iter_current_group).sprite
+                cls._show_enemy = renpy.random.choice(list(require_system("enemy").iter_current_group)).sprite
             return cls._show_enemy
 
         @classmethod
