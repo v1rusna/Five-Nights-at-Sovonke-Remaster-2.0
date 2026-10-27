@@ -90,7 +90,7 @@ init -2 python in v1FNaSR:
         factor_night
     )
 
-    ALL_ENEMY_MOVING_FACTORS = (
+    BASE_ENEMY_MOVING_FACTORS = (
         factor_watched,
         factor_door,
         factor_external,
@@ -127,7 +127,7 @@ init -2 python in v1FNaSR:
 
         @staticmethod
         def generate_new_path_all_enemy():
-            for enemy in get_created_enemy():
+            for enemy in require_system("enemy").iter_current_group:
                 location = enemy.current_location
 
                 if location is None:
@@ -143,7 +143,7 @@ init -2 python in v1FNaSR:
             ignore_player=False,
             speed=1.0,
             start_factors=ALL_ENEMY_MOVING_START_FACTORS,
-            factors=ALL_ENEMY_MOVING_FACTORS
+            factors=BASE_ENEMY_MOVING_FACTORS
         ):
             super(EnemyMoveModule, self).__init__()
 
@@ -152,8 +152,10 @@ init -2 python in v1FNaSR:
             if end_location_id is not None:
                 end_location_id = _normalize_id(end_location_id)
 
-            if not is_number(speed) or speed < 0:
+            if not is_number(speed):
                 raise FNaSRTypeError("'speed' должен быть числом получено: {}".format(type(speed)))
+            if speed < 0:
+                raise FNaSRValueError("'speed' не может быть меньше нуля, получено: {}".format(speed))
 
             start_extra = list()
             if start_factors is not None:
@@ -169,7 +171,7 @@ init -2 python in v1FNaSR:
                         raise FNaSRTypeError("Фактор должен быть вызываемым, получено: {}".format(type(fn)))
                     extra.append(fn)
 
-            self._setattr("_path", [])
+            self._setattr("_path", list())
             self._setattr("_cursor", 0)
             self._setattr("_speed", float(speed))
             self._setattr("_idle", 0.0)
@@ -431,22 +433,111 @@ init -2 python in v1FNaSR:
                 "stop moving: {}".format(enemy_context.stop_moving)
             ]
 
-    class EnemyAttackModule(EnemyModule):
-        __slots__ = (
-            "_enemy_screamer", "_pre_attack", "_safety_time", "_current_safety_time",
-            "_move_module", "_is_not_move_module", "_attack_target_id", "_murder_countdown",
-            "_r_t_m", "_sound_channel",
-        )
 
-        optional_modules = (EnemyMoveModule,)
+    class EnemyAggressiveModule(EnemyModule):
+        __slots__ = ("_enemy_screamer", "_safety_time", "_current_safety_time",)
 
-        def __init__(self, enemy_screamer, pre_attack=True, safety_time=0.5, random_time_murder=(4,6,), sound_channel="enemy_channel"):
-            super(EnemyAttackModule, self).__init__()
+        conflicting_modules = tuple()
+
+        def __init__(self, enemy_screamer, safety_time=1.0):
+            super(EnemyAggressiveModule, self).__init__()
+
             if not isinstance(enemy_screamer, EnemyScreamer):
                 raise FNaSRTypeError("'enemy_screamer' должен быть 'EnemyScreamer', получено: {}".format(type(enemy_screamer)))
 
-            if not is_number(safety_time) or safety_time < 0:
-                raise FNaSRTypeError("'safety_time' должен быть положительным числом, получено: {}".format(type(safety_time)))
+            if not is_number(safety_time):
+                raise FNaSRTypeError("'safety_time' должен быть числом, получено: {}".format(type(safety_time)))
+            if safety_time < 0:
+                raise FNaSRValueError("'safety_time' должен быть положительным, получено: {}".format(safety_time))
+            safety_time = float(safety_time)
+
+            self._enemy_screamer = enemy_screamer
+            self._setattr("_safety_time", safety_time)
+            self._setattr("_record_safety_time", safety_time)
+            self._setattr("_current_safety_time", 0.0)
+
+        @property
+        def safety_time(self):
+            return self._safety_time
+
+        @safety_time.setter
+        def safety_time(self, value):
+            if not is_number(value):
+                raise FNaSRTypeError("'value' должен быть числом, получено: {}".format(type(value)))
+            if value < 0:
+                raise FNaSRValueError("'value' должен быть положительным, получено: {}".format(value))
+            self._safety_time = float(value)
+
+        def record_safety_time(self):
+            self._record_safety_time = self._safety_time
+
+        def reset_safety_time(self):
+            self._safety_time = self._record_safety_time
+
+        def get_current_safety_time(self):
+            "Получить safety_time с учётом времени анимации"
+            speed = GlobalState.get("moving_animation_speed", 1.0)
+            if speed > 0:
+                return self._safety_time + 1.8 / GlobalState.get("moving_animation_speed", 1.0)
+            return self._safety_time
+
+        def on_include(self, enemy):
+            context = enemy.context
+            
+            if context.get("player_manager") is None:
+                context.player_manager = require_system("player")
+
+            if context.get("cycle") is None:
+                context.cycle = require_system("cycle")
+
+            if context.get("is_player_dead") is None:
+                context.is_player_dead = False
+
+        def start(self, context):
+            self.record_safety_time()
+
+        def update(self, context, dt):
+            if context.is_player_dead:
+                return
+            player = context.player_manager.current_player
+            if player.current_location is None:
+                return
+            if context.enemy.current_location is None:
+                return
+            if player.current_location.id == context.enemy.current_location.id:
+                self._current_safety_time += dt
+                if self._current_safety_time >= self.get_current_safety_time():
+                    self._current_safety_time = 0.0
+                    self._kill_player(context, player)
+            else:
+                self._current_safety_time = 0.0
+
+        def _kill_player(self, context, player):
+            if player.try_kill():
+                self._set_killed_player(context)
+                context.is_player_dead = True
+                context.cycle.request_transition("v1_night_screamer_label_FNaSR")
+
+        def _set_killed_player(self, context):
+            GlobalState.set_if_absent("OpponentKilledPlayer", (context.enemy.tag, self._enemy_screamer, require_system("time").get_time(),))
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "net safety time: {}".format(self._safety_time),
+                "safety time: {}/{}".format(self._current_safety_time, self.get_current_safety_time()),
+            ]
+
+    class EnemyAttackModule(EnemyAggressiveModule):
+        __slots__ = (
+            "_pre_attack", "_move_module", "_is_not_move_module", "_attack_target_id",
+            "_murder_countdown", "_r_t_m", "_sound_channel",
+        )
+
+        dependent_modules = (EnemyMoveModule,)
+        conflicting_modules = tuple()
+
+        def __init__(self, enemy_screamer, pre_attack=True, random_time_murder=(4,6,), sound_channel="enemy_channel", **kwargs):
+            super(EnemyAttackModule, self).__init__(enemy_screamer=enemy_screamer, **kwargs)
 
             if not isinstance(random_time_murder, (list, tuple,)):
                 raise FNaSRTypeError("'random_time_murder' должен быть списком или кортежем, получено: {}".format(type(random_time_murder)))
@@ -466,19 +557,16 @@ init -2 python in v1FNaSR:
             if not is_string(sound_channel):
                 raise FNaSRTypeError("'sound_channel' должен быть строкой, получено: {}".format(type(sound_channel)))
 
-            self._enemy_screamer = enemy_screamer
-
             self._setattr("_pre_attack", bool(pre_attack))
-            self._setattr("_safety_time", float(safety_time))
-            self._setattr("_current_safety_time", 0.0)
             self._setattr("_move_module", None)
             self._setattr("_is_not_move_module", False)
             self._setattr("_attack_target_id", None)
             self._setattr("_murder_countdown", None)
             self._setattr("_r_t_m", tuple(random_time_murder))
             self._setattr("_sound_channel", sound_channel)
+            self._setattr("_old_safe_time", 1.5)
 
-        def get_safety_time(self):
+        def get_current_safety_time(self):
             "Получить safety_time с учётом времени анимации"
             return self._safety_time + 1.8 / GlobalState.get("moving_animation_speed", 1.0)
 
@@ -500,18 +588,8 @@ init -2 python in v1FNaSR:
         def update(self, context, dt):
             if context.is_player_dead:
                 return
-            player = context.player_manager.current_player
-            if player.current_location is None:
-                return
-            if context.enemy.current_location is None:
-                return
-            if player.current_location.id == context.enemy.current_location.id:
-                self._current_safety_time += dt
-                if self._current_safety_time >= self.get_safety_time():
-                    self._current_safety_time = 0.0
-                    self._kill_player(context, player)
-            else:
-                self._current_safety_time = 0.0
+
+            super(EnemyAttackModule, self).update(context, dt)
 
             self._accumulated_time += dt
             while self.interval():
@@ -557,6 +635,7 @@ init -2 python in v1FNaSR:
 
             self._attack_target_id = location_id
             context.stop_moving = True
+            self._safety_time = 0.5
             main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
             self._attack(context)
 
@@ -630,6 +709,7 @@ init -2 python in v1FNaSR:
                     main_executor.submit(audio.play, renpy.random.choice(random_s), self._sound_channel, loop=False, fadeout=1, fadein=2)
 
         def _finish_attack(self, context):
+            self.reset_safety_time()
             player = context.player_manager.current_player
             self._attack_target_id = None
             self._murder_countdown = None
@@ -652,25 +732,16 @@ init -2 python in v1FNaSR:
             self._murder_countdown = None
             return True
 
-        def _kill_player(self, context, player):
-            if player.try_kill():
-                self._set_killed_player(context)
-                context.is_player_dead = True
-                context.cycle.request_transition("v1_night_screamer_label_FNaSR")
-
-        def _set_killed_player(self, context):
-            GlobalState.set_if_absent("OpponentKilledPlayer", (context.enemy.tag, self._enemy_screamer, require_system("time").get_time(),))
-
         def get_debug_list_texts(self, enemy_context):
-            return [
-                "net safety time: {}".format(self._safety_time),
-                "safety time: {}/{}".format(self._current_safety_time, self.get_safety_time()),
+            return super(EnemyAttackModule, self).get_debug_list_texts(enemy_context) + [
                 "murder countdown: {}".format(self._murder_countdown),
                 "attack target id: {}".format(self._attack_target_id),
             ]
 
     class EnemySilentAttackModule(EnemyAttackModule):
         __slots__ = ("_silent_locations", "_replaced",)
+
+        conflicting_modules = tuple()
 
         def __init__(self, enemy_screamer, silent_locations=None, **kwargs):
             super(EnemySilentAttackModule, self).__init__(enemy_screamer, **kwargs)
@@ -683,18 +754,28 @@ init -2 python in v1FNaSR:
 
             normalized = {}
 
-            for location_id, images in iter_items(silent_locations):
+            for location_id, variants in iter_items(silent_locations):
                 if not is_strict_integer(location_id):
                     raise FNaSRTypeError("ID локации должен быть int, получено: {!r}".format(location_id))
 
-                if not isinstance(images, (list, tuple)) or len(images) != 2:
-                    raise FNaSRValueError("silent_locations[{}] должен содержать ровно два изображения: (свет включён, свет выключен).".format(location_id))
+                if isinstance(variants, SilentImageVariant):
+                    variants = [variants]
 
-                # for i, image in enumerate(images):
-                #     if image is not None and not is_string(image):
-                #         raise FNaSRTypeError("Путь к изображению silent_locations[{}][{}] должен быть строкой или None, получено: {}".format(location_id, i, type(image)))
+                if not isinstance(variants, (list, tuple,)):
+                    raise FNaSRTypeError("'variants' должен быть списком или кортежем, получено: {}".format(type(variants)))
 
-                normalized[_normalize_id(location_id)] = tuple(images)
+                if not variants:
+                    continue
+
+                total_chance = 0
+                for i, variant in enumerate(variants):
+                    if not isinstance(variant, SilentImageVariant):
+                        raise FNaSRTypeError("silent_locations[{}][{}] должен быть 'SilentImageVariant', получено: {}.".format(location_id, i, type(variant)))
+                    total_chance += variant.chance
+                if total_chance != 100:
+                    raise FNaSRValueError("Сумма шансов изображений для локации {} должна равняться 100, получено: {}.".format(location_id, total_chance))
+
+                normalized[_normalize_id(location_id)] = tuple(variants)
 
             self._silent_locations = normalized
             self._setattr("_replaced", False)
@@ -725,12 +806,34 @@ init -2 python in v1FNaSR:
 
             self._attack_target_id = location_id
             context.stop_moving = True
+            self._safety_time = 0.5
             data = self._silent_locations.get(self._attack_target_id, None)
-            if data is not None and not location.is_replaced_image and not (data[0] is None and data[1] is None):
+
+            if not location.is_replaced_image and data is not None and data:
                 self._replace_image(context)
             else:
-                main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
+                main_executor.submit(audio.play,resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
+
             self._attack(context)
+
+        def _choose_silent_variant(self, variants):
+            if not variants:
+                return None
+
+            roll = renpy.random.random() * 100.0
+            cumulative_chance = 0
+
+            for variant in variants:
+                cumulative_chance += variant.chance
+
+                if roll < cumulative_chance:
+                    return variant
+
+            for variant in reversed(variants):
+                if variant.chance > 0:
+                    return variant
+
+            return None
 
         def _loss_attack(self, context):
             super(EnemySilentAttackModule, self)._loss_attack(context)
@@ -752,6 +855,7 @@ init -2 python in v1FNaSR:
                 return
 
             location = context.location_system.get_location(target_id)
+
             if location is None:
                 return
 
@@ -762,28 +866,36 @@ init -2 python in v1FNaSR:
                 if self._replaced:
                     location.clear_substituted_image(all=True)
                     self._replaced = False
+
                 return
 
             if self._replaced or location.is_replaced_image:
                 return
 
-            data = self._silent_locations[target_id]
+            variants = self._silent_locations[target_id]
+            variant = self._choose_silent_variant(variants)
 
-            if data[0] is not None:
-                location.replace_image(data[0])
-                self._replaced = True
+            if variant is None:
+                return
 
-            if data[1] is not None:
-                location.replace_image(data[1], dark=True)
-                self._replaced = True
+            if variant.light_image is not None:
+                location.replace_image(variant.light_image)
+
+            if variant.dark_image is not None:
+                location.replace_image(variant.dark_image, dark=True)
+
+            self._replaced = variant.light_image is not None or variant.dark_image is not None
 
         def get_debug_list_texts(self, enemy_context):
+            variants_text = ""
+            for loc_id, variants in iter_items(silent_locations)
             return super(EnemySilentAttackModule, self).get_debug_list_texts(enemy_context) + [
                 "silent locations: {}".format(self._silent_locations.keys()),
                 "replaced: {}".format(self._replaced)
             ]
 
     class EnemyAssistantModule(EnemyModule):
+        conflicting_modules = (EnemyAggressiveModule, EnemyAttackModule, EnemySilentAttackModule,)
         optional_modules = (EnemyMoveModule,)
 
         def __init__(
@@ -792,6 +904,7 @@ init -2 python in v1FNaSR:
             condition_withdrawal_fn = None,
             withdrawal_fn = None,
             time_until_assistance=0.0,
+            interval=1.0
         ):
             super(EnemyAssistantModule, self).__init__()
 
@@ -805,8 +918,14 @@ init -2 python in v1FNaSR:
                 raise FNaSRTypeError("'condition_withdrawal_fn' должен быть вызываемым, получено: {}".format(type(condition_withdrawal_fn)))
             if not callable(withdrawal_fn):
                 raise FNaSRTypeError("'withdrawal_fn' должен быть вызываемым, получено: {}".format(type(withdrawal_fn)))
-            if not is_number(time_until_assistance) or time_until_assistance < 0:
-                raise FNaSRTypeError("'time_until_assistance' должен быть положительным числом, получено: {}".format(type(time_until_assistance)))
+            if not is_number(time_until_assistance):
+                raise FNaSRTypeError("'time_until_assistance' должен быть числом, получено: {}".format(type(time_until_assistance)))
+            if time_until_assistance < 0:
+                raise FNaSRValueError("'time_until_assistance' должен быть положительным, получено: {}".format(time_until_assistance))
+            if not is_number(interval):
+                raise FNaSRTypeError("'interval' должен быть числом, получено: {}".format(type(interval)))
+            if interval < 0:
+                raise FNaSRValueError("'interval' должен быть положительным, получено: {}".format(interval))
 
             self._assistant_fn = assistant_fn
             self._condition_withdrawal_fn = condition_withdrawal_fn
@@ -815,6 +934,7 @@ init -2 python in v1FNaSR:
             self._setattr("_current_time", 0.0)
             self._setattr("_move_module", None)
             self._setattr("_flags", dict())
+            self._setattr("_interval", float(interval))
 
         def set_flag(self, key, value):
             if not is_string(key):
@@ -840,14 +960,51 @@ init -2 python in v1FNaSR:
             if not self._move_module.is_last:
                 return
 
-            if self._condition_withdrawal_fn(self, context):
-                self._withdrawal_fn(self, context)
-                self._current_time = 0.0
-                return
+            while self.interval(self._interval):
+                if self._condition_withdrawal_fn(self, context):
+                    self._withdrawal_fn(self, context)
+                    self._current_time = 0.0
+                    return
 
-            self._current_time += dt
+                self._current_time += dt
 
-            if self._current_time >= self._time_until_assistance:
-                self._current_time -= self._time_until_assistance
-                self._assistant_fn(self, context)
+                if self._current_time >= self._time_until_assistance:
+                    self._current_time -= self._time_until_assistance
+                    self._assistant_fn(self, context)
 
+        def _condition_withdrawal(self, context):
+            pass
+
+        def _withdrawal(self, context):
+            pass
+
+        def _assistant(self, context):
+            pass
+
+    def Alice_assistant_fn(module, context):
+        pass
+
+    def Alice_condition_withdrawal_fn(module, context):
+        pass
+
+    def Alice_withdrawal_fn(module, context):
+        pass
+
+
+    EnemyAggressiveModule.conflicting_modules = (
+        EnemyAttackModule,
+        EnemySilentAttackModule,
+        EnemyAssistantModule,
+    )
+
+    EnemyAttackModule.conflicting_modules = (
+        EnemyAggressiveModule,
+        EnemySilentAttackModule,
+        EnemyAssistantModule,
+    )
+
+    EnemySilentAttackModule.conflicting_modules = (
+        EnemyAggressiveModule,
+        EnemyAttackModule,
+        EnemyAssistantModule,
+    )

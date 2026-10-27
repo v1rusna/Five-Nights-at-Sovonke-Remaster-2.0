@@ -23,9 +23,6 @@ init -5 python in v1FNaSR:
             else:
                 super(EnemyContext, self).__setattr__(name, value)
 
-    # Пока что генератор игнорирует направления, но в будущем можно избавится от хранения пути у противника
-    # Например если игрок защитился то противник отступает на n локаций назад
-    # то есть если игрок на севере, то отступить на 2 локации на юг, или юго-запад, или юго-восток и так далее
     class PathGenerator(object):
         _location_system = None
         _player_manager = None
@@ -214,6 +211,11 @@ init -5 python in v1FNaSR:
             return grouped
 
     class EnemyScreamer(object):
+        __slots__ = (
+            "_sprite", "_sound_screamer", "_screamer_t",
+            "_camera_t", "_bg_t", "_is_screen_t", "_is_black_fade",
+        )
+
         _CAMERA_LAYER = "master"
         _OVERLAY_LAYER = "screens"
         _SOUND_CHANNEL = "screamer"
@@ -319,6 +321,31 @@ init -5 python in v1FNaSR:
             renpy.show("black")
             renpy.block_rollback()
             renpy.pause(self._BLACKOUT_DURATION, hard=True)
+
+    class SilentImageVariant(object):
+        __slots__ = ("light_image", "dark_image", "chance",)
+
+        def __init__(self, light_image, dark_image, chance=100):
+            if light_image is None and dark_image is None:
+                raise FNaSRValueError("Хотя бы одно изображение должно быть задано.")
+
+            if light_image is None:
+                light_image = dark_image
+            elif dark_image is None:
+                dark_image = light_image
+
+            if not is_strict_integer(chance):
+                raise FNaSRTypeError("Шанс должен быть целым числом, получено: {!r}".format(chance))
+
+            if chance < 0 or chance > 100:
+                raise FNaSRValueError("Шанс должен находиться в диапазоне 0–100, получено: {}".format(chance))
+
+            self.light_image = light_image
+            self.dark_image = dark_image
+            self.chance = chance
+
+        def __repr__(self):
+            return "{}(light_image={}, dark_image={}, chance={})".format(type(self).__name__, self.light_image, self.dark_image, self.chance)
 
 
 init python:

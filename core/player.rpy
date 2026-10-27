@@ -5,6 +5,11 @@ init -1 python in v1FNaSR:
     audio.register_channel("heartbeat", "ambience", loop=True)
     audio.register_channel("breathing", "ambience", loop=True)
 
+    class PlayerElement(object):
+        TABLET = "tablet"
+        DOOR = "door"
+        BULB = "bulb"
+
     class Player(GameObject, BaseAI):
         def __init__(self, id, max_panic=15, magnitude_change_panic=1):
             super(Player, self).__init__()
@@ -30,6 +35,12 @@ init -1 python in v1FNaSR:
             self._setattr("_is_play_heartbeat", False)
             self._setattr("_died", False)
             self._setattr("_god_mode", False)
+
+            self._setattr("_element_enabled", {
+                PlayerElement.TABLET: True,
+                PlayerElement.DOOR: True,
+                PlayerElement.BULB: True,
+            })
 
         @property
         def id(self):
@@ -96,6 +107,18 @@ init -1 python in v1FNaSR:
             else:
                 self._god_mode = False
 
+        def set_element_enabled(self, element, enabled):
+            try:
+                self._element_enabled[element] = bool(enabled)
+            except KeyError:
+                raise FNaSRValueError("Элемент '{}' не найден.".format(element))
+
+        def is_element_enabled(self, element):
+            try:
+                return self._element_enabled[element]
+            except KeyError:
+                raise FNaSRValueError("Элемент '{}' не найден.".format(element))
+
         def try_kill(self):
             if self._god_mode:
                 return False
@@ -133,6 +156,8 @@ init -1 python in v1FNaSR:
             ambience_manager.sync_player(self)
 
         def open_tablet(self):
+            if not self.is_element_enabled(PlayerElement.TABLET):
+                return
             if self._current_location is None:
                 raise FNaSRValueError("The player is not in any location")
             if not self.has_tablet:
@@ -292,7 +317,7 @@ init -1 python in v1FNaSR:
 
         def switch_player(self, id):
             if is_initialized():
-                raise FNaSRException("Нельзя менять игрока после инициализации игры")
+                raise FNaSRException("Нельзя менять игрока после инициализации мода.")
             id = to_text(id)
             if id not in self._players:
                 raise FNaSRException("The character with ID '{}' does not exist".format(id))

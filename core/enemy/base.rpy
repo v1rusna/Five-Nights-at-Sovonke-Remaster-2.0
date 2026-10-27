@@ -3,19 +3,6 @@
 init -3 python in v1FNaSR:
     import traceback as _traceback
     import threading as _threading
-    from weakref import WeakSet as _WeakSet
-
-    _created_enemy = _WeakSet()
-    _created_enemy_lock = _threading.Lock()
-    def _register_enemy(enemy):
-        if not isinstance(enemy, BaseEnemy):
-            return
-        with _created_enemy_lock:
-            _created_enemy.add(enemy)
-    def get_created_enemy():
-        with _created_enemy_lock:
-            created_enemy = tuple(_created_enemy)
-        return created_enemy
 
     def recolor_enemy_sprite(sprite):
         return renpy.store.Transform(sprite, matrixcolor=renpy.store.SaturationMatrix(0.4))
@@ -192,6 +179,7 @@ init -3 python in v1FNaSR:
             try:
                 fn(*args, **kwargs)
             except Exception:
+                log.error("Module '{}' error".format(repr(module)))
                 module.set_error()
 
 
@@ -238,8 +226,6 @@ init -3 python in v1FNaSR:
                 sharpness_factor=0.1,
                 fill_viewport=True
             )
-
-            _register_enemy(self)
 
         @property
         def tag(self):
@@ -289,3 +275,152 @@ init -3 python in v1FNaSR:
             self._align = (x, y,)
 
 
+    class EnemyManager(object):
+        MAIN_GROUP = "FNaSR"
+
+        def __init__(self):
+            self._groups = dict()
+            self._enemy_tags = dict()
+            self._current_group = EnemyManager.MAIN_GROUP
+            self._lock = _threading.RLock()
+
+            self.create_group(EnemyManager.MAIN_GROUP)
+
+        @property
+        def selected_group(self):
+            with self._lock:
+                return self._current_group
+
+        @property
+        def iter_current_group(self):
+            with self._lock:
+                return self.iter_group(self._current_group)
+
+        def create_group(self, group):
+            self._validate_name_group(group)
+
+            with self._lock:
+                if group in self._groups:
+                    raise FNaSRValueError("Группа '{}' уже существует.".format(group))
+
+                self._groups[group] = set()
+
+        def delete_group(self, group):
+            self._validate_name_group(group)
+
+            if group == EnemyManager.MAIN_GROUP:
+                raise FNaSRValueError("Нельзя удалить группу '{}'.".format(EnemyManager.MAIN_GROUP))
+
+            with self._lock:
+                if group not in self._groups:
+                    raise FNaSRValueError("Группа '{}' не существует.".format(group))
+
+                cycle = require_system("cycle")
+                enemies = tuple(self._groups[group])
+
+                for enemy in enemies:
+                    if cycle.is_registered(enemy):
+                        cycle.unregister(enemy)
+                    self._enemy_tags.pop(enemy.tag, None)
+
+                del self._groups[group]
+
+        def has_group(self, group):
+            with self._lock:
+                return group in self._groups
+
+        def select_group(self, group):
+            self._validate_name_group(group)
+
+            with self._lock:
+                if group not in self._groups:
+                    raise FNaSRValueError("Группа '{}' не существует.".format(group))
+
+                if group == self._current_group:
+                    return
+
+                if is_initialized():
+                    raise FNaSRException("Нельзя менять группу после инициализации мода.")
+
+                self._current_group = group
+
+        def iter_group(self, group):
+            self._validate_name_group(group)
+
+            with self._lock:
+                if group not in self._groups:
+                    raise FNaSRValueError("Группа '{}' не существует.".format(group))
+
+                enemies = tuple(self._groups[group])
+
+            return iter(enemies)
+
+
+        def create_enemy(self, *args, **kwargs):
+            group = kwargs.pop("group", EnemyManager.MAIN_GROUP)
+            enemy = Enemy(*args, **kwargs)
+            self.register(enemy, group)
+            return enemy
+
+        def register(self, enemy, group=None, register_in_cycle=True):
+            if group is None:
+                group = EnemyManager.MAIN_GROUP
+            self._validate_name_group(group)
+
+            if not isinstance(enemy, Enemy):
+                raise FNaSRTypeError("'enemy' должен быть 'Enemy', получено: {}".format(type(enemy)))
+
+            with self._lock:
+                if group not in self._groups:
+                    raise FNaSRValueError("Группа '{}' не существует.".format(group))
+
+                if enemy.tag in self._enemy_tags:
+                    raise FNaSRValueError("Тег '{}' уже занят.".format(enemy.tag))
+
+                self._groups[group].add(enemy)
+                self._enemy_tags[enemy.tag] = group
+
+            if register_in_cycle:
+                cycle = require_system("cycle")
+                if not cycle.is_registered(enemy):
+                    cycle.register(enemy)
+
+        def unregister(self, enemy_or_tag):
+            if isinstance(enemy_or_tag, Enemy):
+                tag = enemy_or_tag.tag
+            elif is_string(enemy_or_tag):
+                tag = enemy_or_tag
+            else:
+                raise FNaSRTypeError("'enemy_or_tag' должен быть строкой или 'Enemy', получено: {}".format(type(enemy_or_tag)))
+
+            with self._lock:
+                if tag not in self._enemy_tags:
+                    raise FNaSRValueError("Противника с тегом '{}' не найдено.".format(tag))
+
+                cycle = require_system("cycle")
+                group = self._enemy_tags[tag]
+                for enemy in self.iter_group(group):
+                    if enemy.tag == tag:
+                        if cycle.is_registered(enemy):
+                            cycle.unregister(enemy)
+                        self._groups[group].discard(enemy)
+                        del self._enemy_tags[tag]
+                        break
+
+        def has_enemy(self, tag):
+            with self._lock:
+                return tag in self._enemy_tags
+
+        def get_group_enemy(self, tag):
+            if not is_string(tag):
+                raise FNaSRTypeError("Тег противника должен быть строкой, получено: {}".format(tag))
+            with self._lock:
+                if not tag in self._enemy_tags:
+                    raise FNaSRValueError("Противник с тегом '{}' не найден.".format(tag))
+                return self._enemy_tags[tag]
+
+        def _validate_name_group(self, group):
+            if not is_string(group):
+                raise FNaSRTypeError("Имя группы должно быть строкой, получено: {}".format(type(group)))
+
+    register_system("enemy", EnemyManager())

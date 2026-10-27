@@ -585,8 +585,9 @@ init -1 python in v1FNaSR:
             self._cycle = require_system("cycle")
             self._stop = False
             ns = self._ns
+            em = require_system("enemy")
             
-            for enemy in get_created_enemy():
+            for enemy in em.iter_current_group:
                 if enemy.nights_start is None and not len(enemy.special_night):
                     continue
                 if ns.loaded.id not in enemy.special_night and enemy.nights_start < ns.get_position(ns.loaded):

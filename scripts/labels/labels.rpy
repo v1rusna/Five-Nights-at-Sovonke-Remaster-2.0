@@ -12,7 +12,7 @@ init python in v1FNaSR:
         if opponent_data is None:
             return None, None, None
 
-        for enemy in get_created_enemy():
+        for enemy in require_system("enemy").iter_current_group:
             if enemy.tag == opponent_data[0]:
                 return enemy, opponent_data[1], opponent_data[2]
 

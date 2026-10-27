@@ -45,15 +45,16 @@ screen V1MainGameInterfaceFNaSR:
         ) align (0.5, -0.2)
 
     if not player.is_moving and player.has_door and not player.is_open_tablet:
-        for door_key in door_keys:
-            key door_key action Function(player.current_location.door.button.keyboard_down)
-            key "keyup_"+door_key action Function(player.current_location.door.button.keyboard_up)
+        if player.is_element_enabled(v1FNaSR.PlayerElement.DOOR):
+            for door_key in door_keys:
+                key door_key action Function(player.current_location.door.button.keyboard_down)
+                key "keyup_"+door_key action Function(player.current_location.door.button.keyboard_up)
+            add (v1FNaSR.InitImages.ui_door_open if player.current_location.door.is_open else v1FNaSR.InitImages.ui_door_close) align (0.75, 0.9)
+            if not player.is_rollback_panic:
+                add player.current_location.door.button align (0.75, 1.0)
         text "Паника: "+player.get_panic_text() style "v1_text_24_style_FNaSR" align (0.9, 0.8)
-        add (v1FNaSR.InitImages.ui_door_open if player.current_location.door.is_open else v1FNaSR.InitImages.ui_door_close) align (0.75, 0.9)
-        if not player.is_rollback_panic:
-            add player.current_location.door.button align (0.75, 1.0)
 
-    if not player.is_moving and player.has_bulb and not player.is_open_tablet:
+    if player.is_element_enabled(v1FNaSR.PlayerElement.BULB) and not player.is_moving and player.has_bulb and not player.is_open_tablet:
         key bulb_keys action Function(player.current_location.bulb.switch)
         button:
             align (0.25, 1.0)
@@ -65,7 +66,7 @@ screen V1MainGameInterfaceFNaSR:
             align (0.25, 0.9)
             idle (v1FNaSR.InitImages.ui_bulb_on if player.current_location.bulb.is_on else v1FNaSR.InitImages.ui_bulb_off)
 
-    if player.has_tablet and not player.is_moving:
+    if player.is_element_enabled(v1FNaSR.PlayerElement.TABLET) and player.has_tablet and not player.is_moving:
         use V1TabletButtonScreenFNaSR(player)
 
 screen V1TabletButtonScreenFNaSR(player):
@@ -244,7 +245,7 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     on "show" action Function(v1FNaSR.GlobalState.set, "moving_animation_speed", speed)
     
     timer 3.6 / speed action (Hide("V1MovingAnotherLocationFNaSR"), Function(v1FNaSR.GlobalState.set, "moving_animation", False))
-    timer 3.3 / speed action (Function(v1FNaSR.screen_manager.show_screen, "move"), Function(v1FNaSR.audio.stop, "walk", fadeout=1.0))
+    timer 3.3 / speed action (Function(v1FNaSR.screen_manager.show_screen, "move"), Function(v1FNaSR.audio.stop, "walk", fadeout=0.5))
     timer 1.8 / speed action (Function(player.move, move_to), Function(v1FNaSR.Tools.safe_call, cycle.call_in_cycle, v1FNaSR.EnemyMoveModule.generate_new_path_all_enemy, exceptions=(v1FNaSR.FNaSRCycleError,)))
     add player.get_sees_image() at v1_go_t_FNaSR(speed)
     fixed:
@@ -259,7 +260,8 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
 
 screen V1ShowEnemyFNaSR(player):
     default ls = v1FNaSR.require_system("location")
-    for enemy in v1FNaSR.get_created_enemy():
+    default em = v1FNaSR.require_system("enemy")
+    for enemy in em.iter_current_group:
         if enemy.current_location is not None:
             if player.is_open_tablet:
                 $ location_selected = ls.require_location(player.current_location.tablet.selected)

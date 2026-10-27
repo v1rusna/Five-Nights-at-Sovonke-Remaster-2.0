@@ -236,7 +236,8 @@ init python in v1FNaSR:
                     {
                         "location_id": -5,
                         "name": "внутрь муз-клуба",
-                        "image": resources.images.bg["int_musclub_night_nolight"],
+                        "image": resources.images.bg["int_music_club_mattresses_night_lights_on"],
+                        "bulb": Bulb(resources.images.bg["int_music_club_mattresses_night"]),
                         "loc_connections": [(10,5)],
                     },
                     None,
@@ -276,6 +277,7 @@ init python in v1FNaSR:
                         "name": "внутрь медпункта",
                         "image": resources.images.bg["int_aidpost_no_light_night_7dl"],
                         "door": Door(),
+                        "bulb": Bulb(resources.images.bg["int_aidpost_no_light_night_7dl_light"]),
                         "loc_connections": [(2,5)],
                     },
                     None,
@@ -414,15 +416,22 @@ init python in v1FNaSR:
                     "sprite": "un evil_smile pioneer",
                     "color": "#B956FF",
                     "modules": [
-                        lambda: EnemyMoveModule(factors=ALL_ENEMY_MOVING_FACTORS+(factor_not_watch,)),
+                        lambda: EnemyMoveModule(factors=BASE_ENEMY_MOVING_FACTORS+(factor_not_watch,)),
                         lambda: EnemySilentAttackModule(
                                     enemy_screamer=EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR),
                                     silent_locations={
-                                        -1: (resources.images.Lena["R_int_mt_house_night_light_un"], resources.images.Lena["R_int_mt_house_night_un"],),
-                                        -3: (resources.images.Lena["int_dining_hall_night_un"], resources.images.Lena["int_dining_hall_night_un"],), # TODO: Не хватает темного варианта
-                                        -4: (resources.images.Lena["int_clubs_night_light_un"], resources.images.Lena["int_clubs_night_un"],),
-                                        -5: (resources.images.Lena["int_musclub_night_nolight_un"], resources.images.Lena["int_musclub_night_nolight_un"],), # TODO: Не хватает светлого варианта
-                                        -8: (resources.images.Lena["int_library_night_light_un"], resources.images.Lena["int_library_night_un"],),
+                                        -1: SilentImageVariant(resources.images.Lena["R_int_mt_house_night_light_un"], resources.images.Lena["R_int_mt_house_night_un"]),
+                                        -3: SilentImageVariant(resources.images.Lena["int_dining_hall_night_un"], resources.images.Lena["int_dining_hall_night_un"]), # TODO: Не хватает темного варианта
+                                        -4: SilentImageVariant(resources.images.Lena["int_clubs_night_light_un"], resources.images.Lena["int_clubs_night_un"]),
+                                        -5: [
+                                            SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un"], resources.images.Lena["int_music_club_mattresses_night_un"], change=50),
+                                            SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un2"], resources.images.Lena["int_music_club_mattresses_night_un2"], change=50)
+                                        ],
+                                        -8: SilentImageVariant(resources.images.Lena["int_library_night_light_un"], resources.images.Lena["int_library_night_un"]),
+                                        -9: [
+                                            SilentImageVariant(resources.images.Lena["med_un1"], resources.images.Lena["med_un2"], change=50),
+                                            SilentImageVariant(resources.images.Lena["med_un1_2"], resources.images.Lena["med_un2_2"], change=50)
+                                        ],
                                     }
                                 ),
                     ]
@@ -458,13 +467,13 @@ init python in v1FNaSR:
             def _enemy_change_status(context):
                 context.enemy.enabled = not context.enemy.enabled
 
-            cycle = require_system("cycle")
+            enemy_manager = require_system("enemy")
             for i, enemy_data in enumerate(self._enemy_list):
                 try:
                     modules = enemy_data.pop("modules", list())
-                    enemy = Enemy(**enemy_data)
-                    for module in modules:
-                        enemy.add_module(module())
+                    new_modules = [module() for module in modules]
+                    enemy_data["modules"] = new_modules
+                    enemy = enemy_manager.create_enemy(**enemy_data)
                 except Exception:
                     log.error("Ошибка создания врага '{}'".format(enemy_data.get("tag")))
                 else:
@@ -487,12 +496,7 @@ init python in v1FNaSR:
                     order=i)
                     df.context.enemy = enemy
 
-                    try:
-                        cycle.register(enemy)
-                    except Exception:
-                        log.error("Ошибка регистрации врага '{}'".format(enemy_data.get("tag")))
-                    else:
-                        debug.add_element(df, group="Enemy")
+                    debug.add_element(df, group="Enemy")
 
                     try:
                         enemy.update = timed(color_text("Enemy.{}.update".format(enemy.tag), enemy.color), budget=lambda: 1.0 / require_system("cycle").fps_controller.target_fps, log_every=1)(enemy.update)
