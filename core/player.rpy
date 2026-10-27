@@ -317,7 +317,7 @@ init -1 python in v1FNaSR:
 
         def switch_player(self, id):
             if is_initialized():
-                raise FNaSRException("Нельзя менять игрока после инициализации мода.")
+                raise FNaSRException("You cannot change the player after the mod has been initialized.")
             id = to_text(id)
             if id not in self._players:
                 raise FNaSRException("The character with ID '{}' does not exist".format(id))

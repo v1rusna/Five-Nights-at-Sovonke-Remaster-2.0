@@ -16,6 +16,8 @@ init -10 python in v1FNaSR:
     _store["debug_mode"] = False
     _store["initialized"] = False
     _store["base_initialized"] = False
+    _store["init_mod_label"] = "v1_init_FNaSR"
+
     _store["keymap"] = {
         'button_select': ['mouseup_1', 'K_RETURN', 'K_KP_ENTER', 'joy_dismiss'],
         'button_ignore': ['mousedown_1'],

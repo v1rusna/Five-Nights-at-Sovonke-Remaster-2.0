@@ -226,6 +226,7 @@ init -3 python in v1FNaSR:
                 sharpness_factor=0.1,
                 fill_viewport=True
             )
+            self._setattr("_invisible", False)
 
         @property
         def tag(self):
@@ -263,6 +264,14 @@ init -3 python in v1FNaSR:
         def parallax_sprite(self):
             return self._parallax_sprite
 
+        @property
+        def is_invisible(self):
+            return self._invisible
+
+        @is_invisible.setter
+        def is_invisible(self, value):
+            self._invisible = bool(value)
+
         def set_align(self, x=None, y=None):
             if x is None:
                 x = renpy.random.uniform(0.1, 0.9)
@@ -273,7 +282,6 @@ init -3 python in v1FNaSR:
             y = float(y)
 
             self._align = (x, y,)
-
 
     class EnemyManager(object):
         MAIN_GROUP = "FNaSR"

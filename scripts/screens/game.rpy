@@ -25,7 +25,7 @@ screen V1MainGameInterfaceFNaSR:
 
     add player.get_sees_image()
     
-    use V1ShowEnemyFNaSR(player)
+    use V1ShowEnemyFNaSR()
     use V1InfoNightScreenFNaSR(player, ns)
 
     if not player.is_open_tablet and not player.is_moving and not player.under_attack:
@@ -250,28 +250,18 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     add player.get_sees_image() at v1_go_t_FNaSR(speed)
     fixed:
         at v1_go_t_FNaSR(speed)
-        use V1ShowEnemyFNaSR(player)
+        use V1ShowEnemyFNaSR()
     add move_to.parallax_image at v1_moving_location2_FNaSR(speed)
     fixed:
         at v1_moving_location2_FNaSR(speed)
-        use V1ShowEnemyFNaSR(player)
+        use V1ShowEnemyFNaSR()
     add "black" at v1_moving_black_FNaSR(speed)
     use V1InfoNightScreenFNaSR()
 
-screen V1ShowEnemyFNaSR(player):
-    default ls = v1FNaSR.require_system("location")
-    default em = v1FNaSR.require_system("enemy")
-    for enemy in em.iter_current_group:
-        if enemy.current_location is not None:
-            if player.is_open_tablet:
-                $ location_selected = ls.require_location(player.current_location.tablet.selected)
-                if enemy.current_location.id == player.current_location.tablet.selected or enemy.current_location.id in location_selected.camera.identical_ids:
-                    $ xa, ya = enemy.align
-                    add enemy.sprite align(xa, ya)
-            else:
-                if enemy.current_location.id == player.current_location.id:
-                    $ xa, ya = enemy.align
-                    add enemy.parallax_sprite align(xa, ya)
+screen V1ShowEnemyFNaSR():
+    for obj, align in v1FNaSR.EnemyVisualizer.iter_sees():
+        $ ax, ay = align
+        add obj align(ax, ay)
 
 
 

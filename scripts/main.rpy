@@ -19,13 +19,16 @@ label AAA_v1_start_FNaSR:
         renpy.show("bg black")
         renpy.with_statement(dissolve2)
         renpy.pause(2.0, hard=True)
-        renpy.show_screen("V1BaseUIScreenFNaSR")
 
         renpy.block_rollback()
 
+        renpy.jump(v1FNaSR.get_init_label())
+
 label v1_init_FNaSR:
+    $ renpy.show_screen("V1BaseUIScreenFNaSR")
     $ v1FNaSR.start_mod()
-    if not v1FNaSR.is_initialized():
+    if not v1FNaSR.is_initialized(full=True):
+        $ renpy.log("FNaSR | FNaSR could not be initialized")
         return
 
     if not persistent.v1_recommendation_seen_FNaSR:

@@ -106,6 +106,17 @@ init -7 python in v1FNaSR:
             except AttributeError:
                 pass
 
+    def set_init_label(label):
+        if not renpy.has_label(label):
+            raise FNaSRValueError("The label '{}' does not exist.".format(label))
+
+        with _store_lock:
+            _store["init_mod_label"] = label
+            
+    def get_init_label():
+        with _store_lock:
+            return _store["init_mod_label"]
+
     def add_start_fn(fn, order=0, once=False):
         order = int(order)
         if not callable(fn):
