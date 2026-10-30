@@ -63,7 +63,7 @@ init -12 python in v1FNaSR:
         def current_location(self):
             return self._current_location
 
-        def move(self, location, allow_migrate=False):
+        def move(self, location, ignore_door=False, allow_migrate=False):
             if not isinstance(location, Location):
                 raise FNaSRTypeError("`location` must be an instance of the 'Location' class, not '{}'".format(type(location)))
             if self._current_location is location:
@@ -74,12 +74,14 @@ init -12 python in v1FNaSR:
                 raise FNaSRException("The location with ID '{}' refers to a LocationSystem in which it is not registered".format(location.id))
             if self._current_location is not None and not allow_migrate and self._current_location.location_system != location.location_system:
                 raise FNaSRException("The current({}) and new({}) locations belong to different location systems".format(self._current_location.id, location.id))
-            if location.door is not None and not location.door.is_open:
+            if not ignore_door and location.door is not None and not location.door.is_open:
                 raise DoorClose(location.id)
             self._current_location = location
             location.on_enter(self)
 
     class _MissingType(object):
+        __slots__ = ()
+        
         _instance = None
 
         def __new__(cls):
@@ -319,6 +321,42 @@ init -12 python in v1FNaSR:
 
     def update_ui():
         UIUpdater.update_ui()
+
+    class MultiLock(object):
+        __slots__ = ("_blockers", "_lock",)
+
+        def __init__(self):
+            self._blockers = set()
+            self._lock = _threading.RLock()
+
+        def block(self, blocker):
+            if blocker is None:
+                raise FNaSRValueError("blocker cannot be None")
+
+            with self._lock:
+                self._blockers.add(blocker)
+
+        def unblock(self, blocker):
+            with self._lock:
+                if blocker not in self._blockers:
+                    return False
+
+                self._blockers.remove(blocker)
+                return True
+
+        @property
+        def blocked(self):
+            with self._lock:
+                return bool(self._blockers)
+
+        @property
+        def blockers(self):
+            with self._lock:
+                return frozenset(self._blockers)
+
+        def clear(self):
+            with self._lock:
+                self._blockers.clear()
 
 init python in v1FNaSR:
     add_quit_fn(GlobalState.clear)

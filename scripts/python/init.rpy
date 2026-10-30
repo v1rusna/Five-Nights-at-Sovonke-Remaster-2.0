@@ -215,8 +215,9 @@ init python in v1FNaSR:
                     {
                         "location_id": -3,
                         "name": "внутрь столовой",
-                        "image": resources.images.bg["int_dining_hall_night"],
+                        "image": resources.images.bg["dining_hall_morning_on"],
                         "door": Door(),
+                        "bulb": Bulb(resources.images.bg["dining_hall_morning"]),
                         "loc_connections": [(-2,5)],
                     },
                     None,
@@ -421,13 +422,22 @@ init python in v1FNaSR:
                                     enemy_screamer=EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR),
                                     silent_locations={
                                         -1: SilentImageVariant(resources.images.Lena["R_int_mt_house_night_light_un"], resources.images.Lena["R_int_mt_house_night_un"]),
-                                        -3: SilentImageVariant(resources.images.Lena["int_dining_hall_night_un"], resources.images.Lena["int_dining_hall_night_un"]), # TODO: Не хватает темного варианта
-                                        -4: SilentImageVariant(resources.images.Lena["int_clubs_night_light_un"], resources.images.Lena["int_clubs_night_un"]),
+                                        -3: [
+                                            SilentImageVariant(resources.images.Lena["dining_hall_morning_on_un"], resources.images.Lena["dining_hall_morning_un"], chance=50),
+                                            SilentImageVariant(resources.images.Lena["dining_hall_morning_on_un2"], resources.images.Lena["dining_hall_morning_un2"], chance=50)
+                                        ],
+                                        -4: [
+                                            SilentImageVariant(resources.images.Lena["int_clubs_night_light_un"], resources.images.Lena["int_clubs_night_un"], chance=50),
+                                            SilentImageVariant(resources.images.Lena["int_clubs_night_light_un2"], resources.images.Lena["int_clubs_night_un2"], chance=50)
+                                        ],
                                         -5: [
                                             SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un"], resources.images.Lena["int_music_club_mattresses_night_un"], chance=50),
                                             SilentImageVariant(resources.images.Lena["int_music_club_mattresses_night_lights_on_un2"], resources.images.Lena["int_music_club_mattresses_night_un2"], chance=50)
                                         ],
-                                        -8: SilentImageVariant(resources.images.Lena["int_library_night_light_un"], resources.images.Lena["int_library_night_un"]),
+                                        -8: [
+                                            SilentImageVariant(resources.images.Lena["int_library_night_light_un"], resources.images.Lena["int_library_night_un"], chance=50),
+                                            SilentImageVariant(resources.images.Lena["int_library_night_light_un2"], resources.images.Lena["int_library_night_un2"], chance=50),
+                                        ],
                                         -9: [
                                             SilentImageVariant(resources.images.Lena["med_un1"], resources.images.Lena["med_un2"], chance=50),
                                             SilentImageVariant(resources.images.Lena["med_un1_2"], resources.images.Lena["med_un2_2"], chance=50)

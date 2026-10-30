@@ -1,6 +1,7 @@
 # player.rpy
 init -1 python in v1FNaSR:
     from __future__ import division
+    import threading as _threading
 
     audio.register_channel("heartbeat", "ambience", loop=True)
     audio.register_channel("breathing", "ambience", loop=True)
@@ -36,11 +37,11 @@ init -1 python in v1FNaSR:
             self._setattr("_died", False)
             self._setattr("_god_mode", False)
 
-            self._setattr("_element_enabled", {
-                PlayerElement.TABLET: True,
-                PlayerElement.DOOR: True,
-                PlayerElement.BULB: True,
-            })
+            self._element_enabled = {
+                PlayerElement.TABLET: MultiLock(),
+                PlayerElement.DOOR: MultiLock(),
+                PlayerElement.BULB: MultiLock(),
+            }
 
         @property
         def id(self):
@@ -107,17 +108,11 @@ init -1 python in v1FNaSR:
             else:
                 self._god_mode = False
 
-        def set_element_enabled(self, element, enabled):
-            try:
-                self._element_enabled[element] = bool(enabled)
-            except KeyError:
-                raise FNaSRValueError("Элемент '{}' не найден.".format(element))
-
-        def is_element_enabled(self, element):
+        def get_element(self, element):
             try:
                 return self._element_enabled[element]
             except KeyError:
-                raise FNaSRValueError("Элемент '{}' не найден.".format(element))
+                raise FNaSRValueError("Элемент '{}' не найден.".format(element)) 
 
         def try_kill(self):
             if self._god_mode:
@@ -156,7 +151,7 @@ init -1 python in v1FNaSR:
             ambience_manager.sync_player(self)
 
         def open_tablet(self):
-            if not self.is_element_enabled(PlayerElement.TABLET):
+            if self.get_element(PlayerElement.TABLET).blocked:
                 return
             if self._current_location is None:
                 raise FNaSRValueError("The player is not in any location")
@@ -262,6 +257,8 @@ init -1 python in v1FNaSR:
         def reset(self):
             super(Player, self).reset()
             self._under_attack.clear()
+            for element in iter_values(self._element_enabled):
+                element.clear()
 
     class PlayerSystem(object):
         def __init__(self):

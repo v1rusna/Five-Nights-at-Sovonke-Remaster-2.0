@@ -14,6 +14,17 @@ init -3 python in v1FNaSR:
         conflicting_modules = tuple()
         optional_modules = tuple()
 
+        @staticmethod
+        def get_module(enemy, type_module, default=None):
+            if not isinstance(enemy, Enemy):
+                raise FNaSRTypeError("'enemy' должен быть 'Enemy', получено: {}".format(type(enemy)))
+
+            for module in enemy.modules:
+                if isinstance(module, type_module):
+                    return module
+
+            return default
+
         def __init__(self):
             super(EnemyModule, self).__init__()
             self._error = None
@@ -184,6 +195,8 @@ init -3 python in v1FNaSR:
 
 
     class Enemy(BaseEnemy):
+        POSITIONS = 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
+
         def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None, **kwargs):
             super(Enemy, self).__init__(**kwargs)
 
@@ -215,6 +228,7 @@ init -3 python in v1FNaSR:
             self._name = name
             self._color = color
             self._setattr("_align", (0.5, 0.5))
+            self._setattr("_invisible", False)
 
             self._sprite_path = sprite
             self._sprite = recolor_enemy_sprite(sprite)
@@ -226,7 +240,6 @@ init -3 python in v1FNaSR:
                 sharpness_factor=0.1,
                 fill_viewport=True
             )
-            self._setattr("_invisible", False)
 
         @property
         def tag(self):
@@ -274,7 +287,8 @@ init -3 python in v1FNaSR:
 
         def set_align(self, x=None, y=None):
             if x is None:
-                x = renpy.random.uniform(0.1, 0.9)
+                # x = renpy.random.uniform(0.1, 0.9)
+                x = renpy.random.choice(Enemy.POSITIONS)
             if y is None:
                 y = 0.5
 

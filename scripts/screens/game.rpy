@@ -45,7 +45,7 @@ screen V1MainGameInterfaceFNaSR:
         ) align (0.5, -0.2)
 
     if not player.is_moving and player.has_door and not player.is_open_tablet:
-        if player.is_element_enabled(v1FNaSR.PlayerElement.DOOR):
+        if not player.get_element(v1FNaSR.PlayerElement.DOOR).blocked:
             for door_key in door_keys:
                 key door_key action Function(player.current_location.door.button.keyboard_down)
                 key "keyup_"+door_key action Function(player.current_location.door.button.keyboard_up)
@@ -54,7 +54,7 @@ screen V1MainGameInterfaceFNaSR:
                 add player.current_location.door.button align (0.75, 1.0)
         text "Паника: "+player.get_panic_text() style "v1_text_24_style_FNaSR" align (0.9, 0.8)
 
-    if player.is_element_enabled(v1FNaSR.PlayerElement.BULB) and not player.is_moving and player.has_bulb and not player.is_open_tablet:
+    if not player.get_element(v1FNaSR.PlayerElement.BULB).blocked and not player.is_moving and player.has_bulb and not player.is_open_tablet:
         key bulb_keys action Function(player.current_location.bulb.switch)
         button:
             align (0.25, 1.0)
@@ -66,7 +66,7 @@ screen V1MainGameInterfaceFNaSR:
             align (0.25, 0.9)
             idle (v1FNaSR.InitImages.ui_bulb_on if player.current_location.bulb.is_on else v1FNaSR.InitImages.ui_bulb_off)
 
-    if player.is_element_enabled(v1FNaSR.PlayerElement.TABLET) and player.has_tablet and not player.is_moving:
+    if not player.get_element(v1FNaSR.PlayerElement.TABLET).blocked and player.has_tablet and not player.is_moving:
         use V1TabletButtonScreenFNaSR(player)
 
 screen V1TabletButtonScreenFNaSR(player):

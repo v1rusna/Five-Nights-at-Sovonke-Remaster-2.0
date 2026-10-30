@@ -1,7 +1,8 @@
 # other
-init -5 python in v1FNaSR:
+init -4 python in v1FNaSR:
     import collections as _collections
     import random as _random
+    import threading as _threading
 
     class EnemyContext(DebugContext):
         __slots__ = ("_enemy",)
@@ -347,8 +348,80 @@ init -5 python in v1FNaSR:
         def __repr__(self):
             return "{}(light_image={}, dark_image={}, chance={})".format(type(self).__name__, self.light_image, self.dark_image, self.chance)
 
+    class Generator(GameObject):
+        _instance = None
+        _lock = _threading.RLock()
+
+        def __new__(cls):
+            if cls._instance is not None:
+                return cls._instance
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = object.__new__(cls)
+                return cls._instance
+
+        @classmethod
+        def create_if_absent(cls):
+            if cls._instance is not None:
+                return
+            with cls._lock:
+                if cls._instance is None:
+                    cycle = require_system("cycle")
+                    generator = Generator()
+                    if not cycle.is_registered(generator):
+                        cycle.register(generator)
+
+        @classmethod
+        def is_created(cls):
+            with cls._lock:
+                return cls._instance is not None
+
+        @classmethod
+        def disable(cls):
+            with cls._lock:
+                generator = cls._instance
+                if generator is None:
+                    return
+                generator._enable = False
+                if generator._player is not None:
+                    generator._player.get_element(PlayerElement.BULB).block("generator")
+
+        @classmethod
+        def enable(cls):
+            with cls._lock:
+                generator = cls._instance
+                if generator is None:
+                    return
+                generator._enable = True
+                if generator._player is not None:
+                    generator._player.get_element(PlayerElement.BULB).unblock("generator")
+
+        @classmethod
+        def is_enable(cls):
+            with cls._lock:
+                generator = cls._instance
+                if generator is None:
+                    return False
+                return generator._enable
+
+        def __init__(self):
+            self._setattr("_tm", None)
+            self._setattr("_player", None)
+            self._setattr("_enable", True)
+
+        def start(self):
+            self._tm = require_system("tablet")
+            self._player = require_system("player").current_player
+
+        def update(self, dt):
+            self._accumulated_time += dt
+            while self.interval():
+                if not self._enable:
+                    for tablet in self._tm.tablets:
+                        tablet.safe_discharge(2)
 
 init python:
     v1FNaSR.audio.register_channel("screamer", "sound", loop=False)
+    v1FNaSR.audio.register_channel("signal", "sound", loop=True)
 
 

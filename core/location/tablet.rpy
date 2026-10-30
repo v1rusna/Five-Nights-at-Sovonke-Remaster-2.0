@@ -20,6 +20,29 @@ init python in v1FNaSR:
         DEFAULT_DISCHARGE_SELECT = 1
         DEFAULT_DISCHARGE_OPEN = 2
         DEFAULT_DISCHARGE_FACTOR_OPEN = 1
+
+        # EXPERIMENTAL
+        @staticmethod
+        def get_visible_ids(player):
+            if not isinstance(player, Player):
+                raise FNaSRTypeError("'player' должен быть 'Player', получено: {}".format(type(player)))
+
+            current_location = player.current_location
+            if current_location is None:
+                return tuple()
+
+            if not player.is_open_tablet:
+                return tuple()
+
+            visible_ids = set()
+            selected = current_location.tablet.selected
+            if selected is not None:
+                location_selected = current_location.location_system.get_location(selected)
+                if location_selected is not None:
+                    visible_ids.add(selected)
+                    visible_ids.update(location_selected.camera.identical_ids)
+
+            return tuple(visible_ids)
         
         def __init__(self, tag, charge=1000, max_charge=1000, discharge=1):
             super(Tablet, self).__init__()

@@ -282,7 +282,7 @@ init -2 python in v1FNaSR:
                 context.player_manager = require_system("player")
 
             if context.get("stop_moving") is None:
-                context.stop_moving = False
+                context.stop_moving = MultiLock()
 
             if context.get("move_wait_door_open") is None:
                 context.move_wait_door_open = False
@@ -316,7 +316,7 @@ init -2 python in v1FNaSR:
                 self._stun_left = max(0.0, self._stun_left - dt)
                 return
 
-            if context.stop_moving:
+            if context.stop_moving.blocked:
                 return
 
             if self.move_change(context, dt):
@@ -333,7 +333,8 @@ init -2 python in v1FNaSR:
                 update_ui()
         
         def reset(self, context):
-            context.stop_moving = False
+            context.stop_moving.clear()
+            context.move_wait_door_open = False
             super(EnemyMoveModule, self).reset(context)
 
         def _move(self, context, location=None):
@@ -376,23 +377,29 @@ init -2 python in v1FNaSR:
 
             return renpy.random.random() < 1.0 - _math.exp(-rate * dt)
 
-        def get_next_location_id(self):
-            path = tuple(self._path)
-            if not len(path):
+        def get_next_location_id(self, offset=1):
+            len_path = len(self._path)
+
+            if not len_path:
                 return
 
-            virtual_cursor = self._cursor + 1
-            if virtual_cursor > len(path) - 1:
+            offset = int(offset)
+            virtual_cursor = self._cursor + offset
+
+            if virtual_cursor > len_path - 1:
                 return
 
             return self._path[virtual_cursor]
 
-        def get_previous_location_id(self):
-            path = tuple(self._path)
-            if not len(path):
+        def get_previous_location_id(self, offset=1):
+            len_path = len(self._path)
+
+            if not len_path:
                 return
 
-            virtual_cursor = self._cursor - 1
+            offset = int(offset)
+            virtual_cursor = self._cursor - offset
+
             if virtual_cursor < 0:
                 return
 
@@ -430,7 +437,7 @@ init -2 python in v1FNaSR:
                 "stun: {}".format(self.stun_left),
                 "speed: {}".format(self.speed),
                 "current location id: {}".format(self.current_location_id),
-                "stop moving: {}".format(enemy_context.stop_moving)
+                "stop moving: {}".format(enemy_context.stop_moving.blocked)
             ]
 
 
@@ -475,7 +482,7 @@ init -2 python in v1FNaSR:
             self._safety_time = self._record_safety_time
 
         def get_current_safety_time(self):
-            "Получить safety_time с учётом времени анимации"
+            """Получить safety_time с учётом времени анимации"""
             speed = GlobalState.get("moving_animation_speed", 1.0)
             if speed > 0:
                 return self._safety_time + 1.8 / GlobalState.get("moving_animation_speed", 1.0)
@@ -500,6 +507,8 @@ init -2 python in v1FNaSR:
             if context.is_player_dead:
                 return
             player = context.player_manager.current_player
+            if player is None:
+                return
             if player.current_location is None:
                 return
             if context.enemy.current_location is None:
@@ -529,14 +538,14 @@ init -2 python in v1FNaSR:
 
     class EnemyAttackModule(EnemyAggressiveModule):
         __slots__ = (
-            "_pre_attack", "_move_module", "_is_not_move_module", "_attack_target_id",
+            "_move_module", "_attack_target_id",
             "_murder_countdown", "_r_t_m", "_sound_channel",
         )
 
         dependent_modules = (EnemyMoveModule,)
         conflicting_modules = tuple()
 
-        def __init__(self, enemy_screamer, pre_attack=True, random_time_murder=(4,6,), sound_channel="enemy_channel", **kwargs):
+        def __init__(self, enemy_screamer, random_time_murder=(4,6,), sound_channel="enemy_channel", **kwargs):
             super(EnemyAttackModule, self).__init__(enemy_screamer=enemy_screamer, **kwargs)
 
             if not isinstance(random_time_murder, (list, tuple,)):
@@ -557,9 +566,7 @@ init -2 python in v1FNaSR:
             if not is_string(sound_channel):
                 raise FNaSRTypeError("'sound_channel' должен быть строкой, получено: {}".format(type(sound_channel)))
 
-            self._setattr("_pre_attack", bool(pre_attack))
             self._setattr("_move_module", None)
-            self._setattr("_is_not_move_module", False)
             self._setattr("_attack_target_id", None)
             self._setattr("_murder_countdown", None)
             self._setattr("_r_t_m", tuple(random_time_murder))
@@ -585,6 +592,9 @@ init -2 python in v1FNaSR:
             if context.get("is_player_dead") is None:
                 context.is_player_dead = False
 
+        def start(self, context):
+            self._move_module = self.get_module(context.enemy, EnemyMoveModule)
+
         def update(self, context, dt):
             if context.is_player_dead:
                 return
@@ -593,19 +603,8 @@ init -2 python in v1FNaSR:
 
             self._accumulated_time += dt
             while self.interval():
-                if not self._pre_attack and self._attack_target_id is None:
-                    return
-                if self._is_not_move_module:
-                    return
-
                 if self._move_module is None:
-                    for m in context.enemy.modules:
-                        if isinstance(m, EnemyMoveModule):
-                            self._move_module = m
-                            break
-                    else:
-                        self._is_not_move_module = True
-                        return
+                    return
 
                 self._handle_attack(context)
 
@@ -617,27 +616,16 @@ init -2 python in v1FNaSR:
             if self._handle_attack_target_id(context):
                 return
 
-            location_id = self._move_module.get_next_location_id()
-            if location_id is None:
-                return
-
-            player = context.player_manager.current_player
-            if player.current_location is None:
-                return
-            if player.current_location.id != location_id:
-                return
-
-            location = context.location_system.get_location(location_id)
+            location = self.get_relative_location(context, 1)
             if location is None:
                 return
             if location.door is None:
                 return
 
-            self._attack_target_id = location_id
-            context.stop_moving = True
-            self._safety_time = 0.5
-            main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
-            self._attack(context)
+            if not self.player_present(context, location):
+                return
+
+            self._start_attack(context, location)
 
         def _handle_attack_target_id(self, context):
             if self._attack_target_id is None:
@@ -656,6 +644,13 @@ init -2 python in v1FNaSR:
 
             self._attack(context)
             return True
+
+        def _start_attack(self, context, attack_target):
+            main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
+            context.stop_moving.block(self)
+            self._attack_target_id = attack_target.id
+            self._safety_time = 0.5
+            self._attack(context)
 
         def _attack(self, context):
             target_id = self._attack_target_id
@@ -713,7 +708,7 @@ init -2 python in v1FNaSR:
             player = context.player_manager.current_player
             self._attack_target_id = None
             self._murder_countdown = None
-            context.stop_moving = False
+            context.stop_moving.unblock(self)
             if context.enemy.tag in player.under_attack:
                 player.under_attack - context.enemy.tag
 
@@ -730,6 +725,35 @@ init -2 python in v1FNaSR:
                 return False
 
             self._murder_countdown = None
+            return True
+
+        def get_relative_location(self, context, distance):
+            if self._move_module is None:
+                return
+
+            distance = int(distance)
+
+            if distance >= 0:
+                location_id = self._move_module.get_next_location_id(distance)
+            else:
+                location_id = self._move_module.get_previous_location_id(distance)
+            if location_id is None:
+                return
+
+            location = context.location_system.get_location(location_id)
+            if location is None:
+                return
+
+            return location
+
+        def player_present(self, context, location):
+            player = context.player_manager.current_player
+            if player is None:
+                return False
+            if player.current_location is None:
+                return False
+            if player.current_location.id != location.id:
+                return False
             return True
 
         def get_debug_list_texts(self, enemy_context):
@@ -784,37 +808,19 @@ init -2 python in v1FNaSR:
             self._replace_image(context)
             super(EnemySilentAttackModule, self).update(context, dt)
 
-        def _handle_attack(self, context):
-            if self._handle_attack_target_id(context):
-                return
+        def _start_attack(self, context, attack_target):
+            data = self._silent_locations.get(attack_target.id, None)
 
-            location_id = self._move_module.get_next_location_id()
-            if location_id is None:
-                return
-
-            player = context.player_manager.current_player
-            if player.current_location is None:
-                return
-            if player.current_location.id != location_id:
-                return
-
-            location = context.location_system.get_location(location_id)
-            if location is None:
-                return
-            if location.door is None:
-                return
-
-            self._attack_target_id = location_id
-            context.stop_moving = True
-            self._safety_time = 0.5
-            data = self._silent_locations.get(self._attack_target_id, None)
-
-            if not location.is_replaced_image and data is not None and data:
+            if not attack_target.is_replaced_image and data is not None and data:
                 self._replace_image(context)
             else:
                 main_executor.submit(audio.play,resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
 
+            context.stop_moving.block(self)
+            self._attack_target_id = attack_target.id
+            self._safety_time = 0.5
             self._attack(context)
+            
 
         def _choose_silent_variant(self, variants):
             if not variants:
@@ -890,125 +896,173 @@ init -2 python in v1FNaSR:
             lines = []
             for loc_id, variants in iter_items(self._silent_locations):
                 lines.append(" {}: {}\n".format(loc_id, len(variants)))
-            #     lines.append(" - ({})\n".format(loc_id))
-            #     for variant in variants:
-            #         lines.append("  {}\n".format(repr(variant)))
             return super(EnemySilentAttackModule, self).get_debug_list_texts(enemy_context) + [
                 "silent locations:\n{}".format("".join(lines)),
                 "replaced: {}".format(self._replaced)
             ]
 
-    class EnemyAssistantModule(EnemyModule):
-        conflicting_modules = (EnemyAggressiveModule, EnemyAttackModule, EnemySilentAttackModule,)
-        optional_modules = (EnemyMoveModule,)
+    class EnemySignalButtonModule(EnemyModule):
+        KEY = "v1_enemy_signal_button_module_%s"
 
-        def __init__(
-            self,
-            assistant_fn,
-            condition_withdrawal_fn = None,
-            withdrawal_fn = None,
-            time_until_assistance=0.0,
-            interval=1.0
-        ):
-            super(EnemyAssistantModule, self).__init__()
+        dependent_modules = (EnemyMoveModule,)
 
-            if condition_withdrawal_fn is None:
-                condition_withdrawal_fn = _noop
-            if withdrawal_fn is None:
-                withdrawal_fn = _noop
-            if not callable(assistant_fn):
-                raise FNaSRTypeError("'assistant_fn' должен быть вызываемым, получено: {}".format(type(assistant_fn)))
-            if not callable(condition_withdrawal_fn):
-                raise FNaSRTypeError("'condition_withdrawal_fn' должен быть вызываемым, получено: {}".format(type(condition_withdrawal_fn)))
-            if not callable(withdrawal_fn):
-                raise FNaSRTypeError("'withdrawal_fn' должен быть вызываемым, получено: {}".format(type(withdrawal_fn)))
-            if not is_number(time_until_assistance):
-                raise FNaSRTypeError("'time_until_assistance' должен быть числом, получено: {}".format(type(time_until_assistance)))
-            if time_until_assistance < 0:
-                raise FNaSRValueError("'time_until_assistance' должен быть положительным, получено: {}".format(time_until_assistance))
-            if not is_number(interval):
-                raise FNaSRTypeError("'interval' должен быть числом, получено: {}".format(type(interval)))
-            if interval < 0:
-                raise FNaSRValueError("'interval' должен быть положительным, получено: {}".format(interval))
+        def __init__(self, button_press_duration=3, button_image=None, signal_sound=None, signal_channel="signal", button_align=(0.25, 0.89), xysize=(290 / 2, 60 / 2)):
+            if button_image is None:
+                button_image = resources.images.other["Signal_button"]
+            if signal_sound is None:
+                signal_sound = resources.sounds.sfx["tablet_scaring_sound"]
 
-            self._assistant_fn = assistant_fn
-            self._condition_withdrawal_fn = condition_withdrawal_fn
-            self._withdrawal_fn = withdrawal_fn
-            self._setattr("_time_until_assistance", float(time_until_assistance))
-            self._setattr("_current_time", 0.0)
+            if not is_number(button_press_duration):
+                raise FNaSRTypeError("'button_press_duration' должен быть числом, получено: {}".format(type(button_press_duration)))
+            if not is_string(button_image):
+                raise FNaSRTypeError("'button_image' должен быть строкой, получено: {}".format(type(button_image)))
+            if not is_string(signal_sound):
+                raise FNaSRTypeError("'signal_sound' должен быть строкой, получено: {}".format(type(signal_sound)))
+            if not is_string(signal_channel):
+                raise FNaSRTypeError("'signal_channel' должен быть строкой, получено: {}".format(type(signal_channel)))
+            if not isinstance(button_align, (list, tuple)):
+                raise FNaSRTypeError("'button_align' должен быть списком или кортежем, получено: {}".format(type(button_align)))
+            if len(button_align) != 2:
+                raise FNaSRValueError("'button_align' должен состоять из 2 элементов, получено: {}".format(len(button_align)))
+            for i in range(2):
+                if not is_number(button_align[i]):
+                    raise FNaSRValueError("button_align[{}] должен быть числом, получено: {}".format(i, button_align[i]))
+            if not isinstance(xysize, (list, tuple)):
+                raise FNaSRTypeError("'xysize' должен быть списком или кортежем, получено: {}".format(type(xysize)))
+            if len(xysize) != 2:
+                raise FNaSRValueError("'xysize' должен состоять из 2 элементов, получено: {}".format(len(xysize)))
+            for i in range(2):
+                if not is_number(xysize[i]):
+                    raise FNaSRValueError("xysize[{}] должен быть числом, получено: {}".format(i, xysize[i]))
+            
+            button_align = tuple(button_align)
+            xysize = tuple(xysize)
+            vp = ViewportManager.current()
+            xsize = round(vp.scale_scalar(xysize[0]))
+            ysize = round(vp.scale_scalar(xysize[1]))
+
+            self._button_press_duration = float(button_press_duration)
+            self._button_image = button_image
+            self._signal_sound = signal_sound
+            self._signal_channel = signal_channel
+            self._button_align = button_align
+            self._key = None
+
+            self._button = HoldingMouseImageButton(
+                idle=renpy.store.Transform(self._button_image, xysize=(xsize, ysize)),
+                click_action=renpy.store.Function(self._handle_button, True),
+                unclick_action=renpy.store.Function(self._handle_button, False),
+                allow_alternate=False,
+                align=button_align
+            )
+
+            self._setattr("_signal", False)
+            self._setattr("_show_button", False)
+            self._setattr("_player", None)
             self._setattr("_move_module", None)
-            self._setattr("_flags", dict())
-            self._setattr("_interval", float(interval))
 
-        def set_flag(self, key, value):
-            if not is_string(key):
-                raise FNaSRTypeError("'key' должен быть строкой, получено: {}".format(type(key)))
-            self._flags[key] = value
-
-        def get_flag(self, key, default=None):
-            if not is_string(key):
-                raise FNaSRTypeError("'key' должен быть строкой, получено: {}".format(type(key)))
-            return self._flags.get(key, default)
+        def on_include(self, enemy):
+            context = enemy.context
+            self._key = self.KEY % context.enemy.tag
+            
+            if context.get("player_manager") is None:
+                context.player_manager = require_system("player")
 
         def start(self, context):
-            for m in context.enemy.modules:
-                if isinstance(m, EnemyMoveModule):
-                    self._move_module = m
-                    context.move_wait_door_open = True
-                    break
+            self._player = context.player_manager.current_player
+            if self._player is None:
+                raise FNaSRRuntimeError("'current_player' не указан.")
+            self._move_module = self.get_module(context.enemy, EnemyMoveModule)
 
         def update(self, context, dt):
+            self._accumulated_time += dt
+            self._handle_render_button(context)
+            while self.interval(self._button_press_duration):
+                self._scare_away(context)
+
+        def _scare_away(self, context):
             if self._move_module is None:
                 return
 
-            if not self._move_module.is_last:
+            player = context.player_manager.current_player
+
+            if player.current_location is None:
+                self._move_module.generate_new_path()
+            elif self._move_module.start_location_id is not None and player.current_location.id != self._move_module.start_location_id:
+                self._move_module.generate_new_path()
+            else:
+                self._move_module.generate_new_path(None)
+
+        def _handle_render_button(self, context):
+            if not self._player.is_open_tablet:
+                self._hide()
                 return
 
-            while self.interval(self._interval):
-                if self._condition_withdrawal_fn(self, context):
-                    self._withdrawal_fn(self, context)
-                    self._current_time = 0.0
-                    return
+            if context.enemy.current_location is None:
+                self._hide()
+                return
 
-                self._current_time += dt
+            visible_ids = Tablet.get_visible_ids(self._player)
+            if context.enemy.current_location.id not in visible_ids:
+                self._hide()
+                return
 
-                if self._current_time >= self._time_until_assistance:
-                    self._current_time -= self._time_until_assistance
-                    self._assistant_fn(self, context)
+            self._show()
 
-        def _condition_withdrawal(self, context):
-            pass
+        def _show(self):
+            if self._show_button:
+                return
+            self._show_button = True
+            main_executor.submit(renpy.show, self._key, what=self._button)
 
-        def _withdrawal(self, context):
-            pass
+        def _hide(self):
+            if not self._show_button:
+                return
+            self._show_button = False
+            main_executor.submit(renpy.hide, self._key)
 
-        def _assistant(self, context):
-            pass
+        def _handle_button(self, s):
+            self._signal = bool(s)
+            if self._signal:
+                main_executor.submit(audio.play, self._signal_sound, self._signal_channel, loop=True)
+            else:
+                main_executor.submit(audio.stop, self._signal_channel)
 
-    def Alice_assistant_fn(module, context):
-        pass
+        def reset(self, context):
+            main_executor.submit(renpy.hide, self._key)
+            super(EnemySignalButtonModule, self).reset(context)
+            self._button.force_unclick()
 
-    def Alice_condition_withdrawal_fn(module, context):
-        pass
 
-    def Alice_withdrawal_fn(module, context):
-        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     EnemyAggressiveModule.conflicting_modules = (
         EnemyAttackModule,
         EnemySilentAttackModule,
-        EnemyAssistantModule,
     )
 
     EnemyAttackModule.conflicting_modules = (
         EnemyAggressiveModule,
         EnemySilentAttackModule,
-        EnemyAssistantModule,
     )
 
     EnemySilentAttackModule.conflicting_modules = (
         EnemyAggressiveModule,
         EnemyAttackModule,
-        EnemyAssistantModule,
     )
