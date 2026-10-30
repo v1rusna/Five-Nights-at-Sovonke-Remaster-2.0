@@ -198,6 +198,7 @@ init -3 python in v1FNaSR:
         POSITIONS = 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
 
         def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None, **kwargs):
+            modules = kwargs.pop("modules", None)
             super(Enemy, self).__init__(**kwargs)
 
             if not is_string(tag):
@@ -240,6 +241,11 @@ init -3 python in v1FNaSR:
                 sharpness_factor=0.1,
                 fill_viewport=True
             )
+
+            if isinstance(modules, (list, tuple,)):
+                for module in modules:
+                    self.add_module(module)
+            
 
         @property
         def tag(self):

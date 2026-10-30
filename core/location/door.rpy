@@ -18,7 +18,6 @@ init python in v1FNaSR:
                 clicked=renpy.store.Solid("#00000000", xsize=int(vp.scale_scalar(290)), ysize=int(vp.scale_scalar(200))),
                 click_action=renpy.store.Function(self.close),
                 unclick_action=renpy.store.Function(self.open),
-                allow_alternate=False
             )
 
         @property

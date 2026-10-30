@@ -3,6 +3,7 @@ init python in v1FNaSR:
     @main_thread_only
     def stop_game_helper(is_win):
         audio.stop_all(0.5)
+        visual.hide_all()
         screen_manager.hide_all_screen(True)
         require_system("night").finish(bool(is_win))
         settings.save()

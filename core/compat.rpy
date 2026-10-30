@@ -86,9 +86,7 @@ def reraise(tp, value, tb=None):
 
 
     def iter_items(mapping):
-        """
-        Ленивый итератор по (key, value)-парам.
-        """
+        """Ленивый итератор по (key, value)-парам."""
         method = getattr(mapping, "iteritems", None)
 
         if method is not None:
@@ -98,7 +96,7 @@ def reraise(tp, value, tb=None):
 
 
     def iter_keys(mapping):
-        """Аналог iter_items() для ключей."""
+        """Ленивый итератор по ключам."""
         method = getattr(mapping, "iterkeys", None)
 
         if method is not None:
@@ -108,7 +106,7 @@ def reraise(tp, value, tb=None):
 
 
     def iter_values(mapping):
-        """Аналог iter_values() для значений."""
+        """Ленивый итератор по значениям."""
         method = getattr(mapping, "itervalues", None)
 
         if method is not None:
@@ -164,7 +162,6 @@ def reraise(tp, value, tb=None):
             (),
             {}
         )
-
 
     def get_mro(cls):
         mro = getattr(cls, "__mro__", None)

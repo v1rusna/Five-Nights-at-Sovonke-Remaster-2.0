@@ -81,7 +81,9 @@ init -2 python in v1FNaSR:
         player = context.player_manager.current_player
         if player.current_location is None:
             return 1.0
-        if player.is_open_tablet and player.current_location.tablet.selected == module.current_location_id:
+        if not player.is_open_tablet:
+            return 1.0
+        if player.current_location.tablet.selected in Tablet.get_visible_ids(player):
             return 0.0
         return 1.0
 
@@ -303,7 +305,7 @@ init -2 python in v1FNaSR:
             self._mood = renpy.random.uniform(0.85, 1.2)
 
             if path:
-                self._move(context)
+                self.move(context)
 
         def update(self, context, dt):
             if not self._path:
@@ -324,10 +326,10 @@ init -2 python in v1FNaSR:
 
                 self.step_forward()
 
-                if not self._move(context):
+                if not self.move(context):
                     if not context.move_wait_door_open:
                         self.generate_new_path()
-                        self._move(context)
+                        self.move(context)
 
                 context.enemy.set_align()
                 update_ui()
@@ -337,13 +339,14 @@ init -2 python in v1FNaSR:
             context.move_wait_door_open = False
             super(EnemyMoveModule, self).reset(context)
 
-        def _move(self, context, location=None):
+        def move(self, context, location=None):
             if location is None:
                 if self.current_location_id is None:
                     return False
                 location = context.location_system.require_location(self.current_location_id)
             try:
                 context.enemy.move(location)
+                update_ui()
                 return True
             except DoorClose:
                 return False
@@ -571,7 +574,14 @@ init -2 python in v1FNaSR:
             self._setattr("_murder_countdown", None)
             self._setattr("_r_t_m", tuple(random_time_murder))
             self._setattr("_sound_channel", sound_channel)
-            self._setattr("_old_safe_time", 1.5)
+
+        @property
+        def attack_target_id(self):
+            return self._attack_target_id
+
+        @property
+        def sound_channel(self):
+            return self._sound_channel
 
         def get_current_safety_time(self):
             "Получить safety_time с учётом времени анимации"
@@ -673,7 +683,7 @@ init -2 python in v1FNaSR:
 
             self._move_module.step_forward()
 
-            if not self._move_module._move(context):
+            if not self._move_module.move(context):
                 self._loss_attack(context)
                 return
 
@@ -690,7 +700,7 @@ init -2 python in v1FNaSR:
             else:
                 self._move_module.generate_new_path(None)
 
-            self._move_module._move(context)
+            self._move_module.move(context)
             self._finish_attack(context)
 
             if context.enemy.tag == "us":
@@ -804,6 +814,14 @@ init -2 python in v1FNaSR:
             self._silent_locations = normalized
             self._setattr("_replaced", False)
 
+        @property
+        def silent_locations(self):
+            return tuple(iter_keys(self._silent_locations))
+
+        @property
+        def replaced(self):
+            return self._replaced
+
         def update(self, context, dt):
             self._replace_image(context)
             super(EnemySilentAttackModule, self).update(context, dt)
@@ -821,7 +839,6 @@ init -2 python in v1FNaSR:
             self._safety_time = 0.5
             self._attack(context)
             
-
         def _choose_silent_variant(self, variants):
             if not variants:
                 return None
@@ -906,7 +923,18 @@ init -2 python in v1FNaSR:
 
         dependent_modules = (EnemyMoveModule,)
 
-        def __init__(self, button_press_duration=3, button_image=None, signal_sound=None, signal_channel="signal", button_align=(0.25, 0.89), xysize=(290 / 2, 60 / 2)):
+        def __init__(
+            self,
+            button_press_duration=3,
+            button_image=None,
+            signal_sound=None,
+            signal_channel="signal",
+            button_align=(0.25, 0.89),
+            xysize=(290 / 2, 60 / 2),
+            **kwargs
+        ):
+            super(EnemySignalButtonModule, self).__init__(**kwargs)
+
             if button_image is None:
                 button_image = resources.images.other["Signal_button"]
             if signal_sound is None:
@@ -938,22 +966,22 @@ init -2 python in v1FNaSR:
             button_align = tuple(button_align)
             xysize = tuple(xysize)
             vp = ViewportManager.current()
-            xsize = round(vp.scale_scalar(xysize[0]))
-            ysize = round(vp.scale_scalar(xysize[1]))
+            xsize = int(round(vp.scale_scalar(xysize[0])))
+            ysize = int(round(vp.scale_scalar(xysize[1])))
 
             self._button_press_duration = float(button_press_duration)
-            self._button_image = button_image
+            # self._button_image = button_image
             self._signal_sound = signal_sound
             self._signal_channel = signal_channel
-            self._button_align = button_align
+            # self._button_align = button_align
             self._key = None
 
             self._button = HoldingMouseImageButton(
-                idle=renpy.store.Transform(self._button_image, xysize=(xsize, ysize)),
+                idle=build_transform(button_image, width=xsize, height=ysize),
                 click_action=renpy.store.Function(self._handle_button, True),
                 unclick_action=renpy.store.Function(self._handle_button, False),
-                allow_alternate=False,
-                align=button_align
+                allow_alternate=True,
+                align=button_align,
             )
 
             self._setattr("_signal", False)
@@ -975,8 +1003,13 @@ init -2 python in v1FNaSR:
             self._move_module = self.get_module(context.enemy, EnemyMoveModule)
 
         def update(self, context, dt):
-            self._accumulated_time += dt
             self._handle_render_button(context)
+
+            if not self._signal:
+                self._accumulated_time = 0.0
+                return
+
+            self._accumulated_time += dt
             while self.interval(self._button_press_duration):
                 self._scare_away(context)
 
@@ -984,7 +1017,8 @@ init -2 python in v1FNaSR:
             if self._move_module is None:
                 return
 
-            player = context.player_manager.current_player
+            self._accumulated_time = 0.0
+            player = self._player
 
             if player.current_location is None:
                 self._move_module.generate_new_path()
@@ -992,6 +1026,8 @@ init -2 python in v1FNaSR:
                 self._move_module.generate_new_path()
             else:
                 self._move_module.generate_new_path(None)
+
+            self._move_module.move(context)
 
         def _handle_render_button(self, context):
             if not self._player.is_open_tablet:
@@ -1013,13 +1049,17 @@ init -2 python in v1FNaSR:
             if self._show_button:
                 return
             self._show_button = True
-            main_executor.submit(renpy.show, self._key, what=self._button)
+            main_executor.submit(visual.show, self._key, what=self._button, layer="screens")
+            update_ui()
 
         def _hide(self):
             if not self._show_button:
                 return
             self._show_button = False
-            main_executor.submit(renpy.hide, self._key)
+            self._signal = False
+            main_executor.submit(audio.stop, self._signal_channel)
+            main_executor.submit(visual.hide, self._key, layer="screens")
+            update_ui()
 
         def _handle_button(self, s):
             self._signal = bool(s)
@@ -1029,9 +1069,17 @@ init -2 python in v1FNaSR:
                 main_executor.submit(audio.stop, self._signal_channel)
 
         def reset(self, context):
-            main_executor.submit(renpy.hide, self._key)
+            main_executor.submit(audio.stop, self._signal_channel)
+            main_executor.submit(visual.hide, self._key, layer="screens")
             super(EnemySignalButtonModule, self).reset(context)
             self._button.force_unclick()
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "button press: {}/{}".format(self._accumulated_time, self._button_press_duration),
+                "signal: {}".format(self._signal),
+                "show button: {}".format(self._show_button)
+            ]
 
 
 

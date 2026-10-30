@@ -1,5 +1,4 @@
 init python in v1FNaSR:
-
     import posixpath as _posixpath
 
     class Folder(object):

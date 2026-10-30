@@ -262,6 +262,3 @@ screen V1ShowEnemyFNaSR():
     for obj, align in v1FNaSR.EnemyVisualizer.iter_sees():
         $ ax, ay = align
         add obj align(ax, ay)
-
-
-
