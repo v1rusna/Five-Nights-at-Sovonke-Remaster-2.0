@@ -919,6 +919,11 @@ init -2 python in v1FNaSR:
             ]
 
     class EnemySignalButtonModule(EnemyModule):
+        __slots__ = (
+            "_button_press_duration", "_signal_sound", "_signal_channel", "_key",
+            "_signal", "_show_button", "_player", "_player", "_move_module",
+        )
+
         KEY = "v1_enemy_signal_button_module_%s"
 
         dependent_modules = (EnemyMoveModule,)
@@ -970,10 +975,8 @@ init -2 python in v1FNaSR:
             ysize = int(round(vp.scale_scalar(xysize[1])))
 
             self._button_press_duration = float(button_press_duration)
-            # self._button_image = button_image
             self._signal_sound = signal_sound
             self._signal_channel = signal_channel
-            # self._button_align = button_align
             self._key = None
 
             self._button = HoldingMouseImageButton(
@@ -1082,7 +1085,122 @@ init -2 python in v1FNaSR:
             ]
 
 
+    class EnemyInteractiveModule(EnemyModule):
+        dependent_modules = (EnemyMoveModule,)
 
+        def __init__(
+            self,
+            needs_clicks=10,
+            downtime=1.0,
+            **kwargs
+        ):
+            super(EnemyInteractiveModule, self).__init__(**kwargs)
+
+            if not is_strict_integer(needs_clicks):
+                raise FNaSRTypeError("'needs_clicks' должен быть целым числом, получено: {}".format(type(needs_clicks)))
+            if needs_clicks <= 0:
+                raise FNaSRValueError("'needs_clicks' должен быть больше нуля.")
+
+            if not is_number(downtime):
+                raise FNaSRTypeError("'downtime' должен быть числом, получено: {}".format(type(downtime)))
+            if downtime < 0:
+                raise FNaSRValueError("'downtime' не может быть меньше нуля.")
+
+            self._needs_clicks = needs_clicks
+            self._downtime = float(downtime)
+            self._sprite_button = None
+
+            self._setattr("_clicks", 0)
+            self._setattr("_move_module", None)
+            self._setattr("_context", None)
+
+        @property
+        def needs_clicks(self):
+            return self._needs_clicks
+
+        @property
+        def downtime(self):
+            return self._downtime
+
+        def on_include(self, enemy):
+            context = enemy.context
+            
+            if context.get("player_manager") is None:
+                context.player_manager = require_system("player")
+
+            sprite = enemy.original_sprite
+
+            parallax_sprite = Parallax(
+                displayable=sprite,
+                zoom=1.15,
+                anchor=None,
+                power=0.10,
+                sharpness_factor=0.1,
+                fill_viewport=True
+            )
+
+            self._sprite_button = ParallaxWrapper(
+                renpy.display.behavior.ImageButton,
+                idle_image=parallax_sprite,
+                clicked=renpy.store.Function(self._click)
+            )
+
+        def start(self, context):
+            self._move_module = self.get_module(context.enemy, EnemyMoveModule)
+            if not context.enemy.replaced_parallax_sprite:
+                context.enemy.replace_sprite(self._sprite_button, parallax=True)
+            self._context = context
+
+        def update(self, context, dt):
+            if not self.sees_player(context) or self._clicks > 0:
+                self._clicks = 0
+                self._accumulated_time = 0.0
+                return
+            self._accumulated_time += dt
+            while self.interval(self._downtime):
+                self._clicks = 0
+
+        def sees_player(self, context):
+            enemy_location = context.enemy.current_location
+            if enemy_location is None:
+                return False
+
+            player = context.player_manager.current_player
+            if player is None:
+                return False
+
+            if player.current_location is None:
+                return False
+
+            return enemy_location.id == player.current_location.id
+
+        def _click(self):
+            self._accumulated_time = 0.0
+            self._clicks += 1
+            if self._clicks >= self._needs_clicks:
+                self._scare_away(self._context)
+
+        def _scare_away(self, context):
+            if self._move_module is None:
+                return
+
+            self._clicks = 0
+            player = context.player_manager.current_player
+
+            if player.current_location is None:
+                self._move_module.generate_new_path()
+            elif self._move_module.start_location_id is not None and player.current_location.id != self._move_module.start_location_id:
+                self._move_module.generate_new_path()
+            else:
+                self._move_module.generate_new_path(None)
+
+            self._move_module.move(context)
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "clicks: {}/{}".format(self._clicks, self._needs_clicks),
+                "downtime: {}/{}".format(self._accumulated_time, self._downtime)
+            ]
 
 
 

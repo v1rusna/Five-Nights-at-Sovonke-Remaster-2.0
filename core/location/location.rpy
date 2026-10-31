@@ -490,6 +490,10 @@ init python in v1FNaSR:
             return self._camera_button
 
         @property
+        def original_image(self):
+            return self._image
+
+        @property
         def substituted_image(self):
             return self._substituted_image
 

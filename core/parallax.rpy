@@ -187,7 +187,7 @@ init python in v1FNaSR:
             _outer_cls = cls
 
             class Wrapped(class_wrappee):
-
+                __slots__ = ("_wrapper", "_v1items", "_reg_v1items",)
                 def __init__(self, *a, **k):
                     super(Wrapped, self).__init__(*a, **k)
 
@@ -234,12 +234,12 @@ init python in v1FNaSR:
                     return parent_result if parent_result is not None else child_result
 
                 def __repr__(self):
-                    return "V1WrappedFNaSR(%s)" % super(Wrapped, self).__repr__()
+                    return "ParallaxWrapped(%s)" % super(Wrapped, self).__repr__()
 
             return Wrapped(*args, **kwargs)
 
         @staticmethod
-        def _is_wrapped(instance):
+        def is_wrapped(instance):
             """True, если instance создан через ParallaxWrapper."""
             return (
                 hasattr(instance, "_wrapper")
@@ -252,14 +252,14 @@ init python in v1FNaSR:
             Возвращает копию списка параллакс-элементов
             [{"d": Displayable, "size": (w, h)}, ...] или [].
             """
-            if ParallaxWrapper._is_wrapped(instance):
+            if ParallaxWrapper.is_wrapped(instance):
                 return list(instance._v1items)
             return []
 
         @staticmethod
         def clear_wrapped_items(instance):
             """Очищает все параллакс-элементы обёрнутого объекта."""
-            if ParallaxWrapper._is_wrapped(instance):
+            if ParallaxWrapper.is_wrapped(instance):
                 instance._v1items = []
                 instance._reg_v1items = []
 
@@ -269,7 +269,7 @@ init python in v1FNaSR:
             Добавляет Displayable в параллакс-список.
             Один и тот же объект не добавляется дважды.
             """
-            if not ParallaxWrapper._is_wrapped(instance):
+            if not ParallaxWrapper.is_wrapped(instance):
                 return
             if not isinstance(displayable, renpy.display.core.Displayable):
                 return

@@ -4,9 +4,6 @@ init -3 python in v1FNaSR:
     import traceback as _traceback
     import threading as _threading
 
-    def recolor_enemy_sprite(sprite):
-        return renpy.store.Transform(sprite, matrixcolor=renpy.store.SaturationMatrix(0.4))
-
     class EnemyModule(ResetLogic):
         __slots__ = ("_error", "_freeze", "_accumulated_time",)
 
@@ -197,6 +194,10 @@ init -3 python in v1FNaSR:
     class Enemy(BaseEnemy):
         POSITIONS = 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
 
+        @staticmethod
+        def recolor_sprite(sprite):
+            return renpy.store.Transform(sprite, matrixcolor=renpy.store.SaturationMatrix(0.4))
+
         def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None, **kwargs):
             modules = kwargs.pop("modules", None)
             super(Enemy, self).__init__(**kwargs)
@@ -230,9 +231,11 @@ init -3 python in v1FNaSR:
             self._color = color
             self._setattr("_align", (0.5, 0.5))
             self._setattr("_invisible", False)
+            self._setattr("_replaced_sprite", None)
+            self._setattr("_replaced_parallax_sprite", None)
 
             self._sprite_path = sprite
-            self._sprite = recolor_enemy_sprite(sprite)
+            self._sprite = self.recolor_sprite(sprite)
             self._parallax_sprite = Parallax(
                 displayable=self._sprite,
                 zoom=1.15,
@@ -277,10 +280,14 @@ init -3 python in v1FNaSR:
 
         @property
         def sprite(self):
+            if self._replaced_sprite is not None:
+                return self._replaced_sprite
             return self._sprite
 
         @property
         def parallax_sprite(self):
+            if self._replaced_parallax_sprite is not None:
+                return self._replaced_parallax_sprite
             return self._parallax_sprite
 
         @property
@@ -290,6 +297,27 @@ init -3 python in v1FNaSR:
         @is_invisible.setter
         def is_invisible(self, value):
             self._invisible = bool(value)
+
+        @property
+        def original_sprite(self):
+            return self._sprite
+
+        @property
+        def original_parallax_sprite(self):
+            return self._parallax_sprite
+
+        @property
+        def replaced_sprite(self):
+            return self._replaced_sprite
+
+        @property
+        def replaced_parallax_sprite(self):
+            return self._replaced_parallax_sprite
+
+        @property
+        def is_replaced_sprite(self):
+            return (self._replaced_sprite is not None or
+                    self._replaced_parallax_sprite is not None)
 
         def set_align(self, x=None, y=None):
             if x is None:
@@ -302,6 +330,25 @@ init -3 python in v1FNaSR:
             y = float(y)
 
             self._align = (x, y,)
+
+        def replace_sprite(self, sprite, parallax=False):
+            if sprite is None:
+                raise FNaSRTypeError("'sprite' не может быть 'NoneType'")
+            if parallax:
+                if not isinstance(sprite, Parallax) and not ParallaxWrapper.is_wrapped(sprite):
+                    raise FNaSRTypeError("'sprite' должен быть 'Parallax', получено: {}".format(type(sprite)))
+                self._replaced_parallax_sprite = sprite
+            else:
+                self._replaced_sprite = sprite
+
+        def restore_sprite(self, parallax=False, all_sprite=False):
+            if all_sprite:
+                self._replaced_sprite = None
+                self._replaced_parallax_sprite = None
+            elif parallax:
+                self._replaced_parallax_sprite = None
+            else:
+                self._replaced_sprite = None
 
     class EnemyManager(object):
         MAIN_GROUP = "FNaSR"
@@ -338,6 +385,9 @@ init -3 python in v1FNaSR:
 
             if group == EnemyManager.MAIN_GROUP:
                 raise FNaSRValueError("Нельзя удалить группу '{}'.".format(EnemyManager.MAIN_GROUP))
+
+            if group == self._current_group:
+                raise FNaSRValueError("Нельзя удалить выбранную группу '{}'.".format(group))
 
             with self._lock:
                 if group not in self._groups:
@@ -405,13 +455,13 @@ init -3 python in v1FNaSR:
                 if enemy.tag in self._enemy_tags:
                     raise FNaSRValueError("Тег '{}' уже занят.".format(enemy.tag))
 
+                if register_in_cycle:
+                    cycle = require_system("cycle")
+                    if not cycle.is_registered(enemy):
+                        cycle.register(enemy)
+
                 self._groups[group].add(enemy)
                 self._enemy_tags[enemy.tag] = group
-
-            if register_in_cycle:
-                cycle = require_system("cycle")
-                if not cycle.is_registered(enemy):
-                    cycle.register(enemy)
 
         def unregister(self, enemy_or_tag):
             if isinstance(enemy_or_tag, Enemy):
@@ -429,6 +479,8 @@ init -3 python in v1FNaSR:
                 group = self._enemy_tags[tag]
                 for enemy in self.iter_group(group):
                     if enemy.tag == tag:
+                        if isinstance(enemy_or_tag, Enemy) and enemy is not enemy_or_tag:
+                            raise FNaSRValueError("Переданный объект не является зарегистрированным противником.")
                         if cycle.is_registered(enemy):
                             cycle.unregister(enemy)
                         self._groups[group].discard(enemy)
@@ -439,7 +491,7 @@ init -3 python in v1FNaSR:
             with self._lock:
                 return tag in self._enemy_tags
 
-        def get_group_enemy(self, tag):
+        def get_enemy_group(self, tag):
             if not is_string(tag):
                 raise FNaSRTypeError("Тег противника должен быть строкой, получено: {}".format(tag))
             with self._lock:

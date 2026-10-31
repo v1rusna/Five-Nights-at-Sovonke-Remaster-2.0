@@ -404,6 +404,7 @@ init python in v1FNaSR:
                     "name": "Ульяна",
                     "sprite": "us angry pioneer",
                     "color": "#FF3200",
+                    "nights_start": None # 1
                     "modules": [
                         lambda: EnemyMoveModule(-3),
                         lambda: EnemyAttackModule(
@@ -416,9 +417,9 @@ init python in v1FNaSR:
                     "name": "Лена",
                     "sprite": "un evil_smile pioneer",
                     "color": "#B956FF",
+                    "nights_start": None # 2
                     "modules": [
-                        lambda: EnemyMoveModule(factors=BASE_ENEMY_MOVING_FACTORS+(factor_not_watch,)),
-                        lambda: EnemySignalButtonModule(),
+                        lambda: EnemyMoveModule(factors=BASE_ENEMY_MOVING_FACTORS+(factor_not_watch,), speed=0.8),
                         lambda: EnemySilentAttackModule(
                                     enemy_screamer=EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR),
                                     silent_locations={
@@ -445,6 +446,56 @@ init python in v1FNaSR:
                                         ],
                                     }
                                 ),
+                    ]
+                },
+                {
+                    "tag": "dv",
+                    "name": "Алиса",
+                    "sprite": "dv angry pioneer2",
+                    "color": "#FFAA00",
+                    "nights_start": None # 3
+                    "modules": [
+                        lambda: EnemyMoveModule(end_location_id=15)
+                    ]
+                },
+                {
+                    "tag": "mi",
+                    "name": "Мику",
+                    "sprite": "mi angry pioneer",
+                    "color": "#00DEFF",
+                    "nights_start": None # 5
+                    "modules": [
+                        lambda: EnemyMoveModule(-5)
+                    ]
+                },
+                {
+                    "tag": "sl",
+                    "name": "Славя",
+                    "sprite": "sl angry pioneer",
+                    "color": "#FFD200",
+                    "nights_start": None # 4
+                    "modules": [
+                        lambda: EnemyMoveModule()
+                    ]
+                },
+                {
+                    "tag": "sh",
+                    "name": "Шурик",
+                    "sprite": "sh rage",
+                    "color": "#FFF226",
+                    "nights_start": None # 3
+                    "modules": [
+                        lambda: EnemyMoveModule(-4)
+                    ]
+                },
+                {
+                    "tag": "el",
+                    "name": "Электроник",
+                    "sprite": "el angry pioneer",
+                    "color": "#FFFF00",
+                    "nights_start": None # 3
+                    "modules": [
+                        lambda: EnemyMoveModule(-4, speed=5.0)
                     ]
                 },
             ]
