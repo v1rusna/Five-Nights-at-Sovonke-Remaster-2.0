@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# shaders.rpy
 init -1 python in v1FNaSRShaders:
 
     VHS_CRT_SHADER_NAME = "V1FNaSR.VHS_CRT"

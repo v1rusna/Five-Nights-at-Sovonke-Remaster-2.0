@@ -1,4 +1,5 @@
-
+# -*- coding: utf-8 -*-
+# debug.rpy
 init -5 python in v1FNaSR:
     import traceback as _traceback
     import time as _time

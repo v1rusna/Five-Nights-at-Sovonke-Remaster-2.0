@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # other.rpy
 init -12 python in v1FNaSR:
     import threading as _threading

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# registration.rpy
 init -1 python in v1FNaSR:
     MOVE_DIRECTION_DISTANCE_BASE = 480
     MOVE_SHOW_DURATION = 0.35

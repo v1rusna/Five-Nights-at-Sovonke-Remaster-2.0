@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 # modules.rpy
 init -2 python in v1FNaSR:
     import math as _math
@@ -555,8 +555,9 @@ init -2 python in v1FNaSR:
                 "net safety time: {}".format(self._safety_time),
                 "safety time: {}/{}".format(self._current_safety_time, self.get_current_safety_time()),
             ]
-    # TODO: сделать EnemyAttackModule обычным модулем, а не атакующим
-    class EnemyAttackModule(EnemyAggressiveModule):
+
+
+    class EnemyAttackModule(EnemyModule):
         __slots__ = (
             "_move_module", "_attack_target_id",
             "_murder_countdown", "_r_t_m", "_sound_channel",
@@ -565,8 +566,8 @@ init -2 python in v1FNaSR:
         dependent_modules = (EnemyMoveModule,)
         conflicting_modules = tuple()
 
-        def __init__(self, enemy_screamer, random_time_murder=(4,6,), sound_channel="enemy_channel", **kwargs):
-            super(EnemyAttackModule, self).__init__(enemy_screamer=enemy_screamer, **kwargs)
+        def __init__(self, random_time_murder=(4,6,), sound_channel="enemy_channel", **kwargs):
+            super(EnemyAttackModule, self).__init__(**kwargs)
 
             if not isinstance(random_time_murder, (list, tuple,)):
                 raise FNaSRTypeError("'random_time_murder' должен быть списком или кортежем, получено: {}".format(type(random_time_murder)))
@@ -600,10 +601,6 @@ init -2 python in v1FNaSR:
         def sound_channel(self):
             return self._sound_channel
 
-        def get_current_safety_time(self):
-            "Получить safety_time с учётом времени анимации"
-            return self._safety_time + 1.8 / GlobalState.get("moving_animation_speed", 1.0)
-
         def on_include(self, enemy):
             context = enemy.context
             
@@ -612,9 +609,6 @@ init -2 python in v1FNaSR:
 
             if context.get("location_system") is None:
                 context.location_system = require_system("location")
-
-            if context.get("cycle") is None:
-                context.cycle = require_system("cycle")
 
             if context.get("is_player_dead") is None:
                 context.is_player_dead = False
@@ -676,7 +670,7 @@ init -2 python in v1FNaSR:
             main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
             context.stop_moving.block(self)
             self._attack_target_id = attack_target.id
-            self._safety_time = 0.5
+            # self._safety_time = 0.5
             self._attack(context)
 
         def _attack(self, context):
@@ -731,7 +725,7 @@ init -2 python in v1FNaSR:
                     main_executor.submit(audio.play, renpy.random.choice(random_s), self._sound_channel, loop=False, fadeout=1, fadein=2)
 
         def _finish_attack(self, context):
-            self.reset_safety_time()
+            # self.reset_safety_time()
             player = context.player_manager.current_player
             self._attack_target_id = None
             self._murder_countdown = None
@@ -784,7 +778,7 @@ init -2 python in v1FNaSR:
             return True
 
         def get_debug_list_texts(self, enemy_context):
-            return super(EnemyAttackModule, self).get_debug_list_texts(enemy_context) + [
+            return [
                 "murder countdown: {}".format(self._murder_countdown),
                 "attack target id: {}".format(self._attack_target_id),
             ]
@@ -794,8 +788,8 @@ init -2 python in v1FNaSR:
 
         conflicting_modules = tuple()
 
-        def __init__(self, enemy_screamer, silent_locations=None, **kwargs):
-            super(EnemySilentAttackModule, self).__init__(enemy_screamer, **kwargs)
+        def __init__(self, silent_locations=None, **kwargs):
+            super(EnemySilentAttackModule, self).__init__(**kwargs)
 
             if silent_locations is None:
                 silent_locations = {}
@@ -853,7 +847,7 @@ init -2 python in v1FNaSR:
 
             context.stop_moving.block(self)
             self._attack_target_id = attack_target.id
-            self._safety_time = 0.5
+            # self._safety_time = 0.5
             self._attack(context)
             
         def _choose_silent_variant(self, variants):
@@ -1241,17 +1235,11 @@ init -2 python in v1FNaSR:
 
 
 
-    EnemyAggressiveModule.conflicting_modules = (
-        EnemyAttackModule,
-        EnemySilentAttackModule,
-    )
 
     EnemyAttackModule.conflicting_modules = (
-        EnemyAggressiveModule,
         EnemySilentAttackModule,
     )
 
     EnemySilentAttackModule.conflicting_modules = (
-        EnemyAggressiveModule,
         EnemyAttackModule,
     )

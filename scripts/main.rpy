@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# main.rpy
 init:
     $ _v1_size_style_text_mod = 16 if renpy.android or renpy.ios else 24
     style _v1_text_mod_style_FNaSR:

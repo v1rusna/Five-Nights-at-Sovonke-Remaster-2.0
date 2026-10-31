@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # night.rpy
 init -1 python in v1FNaSR:
 

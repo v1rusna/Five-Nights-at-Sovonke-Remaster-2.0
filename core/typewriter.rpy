@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # typewriter.rpy
 init -5 python in v1FNaSR:
     import random as _random

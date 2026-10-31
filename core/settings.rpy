@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # settings.rpy
 init -5 python in v1FNaSR:
     import copy as _copy_module

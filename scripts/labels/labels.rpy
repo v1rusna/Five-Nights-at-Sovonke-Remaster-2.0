@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # labels.rpy
 init python in v1FNaSR:
     @main_thread_only

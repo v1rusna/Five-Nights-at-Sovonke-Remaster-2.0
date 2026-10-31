@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # displayable.rpy
 init python in v1FNaSR:
     import math as _math

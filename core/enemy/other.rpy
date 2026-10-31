@@ -1,3 +1,4 @@
+
 # other
 init -4 python in v1FNaSR:
     import collections as _collections
@@ -21,8 +22,8 @@ init -4 python in v1FNaSR:
         def __setattr__(self, name, value):
             if name == "_enemy":
                 object.__setattr__(self, name, value)
-            else:
-                super(EnemyContext, self).__setattr__(name, value)
+                return
+            super(EnemyContext, self).__setattr__(name, value)
 
     class PathGenerator(object):
         _location_system = None

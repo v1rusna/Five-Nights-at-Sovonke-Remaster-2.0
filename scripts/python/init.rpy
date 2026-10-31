@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# init.rpy
 init python in v1FNaSR:
     class LocationCreateHook(BaseHook):
         def init(self):
@@ -407,9 +409,8 @@ init python in v1FNaSR:
                     "nights_start": None, # 1,
                     "modules": [
                         lambda: EnemyMoveModule(-3),
-                        lambda: EnemyAttackModule(
-                                    enemy_screamer=EnemyScreamer("us angry pioneer", screamer_t=renpy.store.v1_uliana_screamer_t_FNaSR)
-                                ),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("us angry pioneer")),
+                        lambda: EnemyAttackModule(),
                     ]
                 },
                 {
@@ -420,8 +421,8 @@ init python in v1FNaSR:
                     "nights_start": None, # 2,
                     "modules": [
                         lambda: EnemyMoveModule(factors=BASE_ENEMY_MOVING_FACTORS+(factor_not_watch,), speed=0.8),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("un evil_smile pioneer")),
                         lambda: EnemySilentAttackModule(
-                                    enemy_screamer=EnemyScreamer("un evil_smile pioneer", screamer_t=renpy.store.v1_phantom_screamer_t_FNaSR),
                                     silent_locations={
                                         -1: SilentImageVariant(resources.images.Lena["R_int_mt_house_night_light_un"], resources.images.Lena["R_int_mt_house_night_un"]),
                                         -3: [

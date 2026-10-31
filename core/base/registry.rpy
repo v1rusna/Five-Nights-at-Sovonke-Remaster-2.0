@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # registry.rpy
 init -11 python in v1FNaSR:
     import threading as _threading

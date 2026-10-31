@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # game.rpy
 screen V1BaseUIScreenFNaSR:
     key "K_a" action NullAction()

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# transforms.rpy
 init python:
     import math as v1_math_FNaSR
     import random as v1_random_FNaSR

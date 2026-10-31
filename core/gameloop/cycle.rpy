@@ -1,89 +1,10 @@
+# -*- coding: utf-8 -*-
 # cycle.rpy
 init -5 python in v1FNaSR:
     import sys as _sys
-    import time as _time
     import threading as _threading
     import traceback as _traceback
     import collections as _collections
-
-    def make_reset_method(default_dict):
-        if not default_dict:
-            return lambda self: None
-
-        lines = []
-        for attr, val in iter_items(default_dict):
-            if isinstance(val, ResetLogic):
-                lines.append("if self.%s is not None:" % attr)
-                lines.append("    self.%s.reset()" % attr)
-
-            elif isinstance(val, set):
-                lines.append("self.%s.clear()" % attr)
-                if val:
-                    lines.append("self.%s.update(%r)" % (attr, val))
-
-            elif isinstance(val, frozenset):
-                lines.append("self.%s = %r" % (attr, val))
-
-            elif isinstance(val, list):
-                lines.append("del self.%s[:]" % attr)
-                if val:
-                    lines.append("self.%s.extend(%r)" % (attr, val))
-
-            elif isinstance(val, dict):
-                lines.append("self.%s.clear()" % attr)
-                if val:
-                    lines.append("self.%s.update(%r)" % (attr, val))
-
-            else:
-                lines.append("self.%s = %r" % (attr, val))
-
-        code = "def reset(self):\n    " + "\n    ".join(lines)
-        
-        namespace = {}
-        exec(code, namespace)
-        return namespace['reset']
-
-    class ResetLogic(object):
-        def __init__(self):
-            super(ResetLogic, self).__init__()
-            self._reset_to_default = dict()
-
-        def _setattr(self, attr, val, use_object=False):
-            if not hasattr(self, "_reset_to_default"):
-                self._reset_to_default = dict()
-
-            if use_object:
-                object.__setattr__(self, attr, val)
-            else:
-                setattr(self, attr, val)
-
-            default_val = getattr(self, attr)
-
-            if isinstance(default_val, set):
-                default_val = set(default_val)
-            elif isinstance(default_val, list):
-                default_val = list(default_val)
-            elif isinstance(default_val, dict):
-                default_val = dict(default_val)
-
-            self._reset_to_default[attr] = default_val
-            self._fast_reset = None
-
-        def reset(self):
-            fast_reset = getattr(self, "_fast_reset", None)
-            if fast_reset is None:
-                default = getattr(self, "_reset_to_default", None)
-                if not isinstance(default, dict):
-                    return
-
-                fast_reset = make_reset_method(default)
-                self._fast_reset = fast_reset
-
-            try:
-                fast_reset(self)
-            except Exception:
-                log.error("ResetLogic | fast_reset error")
-                raise
 
     class FNaSRCycleError(FNaSRRuntimeError):
         pass

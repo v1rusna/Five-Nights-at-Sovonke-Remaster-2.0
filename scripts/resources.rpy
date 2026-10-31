@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# resources.rpy
 init python in v1FNaSR:
     class _InitImages(object):
         def init(self):

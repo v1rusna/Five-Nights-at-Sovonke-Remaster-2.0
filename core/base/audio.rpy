@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # audio.rpy
 init -5 python in v1FNaSR:
     import threading as _threading

@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 # thread.rpy
 init -6 python in v1FNaSR:
     import collections as _collections

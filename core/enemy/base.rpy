@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 # base.rpy
 init -3 python in v1FNaSR:
     import traceback as _traceback
@@ -74,7 +74,7 @@ init -3 python in v1FNaSR:
             return True
 
         def get_debug_list_texts(self, enemy_context):
-            return tuple()
+            return list()
 
         def __repr__(self):
             return "<{} error={} freezed={}>".format(type(self).__name__, self._error is not None, self._freeze)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # lifecycle.rpy
 init -7 python in v1FNaSR:
 

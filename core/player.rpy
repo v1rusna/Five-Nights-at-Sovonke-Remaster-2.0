@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # player.rpy
 init -1 python in v1FNaSR:
     from __future__ import division

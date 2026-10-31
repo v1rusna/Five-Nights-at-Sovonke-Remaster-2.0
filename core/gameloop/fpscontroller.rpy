@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # fpscontroller.rpy
 init -6 python in v1FNaSR:
     from __future__ import division
