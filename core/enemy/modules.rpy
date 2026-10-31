@@ -87,6 +87,14 @@ init -2 python in v1FNaSR:
             return 0.0
         return 1.0
 
+    def bulb_inversion_condition_fn(module, context):
+        player = context.player_manager.current_player
+        if player.current_location is None:
+            return True
+        if player.current_location.bulb is None:
+            return True
+        return player.current_location.bulb.is_on
+
     ALL_ENEMY_MOVING_START_FACTORS = (
         factor_difficulty,
         factor_night
@@ -109,6 +117,7 @@ init -2 python in v1FNaSR:
             "_stun_left", "_mood", "_static",
             "_start_location_id", "_end_location_id",
             "_ignore_player", "_start_factors", "_factors",
+            "_inversion_condition_fn",
         )
 
         BASE_INTERVAL = 30.0   # средний интервал между ходами (сек) при speed=1 в начале ночи
@@ -145,7 +154,8 @@ init -2 python in v1FNaSR:
             ignore_player=False,
             speed=1.0,
             start_factors=ALL_ENEMY_MOVING_START_FACTORS,
-            factors=BASE_ENEMY_MOVING_FACTORS
+            factors=BASE_ENEMY_MOVING_FACTORS,
+            inversion_condition_fn=None,
         ):
             super(EnemyMoveModule, self).__init__()
 
@@ -173,6 +183,9 @@ init -2 python in v1FNaSR:
                         raise FNaSRTypeError("Фактор должен быть вызываемым, получено: {}".format(type(fn)))
                     extra.append(fn)
 
+            if inversion_condition_fn is not None and not callable(inversion_condition_fn):
+                raise FNaSRTypeError("'inversion_condition_fn' должен быть вызываемым, получено: {}".format(type(inversion_condition_fn)))
+
             self._setattr("_path", list())
             self._setattr("_cursor", 0)
             self._setattr("_speed", float(speed))
@@ -186,6 +199,7 @@ init -2 python in v1FNaSR:
 
             self._start_factors = start_extra
             self._factors = extra
+            self._inversion_condition_fn = inversion_condition_fn
 
         @property
         def current_location_id(self):
@@ -324,7 +338,10 @@ init -2 python in v1FNaSR:
             if self.move_change(context, dt):
                 self._idle = 0.0
 
-                self.step_forward()
+                if self._inversion_condition_fn is None or not self._inversion_condition_fn(self, context):
+                    self.step_forward()
+                else:
+                    self.step_back()
 
                 if not self.move(context):
                     if not context.move_wait_door_open:
@@ -538,7 +555,7 @@ init -2 python in v1FNaSR:
                 "net safety time: {}".format(self._safety_time),
                 "safety time: {}/{}".format(self._current_safety_time, self.get_current_safety_time()),
             ]
-
+    # TODO: сделать EnemyAttackModule обычным модулем, а не атакующим
     class EnemyAttackModule(EnemyAggressiveModule):
         __slots__ = (
             "_move_module", "_attack_target_id",
@@ -918,6 +935,7 @@ init -2 python in v1FNaSR:
                 "replaced: {}".format(self._replaced)
             ]
 
+
     class EnemySignalButtonModule(EnemyModule):
         __slots__ = (
             "_button_press_duration", "_signal_sound", "_signal_channel", "_key",
@@ -1086,6 +1104,11 @@ init -2 python in v1FNaSR:
 
 
     class EnemyInteractiveModule(EnemyModule):
+        __slots__ = (
+            "_needs_clicks", "_downtime", "_sprite_button",
+            "_clicks", "_move_module", "_context",
+        )
+
         dependent_modules = (EnemyMoveModule,)
 
         def __init__(

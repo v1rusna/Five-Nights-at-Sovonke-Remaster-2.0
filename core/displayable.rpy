@@ -1,25 +1,25 @@
 # displayable.rpy
 init python in v1FNaSR:
     import math as _math
+    import pygame as _pygame
 
 
     class DistanceButton(renpy.Displayable):
-        """
-        Кнопка, прозрачность которой зависит от расстояния курсора
-        до центра кнопки.
+        __slots__ = (
+            "child",
 
-        radius:
-            Расстояние, на котором alpha становится 0.
+            "radius",
+            "opaque_radius",
+            "falloff",
 
-        opaque_radius:
-            Расстояние, внутри которого alpha = 1.
+            "alpha",
 
-        falloff:
-            Степень затухания.
-            1.0 = линейное затухание.
-            > 1.0 = дольше остаётся видимой.
-            < 1.0 = быстрее становится прозрачной.
-        """
+            "child_width",
+            "child_height",
+
+            "width",
+            "height",
+        )
 
         def __init__(
             self,
@@ -154,9 +154,27 @@ init python in v1FNaSR:
         def visit(self):
             return [self.child]
 
-    import pygame as _pygame
-
     class HoldingMouseImageButton(renpy.Displayable):
+        __slots__ = (
+            "displayable",
+
+            "idle",
+            "clicked",
+
+            "width",
+            "height",
+
+            "allow_alternate",
+
+            "click_action",
+            "unclick_action",
+
+            "_mouse_pressed",
+            "_keyboard_pressed",
+
+            "_clicked",
+        )
+
         def __init__(
             self,
             idle,
@@ -256,4 +274,3 @@ init python in v1FNaSR:
 
         def visit(self):
             return [self.idle, self.clicked]
-

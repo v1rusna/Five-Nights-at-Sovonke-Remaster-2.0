@@ -1231,6 +1231,7 @@ screen V1DebugScreenFNaSR(target_cps=10, elements_in_row=4, max_len_name_group=1
     zorder 100
     default target_dt = v1FNaSR.get_target_dt(target_cps)
     default show_menu = True
+    default ruler_align = False
 
     key "K_BACKQUOTE" action SetScreenVariable("show_menu", not show_menu)
 
@@ -1238,6 +1239,8 @@ screen V1DebugScreenFNaSR(target_cps=10, elements_in_row=4, max_len_name_group=1
         timer target_dt repeat True action Function(renpy.restart_interaction)
 
     if show_menu:
+        key "shift_K_a" action SetScreenVariable("ruler_align", not ruler_align)
+
         frame:
             background panel_background
             padding (0, 0)
@@ -1293,4 +1296,17 @@ screen V1DebugScreenFNaSR(target_cps=10, elements_in_row=4, max_len_name_group=1
                             add content xalign 0.0
                             if show_separators:
                                 text "---------------" style "v1_text_16_style_FNaSR"
+
+
+        if ruler_align:
+            for j in range(21):
+                $ pos = j / 20.0
+                if j % 2 == 0:
+                    $ val = j // 2
+                    if val in (0, 10):
+                        text "|\n" style "v1_text_16_style_FNaSR" text_align 0.5 align(pos, 1.0)
+                    else:
+                        text "|\n{}".format(val) style "v1_text_16_style_FNaSR" text_align 0.5 align(pos, 1.0)
+                else:
+                    text "|" style "v1_text_12_style_FNaSR" text_align 0.5 align(pos, 1.0)
 

@@ -261,4 +261,8 @@ screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
 screen V1ShowEnemyFNaSR():
     for obj, align in v1FNaSR.EnemyVisualizer.iter_sees():
         $ ax, ay = align
-        add obj align(ax, ay)
+        if isinstance(obj, v1FNaSR.Parallax):
+            $ obj.content_align = (ax, ay)
+            add obj
+        else:
+            add obj align(ax, ay)

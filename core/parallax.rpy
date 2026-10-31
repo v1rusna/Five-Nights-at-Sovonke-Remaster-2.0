@@ -24,6 +24,8 @@ init python in v1FNaSR:
             "fill_viewport",
             "view_width",
             "view_height",
+            "content_align",
+            "content_anchor",
 
             "_transform",
         ]
@@ -57,6 +59,8 @@ init python in v1FNaSR:
             self.height = 0
             self.view_width = 0
             self.view_height = 0
+            self.content_align = (0.5, 0.5)
+            self.content_anchor = (0.5, 0.5)
 
             self.perspective = None
             self.r_power = None
@@ -70,47 +74,46 @@ init python in v1FNaSR:
             return (self.width, self.height)
 
         def set_displayable(self, displayable):
-            """Меняет displayable и пересоздаёт кешированный Transform."""
             self.displayable = renpy.displayable(displayable)
             self._rebuild_transform()
 
         def set_zoom(self, zoom):
-            """Меняет zoom и пересоздаёт кешированный Transform."""
             self.zoom = zoom
             self._rebuild_transform()
 
         def _rebuild_transform(self):
-            """Пересоздаёт Transform при изменении displayable или zoom."""
             self._transform = renpy.display.transform.Transform(
                 self.displayable,
                 zoom=self.zoom
             )
 
+        # def _origin_shift(self):
+        #     if not self.fill_viewport:
+        #         return (0.0, 0.0)
+
+        #     return (
+        #         (self.view_width - self.width) / 2.0,
+        #         (self.view_height - self.height) / 2.0,
+        #     )
+
         def _origin_shift(self):
-            """
-            Положение левого верхнего угла контента внутри Render
-            (без учёта параллакса). В обычном режиме контент = Render -> (0, 0).
-            """
             if not self.fill_viewport:
                 return (0.0, 0.0)
 
             return (
-                (self.view_width - self.width) / 2.0,
-                (self.view_height - self.height) / 2.0,
+                self.view_width * self.content_align[0]
+                - self.width * self.content_anchor[0],
+
+                self.view_height * self.content_align[1]
+                - self.height * self.content_anchor[1],
             )
 
         def _anchor_point(self):
-            """Точка (в координатах Render), при которой смещение равно нулю."""
             if self.anchor is not None:
                 return self.anchor
             return (self.view_width / 2.0, self.view_height / 2.0)
 
         def _update_offset(self):
-            """
-            Плавно смещает xoffset/yoffset к позиции мыши.
-            Вызывается из event(), а НЕ из render() - иначе renpy.redraw()
-            внутри этого метода создаёт бесконечный цикл перерисовки.
-            """
             anchor_x, anchor_y = self._anchor_point()
 
             self.xoffset += (
@@ -168,7 +171,7 @@ init python in v1FNaSR:
 
         def __repr__(self):
             return (
-                "V1ParallaxFNaSR(displayable=%r, zoom=%r, anchor=%r, power=%r)"
+                "Parallax(displayable=%r, zoom=%r, anchor=%r, power=%r)"
                 % (self.displayable, self.zoom, self.anchor, self.power)
             )
 

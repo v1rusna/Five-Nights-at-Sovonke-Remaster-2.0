@@ -404,7 +404,7 @@ init python in v1FNaSR:
                     "name": "Ульяна",
                     "sprite": "us angry pioneer",
                     "color": "#FF3200",
-                    "nights_start": None # 1
+                    "nights_start": None, # 1,
                     "modules": [
                         lambda: EnemyMoveModule(-3),
                         lambda: EnemyAttackModule(
@@ -417,7 +417,7 @@ init python in v1FNaSR:
                     "name": "Лена",
                     "sprite": "un evil_smile pioneer",
                     "color": "#B956FF",
-                    "nights_start": None # 2
+                    "nights_start": None, # 2,
                     "modules": [
                         lambda: EnemyMoveModule(factors=BASE_ENEMY_MOVING_FACTORS+(factor_not_watch,), speed=0.8),
                         lambda: EnemySilentAttackModule(
@@ -453,7 +453,7 @@ init python in v1FNaSR:
                     "name": "Алиса",
                     "sprite": "dv angry pioneer2",
                     "color": "#FFAA00",
-                    "nights_start": None # 3
+                    "nights_start": None, # 3,
                     "modules": [
                         lambda: EnemyMoveModule(end_location_id=15)
                     ]
@@ -463,7 +463,7 @@ init python in v1FNaSR:
                     "name": "Мику",
                     "sprite": "mi angry pioneer",
                     "color": "#00DEFF",
-                    "nights_start": None # 5
+                    "nights_start": None, # 5,
                     "modules": [
                         lambda: EnemyMoveModule(-5)
                     ]
@@ -473,9 +473,10 @@ init python in v1FNaSR:
                     "name": "Славя",
                     "sprite": "sl angry pioneer",
                     "color": "#FFD200",
-                    "nights_start": None # 4
+                    "nights_start": None, # 4,
                     "modules": [
-                        lambda: EnemyMoveModule()
+                        lambda: EnemyMoveModule(),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("sl angry pioneer"))
                     ]
                 },
                 {
@@ -483,9 +484,10 @@ init python in v1FNaSR:
                     "name": "Шурик",
                     "sprite": "sh rage",
                     "color": "#FFF226",
-                    "nights_start": None # 3
+                    "nights_start": None, # 3,
                     "modules": [
-                        lambda: EnemyMoveModule(-4)
+                        lambda: EnemyMoveModule(-4),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("sh rage"))
                     ]
                 },
                 {
@@ -493,9 +495,10 @@ init python in v1FNaSR:
                     "name": "Электроник",
                     "sprite": "el angry pioneer",
                     "color": "#FFFF00",
-                    "nights_start": None # 3
+                    "nights_start": None, # 3,
                     "modules": [
-                        lambda: EnemyMoveModule(-4, speed=5.0)
+                        lambda: EnemyMoveModule(-4, speed=5.0, inversion_condition_fn=bulb_inversion_condition_fn),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("el angry pioneer"))
                     ]
                 },
             ]
@@ -507,6 +510,7 @@ init python in v1FNaSR:
                     "name: {}".format(enemy.name),
                     "modules: {}".format(len(enemy.modules)),
                     "sprite: {}".format(enemy.sprite_path),
+                    "align: {}".format(enemy.align),
                     "nights start: {}".format(enemy.nights_start),
                     "special night: {}".format(enemy.special_night),
                     "location id: {}".format(enemy.current_location.id if enemy.current_location is not None else None),
