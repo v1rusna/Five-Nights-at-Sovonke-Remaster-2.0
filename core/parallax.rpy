@@ -31,6 +31,22 @@ init python in v1FNaSR:
             "_transform",
         ]
 
+        def __getstate__(self):
+            state = super(Parallax, self).__getstate__()
+
+            for name in self.__slots__:
+                state[name] = getattr(self, name)
+
+            return state
+
+        def __setstate__(self, state):
+            state = state.copy()
+
+            for name in self.__slots__:
+                setattr(self, name, state.pop(name))
+
+            super(Parallax, self).__setstate__(state)
+
         def __init__(self, displayable, zoom, anchor, power,
                     sharpness_factor=1.0, enable_y_shift=True,
                     fill_viewport=False, **kwargs):
@@ -87,15 +103,6 @@ init python in v1FNaSR:
                 self.displayable,
                 zoom=self.zoom
             )
-
-        # def _origin_shift(self):
-        #     if not self.fill_viewport:
-        #         return (0.0, 0.0)
-
-        #     return (
-        #         (self.view_width - self.width) / 2.0,
-        #         (self.view_height - self.height) / 2.0,
-        #     )
 
         def _origin_shift(self):
             if not self.fill_viewport:
@@ -192,6 +199,25 @@ init python in v1FNaSR:
 
             class Wrapped(class_wrappee):
                 __slots__ = ("_wrapper", "_v1items", "_reg_v1items",)
+
+                def __getstate__(self):
+                    state = super(Wrapped, self).__getstate__()
+
+                    state["_v1_wrapper"] = self._wrapper
+                    state["_v1items"] = self._v1items
+                    state["_reg_v1items"] = self._reg_v1items
+
+                    return state
+
+                def __setstate__(self, state):
+                    state = state.copy()
+
+                    self._wrapper = state.pop("_v1_wrapper", _outer_cls)
+                    self._v1items = state.pop("_v1items", [])
+                    self._reg_v1items = state.pop("_reg_v1items", [])
+
+                    super(Wrapped, self).__setstate__(state)
+
                 def __init__(self, *a, **k):
                     super(Wrapped, self).__init__(*a, **k)
 

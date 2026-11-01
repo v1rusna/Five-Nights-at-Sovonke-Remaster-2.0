@@ -456,7 +456,8 @@ init python in v1FNaSR:
                     "color": "#FFAA00",
                     "nights_start": None, # 3,
                     "modules": [
-                        lambda: EnemyMoveModule(end_location_id=15)
+                        lambda: EnemyMoveModule(end_location_id=15),
+                        lambda: EnemySignalButtonModule()
                     ]
                 },
                 {
@@ -466,7 +467,9 @@ init python in v1FNaSR:
                     "color": "#00DEFF",
                     "nights_start": None, # 5,
                     "modules": [
-                        lambda: EnemyMoveModule(-5)
+                        lambda: EnemyMoveModule(-5),
+                        lambda: EnemyInteractiveModule(),
+                        lambda: EnemyLockdownModule({PlayerElement.TABLET, PlayerElement.BULB})
                     ]
                 },
                 {

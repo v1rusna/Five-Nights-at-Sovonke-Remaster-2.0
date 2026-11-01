@@ -22,6 +22,22 @@ init python in v1FNaSR:
             "height",
         )
 
+        def __getstate__(self):
+            state = super(DistanceButton, self).__getstate__()
+
+            for name in self.__slots__:
+                state[name] = getattr(self, name)
+
+            return state
+
+        def __setstate__(self, state):
+            state = state.copy()
+
+            for name in self.__slots__:
+                setattr(self, name, state.pop(name))
+
+            super(DistanceButton, self).__setstate__(state)
+
         def __init__(
             self,
             child,
@@ -175,6 +191,22 @@ init python in v1FNaSR:
 
             "_clicked",
         )
+
+        def __getstate__(self):
+            state = super(HoldingMouseImageButton, self).__getstate__()
+
+            for name in self.__slots__:
+                state[name] = getattr(self, name)
+
+            return state
+
+        def __setstate__(self, state):
+            state = state.copy()
+
+            for name in self.__slots__:
+                setattr(self, name, state.pop(name))
+
+            super(HoldingMouseImageButton, self).__setstate__(state)
 
         def __init__(
             self,

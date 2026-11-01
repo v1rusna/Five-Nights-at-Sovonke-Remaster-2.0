@@ -301,9 +301,20 @@ init -2 python in v1FNaSR:
                 context.remember("stop_moving", MultiLock())
 
         def start(self, context):
-            path = self.generate_new_path()
-            if path is None:
-                raise FNaSRException("Не удалось построить путь для '{}'({})".format(context.enemy.name, context.enemy.tag))
+            def get_path_or_raise():
+                path = self.generate_new_path()
+                if path is None:
+                    raise FNaSRException("Не удалось построить путь для '{}'({})".format(context.enemy.name, context.enemy.tag))
+                return path
+
+            path = get_path_or_raise()
+
+            player = context.player_manager.current_player
+            if self._start_location_id is None and player and player.current_location:
+                while True:
+                    if path[0] != player.current_location.id:
+                        break
+                    path = get_path_or_raise()
 
             if context.get("move_wait_door_open") is None:
                 context.move_wait_door_open = False
@@ -930,7 +941,7 @@ init -2 python in v1FNaSR:
     class EnemySignalButtonModule(EnemyModule):
         __slots__ = (
             "_button_press_duration", "_signal_sound", "_signal_channel", "_key",
-            "_signal", "_show_button", "_player", "_player", "_move_module",
+            "_signal", "_show_button", "_player", "_move_module",
         )
 
         KEY = "v1_enemy_signal_button_module_%s"
@@ -1166,8 +1177,11 @@ init -2 python in v1FNaSR:
             self._context = context
 
         def update(self, context, dt):
-            if not self.sees_player(context) or self._clicks > 0:
+            if not self.sees_player(context):
                 self._clicks = 0
+                self._accumulated_time = 0.0
+                return
+            if self._clicks <= 0:
                 self._accumulated_time = 0.0
                 return
             self._accumulated_time += dt
@@ -1217,7 +1231,83 @@ init -2 python in v1FNaSR:
             ]
 
 
+    class EnemyLockdownModule(EnemyModule):
+        __slots__ = ("_block_list", "_player", "_is_block",)
 
+        def __init__(self, block_list=None, **kwargs):
+            super(EnemyLockdownModule, self).__init__(**kwargs)
+
+            if block_list is None:
+                block_list = set()
+
+            if not isinstance(block_list, (list, tuple, set,)):
+                raise FNaSRTypeError("'block_list' должен быть list, tuple или set, получено: {}".format(type(block_list)))
+
+            for i in block_list:
+                if not is_string(i):
+                    raise FNaSRValueError("Все элементы 'block_list' должны быть строками, получено: {}".format(type(i)))
+
+            self._setattr("_block_list", set(block_list))
+            self._setattr("_player", None)
+            self._setattr("_is_block", False)
+
+        @property
+        def block_list(self):
+            return frozenset(self._block_list)
+
+        @property
+        def is_block(self):
+            return self._is_block
+
+        def on_include(self, enemy):
+            context = enemy.context
+
+            if context.get("player_manager") is None:
+                context.remember("player_manager", require_system("player"))
+
+        def start(self, context):
+            self._player = context.player_manager.current_player
+            if self._player is None:
+                raise FNaSRRuntimeError("'current_player' не указан.")
+
+        def update(self, context, dt):
+            self._handle_block(context)
+
+        def _handle_block(self, context):
+            enemy = context.enemy
+            if enemy.current_location is None:
+                self.unblock()
+                return
+
+            if self._player.current_location is None:
+                self.unblock()
+                return
+
+            if enemy.current_location.id != self._player.current_location.id:
+                self.unblock()
+                return
+
+            self.block()
+
+        def block(self):
+            if self._is_block:
+                return
+            self._is_block = True
+            for el in self._block_list:
+                self._player.get_element(el).block(self)
+
+        def unblock(self):
+            if not self._is_block:
+                return
+            self._is_block = False
+            for el in self._block_list:
+                self._player.get_element(el).unblock(self)
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "block list: {}".format(self._block_list),
+                "is block: {}".format(self._is_block)
+            ]
 
 
 
