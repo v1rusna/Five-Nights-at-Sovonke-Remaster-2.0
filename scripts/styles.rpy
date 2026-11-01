@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# styles.rpy
+# scripts/styles.rpy
 init python:
 
     style.v1_text_24_style_FNaSR = renpy.style.Style("text")

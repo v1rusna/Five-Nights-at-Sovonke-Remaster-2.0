@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# time.rpy
+# core/time.rpy
 init python in v1FNaSR:
     import traceback as _traceback
 

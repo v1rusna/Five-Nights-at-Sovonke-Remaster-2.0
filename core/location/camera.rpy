@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# core/location/camera.rpy
 # camera.rpy
 init python in v1FNaSR:
     class CameraInfo(object):

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# core/location/location.rpy
 
 # location.rpy
 init python in v1FNaSR:

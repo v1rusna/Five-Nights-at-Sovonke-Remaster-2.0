@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# core/location/tablet.rpy
 init python in v1FNaSR:
     from math import ceil as _v1ceil
     import string as _string

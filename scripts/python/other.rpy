@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# other.rpy
+# scripts/python/other.rpy
 init -1 python in v1FNaSR:
     import threading as _threading
     from itertools import chain as _chain

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# resources.rpy
+# core/resources.rpy
 init python in v1FNaSR:
     import posixpath as _posixpath
 

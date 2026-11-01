@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# init.rpy
+# scripts/python/init.rpy
 init python in v1FNaSR:
     class LocationCreateHook(BaseHook):
         def init(self):

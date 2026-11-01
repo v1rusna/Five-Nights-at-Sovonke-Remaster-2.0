@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# night.rpy
+# core/night.rpy
 init -1 python in v1FNaSR:
 
     from collections import OrderedDict

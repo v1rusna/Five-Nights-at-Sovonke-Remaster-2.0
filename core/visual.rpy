@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# visual.rpy
+# core/visual.rpy
 init python in v1FNaSR:
     import threading as _threading
 

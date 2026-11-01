@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# exceptions.rpy
+# core/exceptions.rpy
 init -10 python in v1FNaSR:
     class FNaSRException(Exception):
 

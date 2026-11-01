@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# modules.rpy
+# core/enemy/modules.rpy
 init -2 python in v1FNaSR:
     import math as _math
 
@@ -286,27 +286,27 @@ init -2 python in v1FNaSR:
             context = enemy.context
             
             if context.get("location_system") is None:
-                context.location_system = require_system("location")
+                context.remember("location_system", require_system("location"))
 
             if context.get("game_time") is None:
-                context.game_time = require_system("time")
+                context.remember("game_time", require_system("time"))
 
             if context.get("night_system") is None:
-                context.night_system = require_system("night")
+                context.remember("night_system", require_system("night"))
 
             if context.get("player_manager") is None:
-                context.player_manager = require_system("player")
+                context.remember("player_manager", require_system("player"))
 
             if context.get("stop_moving") is None:
-                context.stop_moving = MultiLock()
-
-            if context.get("move_wait_door_open") is None:
-                context.move_wait_door_open = False
+                context.remember("stop_moving", MultiLock())
 
         def start(self, context):
             path = self.generate_new_path()
             if path is None:
                 raise FNaSRException("Не удалось построить путь для '{}'({})".format(context.enemy.name, context.enemy.tag))
+
+            if context.get("move_wait_door_open") is None:
+                context.move_wait_door_open = False
 
             for location_id in path:
                 context.location_system.require_location(location_id)
@@ -353,7 +353,6 @@ init -2 python in v1FNaSR:
         
         def reset(self, context):
             context.stop_moving.clear()
-            context.move_wait_door_open = False
             super(EnemyMoveModule, self).reset(context)
 
         def move(self, context, location=None):
@@ -512,16 +511,15 @@ init -2 python in v1FNaSR:
             context = enemy.context
             
             if context.get("player_manager") is None:
-                context.player_manager = require_system("player")
+                context.remember("player_manager", require_system("player"))
 
             if context.get("cycle") is None:
-                context.cycle = require_system("cycle")
-
-            if context.get("is_player_dead") is None:
-                context.is_player_dead = False
+                context.remember("cycle", require_system("cycle"))
 
         def start(self, context):
             self.record_safety_time()
+            if context.get("is_player_dead") is None:
+                context.is_player_dead = False
 
         def update(self, context, dt):
             if context.is_player_dead:
@@ -605,16 +603,15 @@ init -2 python in v1FNaSR:
             context = enemy.context
             
             if context.get("player_manager") is None:
-                context.player_manager = require_system("player")
+                context.remember("player_manager", require_system("player"))
 
             if context.get("location_system") is None:
-                context.location_system = require_system("location")
-
-            if context.get("is_player_dead") is None:
-                context.is_player_dead = False
+                context.remember("location_system", require_system("location"))
 
         def start(self, context):
             self._move_module = self.get_module(context.enemy, EnemyMoveModule)
+            if context.get("is_player_dead") is None:
+                context.is_player_dead = False
 
         def update(self, context, dt):
             if context.is_player_dead:
@@ -1009,7 +1006,7 @@ init -2 python in v1FNaSR:
             self._key = self.KEY % context.enemy.tag
             
             if context.get("player_manager") is None:
-                context.player_manager = require_system("player")
+                context.remember("player_manager", require_system("player"))
 
         def start(self, context):
             self._player = context.player_manager.current_player
@@ -1143,7 +1140,7 @@ init -2 python in v1FNaSR:
             context = enemy.context
             
             if context.get("player_manager") is None:
-                context.player_manager = require_system("player")
+                context.remember("player_manager", require_system("player"))
 
             sprite = enemy.original_sprite
 

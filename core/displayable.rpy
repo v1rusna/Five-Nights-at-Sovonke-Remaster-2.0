@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# displayable.rpy
+# core/displayable.rpy
 init python in v1FNaSR:
     import math as _math
     import pygame as _pygame

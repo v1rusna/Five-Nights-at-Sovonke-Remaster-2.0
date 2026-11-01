@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# parallax.rpy
+# core/parallax.rpy
 init python in v1FNaSR:
     class Parallax(renpy.Displayable):
         __slots__ = [

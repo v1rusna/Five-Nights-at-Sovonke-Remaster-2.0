@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# thread.rpy
+# core/gameloop/thread.rpy
 init -6 python in v1FNaSR:
     import collections as _collections
     import threading as _threading

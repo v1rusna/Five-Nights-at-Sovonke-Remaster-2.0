@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# screenManager.rpy
+# core/base/screenManager.rpy
 init -5 python in v1FNaSR:
     import threading as _threading
 

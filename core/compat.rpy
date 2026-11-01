@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# compat.rpy
+# core/compat.rpy
 init -6 python in v1FNaSR:
 
     import sys as _sys

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# labels.rpy
+# scripts/labels/labels.rpy
 init python in v1FNaSR:
     @main_thread_only
     def stop_game_helper(is_win):

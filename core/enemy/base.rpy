@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# base.rpy
+# core/enemy/base.rpy
 init -3 python in v1FNaSR:
     import traceback as _traceback
     import threading as _threading
@@ -178,6 +178,7 @@ init -3 python in v1FNaSR:
             for module in self._modules:
                 self._safe_call(module, "reset", self._context)
 
+            self._context.reset()
             super(BaseEnemy, self).reset()
 
         def _safe_call(self, module, name_fn, *args, **kwargs):

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# reset.rpy
+# core/reset.rpy
 init -10 python in v1FNaSR:
     class ResetLogicCode(object):
         """Коды операций плана сброса (вне общего пространства имён)."""

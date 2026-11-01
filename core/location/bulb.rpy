@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# core/location/bulb.rpy
 # bulb.rpy
 init -1 python in v1FNaSR:
     class Bulb(object):

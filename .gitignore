@@ -1,7 +1,5 @@
 .env
 .vscode
 *.rpyc
-test.py
-remove_rpyc.py
-utils.py
+*.py
 TODO

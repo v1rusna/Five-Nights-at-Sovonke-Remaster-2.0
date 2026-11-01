@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# cycle.rpy
+# core/gameloop/cycle.rpy
 init -5 python in v1FNaSR:
     import sys as _sys
     import threading as _threading

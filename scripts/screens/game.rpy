@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# game.rpy
+# scripts/screens/game.rpy
 screen V1BaseUIScreenFNaSR:
     key "K_a" action NullAction()
     key "K_ESCAPE" action Show("V1GameMenuSelectorFNaSR", transition=dspr)

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# state.rpy
+# core/base/state.rpy
 init -10 python in v1FNaSR:
     import threading as _threading
 

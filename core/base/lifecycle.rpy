@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# lifecycle.rpy
+# core/base/lifecycle.rpy
 init -7 python in v1FNaSR:
 
     class BaseHook(object):

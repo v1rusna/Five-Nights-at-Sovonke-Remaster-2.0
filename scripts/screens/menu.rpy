@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# menu.rpy
+# scripts/screens/menu.rpy
 screen V1MainMenuFrameFNaSR(time="23:57", show_elements=True):
     default mm = v1FNaSR.MainMenuTools
     default tt = v1FNaSR.TextTools

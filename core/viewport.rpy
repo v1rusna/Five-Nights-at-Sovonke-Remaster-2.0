@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# viewport.rpy
+# core/viewport.rpy
 init -1 python in v1FNaSR:
     from __future__ import division
 

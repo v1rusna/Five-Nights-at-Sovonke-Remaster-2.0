@@ -1,29 +1,47 @@
-
-# other
+# -*- coding: utf-8 -*-
+# core/enemy/other.rpy
 init -4 python in v1FNaSR:
     import collections as _collections
     import random as _random
     import threading as _threading
+    import weakref as _weakref
 
     class EnemyContext(DebugContext):
-        __slots__ = ("_enemy",)
+        __slots__ = ("_enemy", "_memory",)
 
         def __init__(self, enemy):
             if not isinstance(enemy, BaseEnemy):
                 raise FNaSRTypeError("'enemy' должен быть 'BaseEnemy', получено: {}".format(type(enemy)))
 
             super(EnemyContext, self).__init__()
-            object.__setattr__(self, "_enemy", enemy)
+            object.__setattr__(self, "_enemy", _weakref.ref(enemy))
+            object.__setattr__(self, "_memory", set())
 
         @property
         def enemy(self):
-            return self._enemy
+            return self._enemy()
+
+        def remember(self, key, value):
+            self.set(key, value)
+            self._memory.add(key)
+
+        def reset(self):
+            for k in iter_keys(dict(self._data)):
+                if k not in self._memory:
+                    del self._data[k]
+
+        def clear(self):
+            super(EnemyContext, self).clear()
+            self._memory.clear()
 
         def __setattr__(self, name, value):
-            if name == "_enemy":
-                object.__setattr__(self, name, value)
-                return
+            if name in ("_enemy", "_memory",):
+                raise FNaSRAttributeError("Attribute '{}' is an internal attribute.".format(name))
             super(EnemyContext, self).__setattr__(name, value)
+
+        def __delattr__(self, name):
+            super(EnemyContext, self).__delattr__(name)
+            self._memory.discard(name)
 
     class PathGenerator(object):
         _location_system = None

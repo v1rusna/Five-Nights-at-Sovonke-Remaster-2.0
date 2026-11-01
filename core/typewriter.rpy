@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# typewriter.rpy
+# core/typewriter.rpy
 init -5 python in v1FNaSR:
     import random as _random
     import builtins as _builtins

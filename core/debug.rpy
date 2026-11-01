@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# debug.rpy
+# core/debug.rpy
 init -5 python in v1FNaSR:
     import traceback as _traceback
     import time as _time
@@ -374,7 +374,7 @@ init -5 python in v1FNaSR:
             return iter(self._data)
 
         def __repr__(self):
-            return "<DebugContext len={} at {}>".format(len(self._data), hex(id(self)))
+            return "<{} len={} hex={}>".format(type(self).__name__, len(self._data), hex(id(self)))
 
     class DebugElement(object):
         __slots__ = ("_enable", "_error", "_order", "_condition", "_context",)

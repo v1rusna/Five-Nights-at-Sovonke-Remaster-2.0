@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# settings.rpy
+# core/settings.rpy
 init -5 python in v1FNaSR:
     import copy as _copy_module
     import threading as _threading

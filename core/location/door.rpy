@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# core/location/door.rpy
 # door.rpy
 init python in v1FNaSR:
     audio.register_channel("door_sound", "sound", loop=False)
