@@ -3,7 +3,7 @@
 init -5 python in v1FNaSR:
     import threading as _threading
 
-    class ScreenManager(object):
+    class ScreenManager(native_object):
         __slots__ = ("_registry", "_replacements", "_lock",)
 
         def __init__(self):

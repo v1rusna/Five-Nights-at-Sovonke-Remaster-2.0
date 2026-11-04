@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # core/gameloop/thread.rpy
-init -6 python in v1FNaSR:
+init -7 python in v1FNaSR:
     import collections as _collections
     import threading as _threading
     import traceback as _traceback

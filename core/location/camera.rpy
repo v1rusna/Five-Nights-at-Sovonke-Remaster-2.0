@@ -2,7 +2,7 @@
 # core/location/camera.rpy
 # camera.rpy
 init python in v1FNaSR:
-    class CameraInfo(object):
+    class CameraInfo(native_object):
         __slots__ = ("_num", "_align", "_rotate", "_identical", "_active", "_break_time",)
 
         _BREAK_IMAGE = None

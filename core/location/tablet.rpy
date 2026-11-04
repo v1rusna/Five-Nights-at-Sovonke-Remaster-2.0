@@ -73,8 +73,8 @@ init python in v1FNaSR:
             self._setattr("_charge", charge)
             self._setattr("_max_charge", max_charge)
             self._setattr("_discharge", discharge)
-            self._setattr("_selected_location_id", discharge)
-            self._setattr("_speed_cycle", discharge)
+            self._setattr("_selected_location_id", None)
+            self._setattr("_speed_cycle", 1.0)
 
             self._available_locations = set()
 
@@ -272,7 +272,7 @@ init python in v1FNaSR:
             )
 
 
-    class TabletManager(object):
+    class TabletManager(native_object):
         def __init__(self):
             self._tablets = {}
 
@@ -351,7 +351,7 @@ init python in v1FNaSR:
                 * что целевая локация не занята другим планшетом.
             """
             if not isinstance(tablet, Tablet):
-                raise FNaSRTypeError("tablet должен быть 'Tablet', получено '{}'".format(type(tablet)))
+                raise FNaSRTypeError("'tablet' should be 'Tablet', received '{}'".format(type(tablet)))
 
             if self._tablets.get(tablet.tag) is not tablet:
                 raise TabletNotFound("Tablet with tag '{}' is not registered in this manager".format(tablet.tag))
@@ -371,6 +371,7 @@ init python in v1FNaSR:
             self._detach_from_location(tablet)
 
             new_location._attach_tablet(tablet)
+            location_system._add_location_element("tablet", new_location.id)
             tablet._location_id = new_location_id
 
             return tablet
@@ -402,6 +403,7 @@ init python in v1FNaSR:
                 location = location_system.get_location(tablet._location_id)
                 if location is not None and location.tablet is tablet:
                     location._detach_tablet()
+                    location_system._remove_location_element("tablet", location.id)
 
             tablet._location_id = None
 

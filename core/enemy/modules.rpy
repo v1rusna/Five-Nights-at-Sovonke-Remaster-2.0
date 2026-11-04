@@ -5,110 +5,124 @@ init -2 python in v1FNaSR:
 
     audio.register_channel("enemy_channel", "sound", loop=False)
 
-    def _hours(context):
-        """Игровое время текущей сессии в часах с дробной частью (total_hours + доля часа)."""
-        gt = context.game_time
-        if gt.hour_time <= 0.0:
-            return float(gt.total_hours)
-        return gt.total_hours + gt.progress
+    class FactorsMoveModule:
+        @staticmethod
+        def _hours(context):
+            """Игровое время текущей сессии в часах с дробной частью (total_hours + доля часа)."""
+            gt = context.game_time
+            if gt.hour_time <= 0.0:
+                return float(gt.total_hours)
+            return gt.total_hours + gt.progress
 
-    # --- считаются ОДИН РАЗ при start() (не меняются за ночь) ---
-    def factor_difficulty(module, context):
-        d = settings.game_difficulty # 1-4
-        return 0.7 + 0.3 * (d - 1)
+        # --- считаются ОДИН РАЗ при start() (не меняются за ночь) ---
+        @staticmethod
+        def factor_difficulty(module, context):
+            d = settings.game_difficulty # 1-4
+            return 0.7 + 0.3 * (d - 1)
 
-    def factor_night(module, context):
-        night = context.night_system.loaded
-        if night is None:
-            return 1.0
-        position = context.night_system.get_position(night)
-        if position is None:
-            return 1.0
-        return min(1.0 + 0.1 * (position - 1), 1.5)   # ночь 1 -> x1.0, ночь 5 -> x1.4
+        @staticmethod
+        def factor_night(module, context):
+            night = context.night_system.loaded
+            if night is None:
+                return 1.0
+            position = context.night_system.get_position(night)
+            if position is None:
+                return 1.0
+            return min(1.0 + 0.1 * (position - 1), 1.5)   # ночь 1 -> x1.0, ночь 5 -> x1.4
 
-    # --- считаются каждый update() ---
-    def factor_watched(module, context):
-        player = context.player_manager.current_player
-        if not player.has_tablet or not player.is_open_tablet:
-            return 1.0
-        if player.current_location.tablet.selected == module.current_location_id:
-            return 0.5
-        return 1.0
-
-    def factor_door(module, context):
-        player = context.player_manager.current_player
-        if not player.has_door:
-            return 1.0
-        return 0.6 if not player.current_location.door.is_open else 1.0
-
-    def factor_external(module, context):
-        value = context.get("moving_module_tempo_mult")
-        return 1.0 if value is None else value
-
-    def factor_proximity(module, context):
-        left = module.steps_left
-        if left <= 0 or left >= module.PROXIMITY_RANGE:
-            return 1.0
-        closeness = (module.PROXIMITY_RANGE - left) / float(module.PROXIMITY_RANGE - 1)
-        return 1.0 + module.PROXIMITY_GAIN * closeness
-
-    def factor_endgame(module, context):
-        night = context.night_system.loaded
-        if night is None or night.end_of_shift <= 0:
+        # --- считаются каждый update() ---
+        @staticmethod
+        def factor_watched(module, context):
+            player = context.player_manager.current_player
+            if not player.has_tablet or not player.is_open_tablet:
+                return 1.0
+            if player.current_location.tablet.selected == module.current_location_id:
+                return 0.5
             return 1.0
 
-        progress = _hours(context) / float(night.end_of_shift)
-        start = module.ENDGAME_START
-        if progress <= start:
+        @staticmethod
+        def factor_door(module, context):
+            player = context.player_manager.current_player
+            if not player.has_door:
+                return 1.0
+            return 0.6 if not player.current_location.door.is_open else 1.0
+        
+        @staticmethod
+        def factor_external(module, context):
+            value = context.get("moving_module_tempo_mult")
+            return 1.0 if value is None else value
+        
+        @staticmethod
+        def factor_proximity(module, context):
+            left = module.steps_left
+            if left <= 0 or left >= module.PROXIMITY_RANGE:
+                return 1.0
+            closeness = (module.PROXIMITY_RANGE - left) / float(module.PROXIMITY_RANGE - 1)
+            return 1.0 + module.PROXIMITY_GAIN * closeness
+        
+        @staticmethod
+        def factor_endgame(module, context):
+            night = context.night_system.loaded
+            if night is None or night.end_of_shift <= 0:
+                return 1.0
+
+            progress = FactorsMoveModule._hours(context) / float(night.end_of_shift)
+            start = module.ENDGAME_START
+            if progress <= start:
+                return 1.0
+            if progress > 1.0:
+                progress = 1.0
+
+            t = (progress - start) / (1.0 - start)
+            return 1.0 + module.ENDGAME_GAIN * t ** module.ENDGAME_POWER
+
+        @staticmethod
+        def factor_mood(module, context):
+            return module._mood
+
+        @staticmethod
+        def factor_crowd(module, context):
+            player = context.player_manager.current_player
+            return 1.5 if player.under_attack else 1.0
+
+        @staticmethod
+        def factor_time(module, context):
+            return 1.0 + module.TIME_GAIN * (1.0 - _math.exp(-FactorsMoveModule._hours(context) / module.TIME_TAU))
+
+        @staticmethod
+        def factor_not_watch(module, context):
+            player = context.player_manager.current_player
+            if player.current_location is None:
+                return 1.0
+            if not player.is_open_tablet:
+                return 1.0
+            if player.current_location.tablet.selected in Tablet.get_visible_ids(player):
+                return 0.0
             return 1.0
-        if progress > 1.0:
-            progress = 1.0
 
-        t = (progress - start) / (1.0 - start)
-        return 1.0 + module.ENDGAME_GAIN * t ** module.ENDGAME_POWER
+        @staticmethod
+        def bulb_inversion_condition_fn(module, context):
+            player = context.player_manager.current_player
+            if player.current_location is None:
+                return True
+            if player.current_location.bulb is None:
+                return True
+            return player.current_location.bulb.is_on
 
-    def factor_mood(module, context):
-        return module._mood
-
-    def factor_crowd(module, context):
-        player = context.player_manager.current_player
-        return 1.5 if player.under_attack else 1.0
-
-    def factor_time(module, context):
-        return 1.0 + module.TIME_GAIN * (1.0 - _math.exp(-_hours(context) / module.TIME_TAU))
-
-    def factor_not_watch(module, context):
-        player = context.player_manager.current_player
-        if player.current_location is None:
-            return 1.0
-        if not player.is_open_tablet:
-            return 1.0
-        if player.current_location.tablet.selected in Tablet.get_visible_ids(player):
-            return 0.0
-        return 1.0
-
-    def bulb_inversion_condition_fn(module, context):
-        player = context.player_manager.current_player
-        if player.current_location is None:
-            return True
-        if player.current_location.bulb is None:
-            return True
-        return player.current_location.bulb.is_on
-
-    ALL_ENEMY_MOVING_START_FACTORS = (
-        factor_difficulty,
-        factor_night
+    BASE_ENEMY_MOVING_START_FACTORS = (
+        FactorsMoveModule.factor_difficulty,
+        FactorsMoveModule.factor_night
     )
 
     BASE_ENEMY_MOVING_FACTORS = (
-        factor_watched,
-        factor_door,
-        factor_external,
-        factor_proximity,
-        factor_endgame,
-        factor_mood,
-        factor_crowd,
-        factor_time,
+        FactorsMoveModule.factor_watched,
+        FactorsMoveModule.factor_door,
+        FactorsMoveModule.factor_external,
+        FactorsMoveModule.factor_proximity,
+        FactorsMoveModule.factor_endgame,
+        FactorsMoveModule.factor_mood,
+        FactorsMoveModule.factor_crowd,
+        FactorsMoveModule.factor_time,
     )
 
     class EnemyMoveModule(EnemyModule):
@@ -117,7 +131,6 @@ init -2 python in v1FNaSR:
             "_stun_left", "_mood", "_static",
             "_start_location_id", "_end_location_id",
             "_ignore_player", "_start_factors", "_factors",
-            "_inversion_condition_fn",
         )
 
         BASE_INTERVAL = 30.0   # средний интервал между ходами (сек) при speed=1 в начале ночи
@@ -153,9 +166,8 @@ init -2 python in v1FNaSR:
             end_location_id=None,
             ignore_player=False,
             speed=1.0,
-            start_factors=ALL_ENEMY_MOVING_START_FACTORS,
+            start_factors=BASE_ENEMY_MOVING_START_FACTORS,
             factors=BASE_ENEMY_MOVING_FACTORS,
-            inversion_condition_fn=None,
         ):
             super(EnemyMoveModule, self).__init__()
 
@@ -183,9 +195,6 @@ init -2 python in v1FNaSR:
                         raise FNaSRTypeError("Фактор должен быть вызываемым, получено: {}".format(type(fn)))
                     extra.append(fn)
 
-            if inversion_condition_fn is not None and not callable(inversion_condition_fn):
-                raise FNaSRTypeError("'inversion_condition_fn' должен быть вызываемым, получено: {}".format(type(inversion_condition_fn)))
-
             self._setattr("_path", list())
             self._setattr("_cursor", 0)
             self._setattr("_speed", float(speed))
@@ -199,7 +208,6 @@ init -2 python in v1FNaSR:
 
             self._start_factors = start_extra
             self._factors = extra
-            self._inversion_condition_fn = inversion_condition_fn
 
         @property
         def current_location_id(self):
@@ -217,8 +225,10 @@ init -2 python in v1FNaSR:
 
         @speed.setter
         def speed(self, value):
-            if not is_number(value) or value < 0:
-                raise FNaSRTypeError("'speed' должен быть числом >= 0, получено: {}".format(type(value)))
+            if not is_number(value):
+                raise FNaSRTypeError("'speed' должен быть числом, получено: {}".format(type(value)))
+            if value < 0:
+                raise FNaSRValueError("'speed' не может быть меньше нуля, получено: {}".format(value))
             self._speed = float(value)
 
         @property
@@ -249,7 +259,7 @@ init -2 python in v1FNaSR:
         def ignore_player(self):
             return self._ignore_player
 
-        def generate_new_path(self, start_location_id=MISSING, end_location_id=MISSING):
+        def generate_new_path(self, start_location_id=MISSING, end_location_id=MISSING, replaced_path=True):
             if start_location_id is MISSING:
                 start_location_id = self._start_location_id
 
@@ -261,13 +271,18 @@ init -2 python in v1FNaSR:
                 end_location_id
             )
 
-            self._path = path if path is not None else []
-            self._cursor = 0
+            if replaced_path:
+                self._replace_path(path)
 
             if path is None:
                 return None
 
             return tuple(path)
+
+        def _replace_path(self, path):
+            self._path = path if path is not None else []
+            self._cursor = 0
+            self.on_path_replaced()
 
         def add_stun(self, value):
             if not is_strict_integer(value):
@@ -303,7 +318,7 @@ init -2 python in v1FNaSR:
         def start(self, context):
             def get_path_or_raise():
                 path = self.generate_new_path()
-                if path is None:
+                if not path:
                     raise FNaSRException("Не удалось построить путь для '{}'({})".format(context.enemy.name, context.enemy.tag))
                 return path
 
@@ -311,10 +326,13 @@ init -2 python in v1FNaSR:
 
             player = context.player_manager.current_player
             if self._start_location_id is None and player and player.current_location:
-                while True:
+                for _ in range(10):
                     if path[0] != player.current_location.id:
                         break
+
                     path = get_path_or_raise()
+                else:
+                    raise FNaSRException("Не удалось построить путь, отличный от локации игрока, для '{}'".format(context.enemy.tag))
 
             if context.get("move_wait_door_open") is None:
                 context.move_wait_door_open = False
@@ -349,18 +367,21 @@ init -2 python in v1FNaSR:
             if self.move_change(context, dt):
                 self._idle = 0.0
 
-                if self._inversion_condition_fn is None or not self._inversion_condition_fn(self, context):
-                    self.step_forward()
-                else:
-                    self.step_back()
+                self.step_forward()
 
                 if not self.move(context):
+                    self.step_back()
+
                     if not context.move_wait_door_open:
-                        self.generate_new_path()
-                        self.move(context)
+                        path = self.generate_new_path(replaced_path=False) # TODO: сделать механику при которой противник идет обратно к точке спайна (или в рандомную отдаленную локацию), при этом если игрок поменял локацию противник уже шел обратно к игроку, ну либо шел до конца в спавну, либо комбинированный вариант, как второй но если игрок на соседней локации то противник начинал преследовать игрока
+                        if path is not None and self.move(context, context.location_system.require_location(path[-1])):
+                            self._replace_path(path)
 
                 context.enemy.set_align()
                 update_ui()
+
+        def on_path_replaced(self):
+            pass
         
         def reset(self, context):
             context.stop_moving.clear()
@@ -470,6 +491,132 @@ init -2 python in v1FNaSR:
                 "stop moving: {}".format(enemy_context.stop_moving.blocked)
             ]
 
+    class EnemyMoveElementTriggerModule(EnemyMoveModule):
+        __slots__ = ("_triggers", "_target_trigger", "_check_time",)
+
+        def __init__(self, **kwargs):
+            kwargs["ignore_player"] = True
+            check_time = kwargs.pop("check_time", 1.0)
+            elements_triggers = kwargs.pop("elements_triggers", None)
+            if elements_triggers is None:
+                elements_triggers = ()
+            super(EnemyMoveElementTriggerModule, self).__init__(**kwargs)
+
+            if not is_number(check_time):
+                raise FNaSRTypeError("'check_time' должен быть числом, получено: {}".format(type(check_time)))
+            if check_time < 0.1:
+                raise FNaSRValueError("'check_time' не может быть меньше 0.1, получено: {}".format(check_time))
+
+            triggers = []
+            names = set()
+
+            for i, trigger in enumerate(elements_triggers):
+                if not isinstance(trigger, EnemyElementTrigger):
+                    raise FNaSRTypeError("elements_triggers[{}] должен быть 'EnemyElementTrigger', получено: {}".format(i, type(trigger)))
+
+                if trigger.name in names:
+                    raise FNaSRValueError("Триггер для элемента '{}' уже добавлен.".format(trigger.name))
+
+                names.add(trigger.name)
+                triggers.append(trigger)
+
+
+            self._triggers = tuple(triggers)
+            self._setattr("_target_trigger", None)
+            self._setattr("_check_time", check_time)
+
+        def start(self, context):
+            super(EnemyMoveElementTriggerModule, self).start(context)
+            context.move_wait_door_open = True
+
+        def update(self, context, dt):
+            self._accumulated_time += dt
+            self._target_handle(context)
+            super(EnemyMoveElementTriggerModule, self).update(context, dt)
+            self._handle_target(context)
+
+        def on_path_replaced(self):
+            self._target_trigger = None
+
+        def _target_handle(self, context):
+            if not self._accumulated_time >= self._check_time:
+                return
+            
+            self._accumulated_time -= self._check_time
+
+            if self._target_trigger is not None:
+                location = context.location_system.get_location(self._path[-1])
+                if not self._target_trigger.condition(self, context, location):
+                    self.generate_new_path(context.enemy.current_location.id)
+                return
+
+            enemy = context.enemy
+            current_location = enemy.current_location
+
+            if current_location is None:
+                return
+
+            targets, all_ids = self._collect_targets(context)
+
+            if not all_ids:
+                if self.is_last:
+                    self.generate_new_path(current_location.id)
+                return
+
+            path = PathGenerator.generate_nearest_element_path(current_location.id, all_ids)
+
+            if path is None:
+                if self.is_last:
+                    self.generate_new_path(current_location.id)
+                return
+
+            target_id = path[-1]
+
+            for trigger, ids in targets:
+                if target_id in ids:
+                    self._replace_path(path)
+                    self._target_trigger = trigger
+                    return
+
+        def _handle_target(self, context):
+            if self._target_trigger is None or not self.is_last:
+                return
+
+            trigger = self._target_trigger
+            self._target_trigger = None
+
+            location = context.location_system.get_location(self.current_location_id)
+
+            trigger.handle(self, context, location)
+
+        def _collect_targets(self, context):
+            location_system = context.location_system
+
+            targets = []
+            all_ids = set()
+
+            for trigger in self._triggers:
+                ids = set()
+
+                for location_id in location_system.get_locations_with(trigger.name):
+                    location = location_system.get_location(location_id)
+
+                    if location is not None and trigger.condition(self, context, location):
+                        ids.add(location_id)
+
+                if ids:
+                    targets.append((trigger, ids))
+                    all_ids.update(ids)
+
+            return targets, all_ids
+
+        def get_debug_list_texts(self, enemy_context):
+            return super(EnemyMoveElementTriggerModule, self).get_debug_list_texts(enemy_context) + [
+                "triggers: {}".format(self._triggers),
+                "target: {}".format(self._target_trigger),
+                "check time: {}/{}".format(self._accumulated_time, self._check_time)
+            ]
+
 
     class EnemyAggressiveModule(EnemyModule):
         __slots__ = ("_enemy_screamer", "_safety_time", "_current_safety_time",)
@@ -513,9 +660,9 @@ init -2 python in v1FNaSR:
 
         def get_current_safety_time(self):
             """Получить safety_time с учётом времени анимации"""
-            speed = GlobalState.get("moving_animation_speed", 1.0)
+            speed = max(GlobalState.get("moving_animation_speed", 1.0), 0.5)
             if speed > 0:
-                return self._safety_time + 1.8 / GlobalState.get("moving_animation_speed", 1.0)
+                return self._safety_time + 1.8 / speed
             return self._safety_time
 
         def on_include(self, enemy):
@@ -536,8 +683,6 @@ init -2 python in v1FNaSR:
             if context.is_player_dead:
                 return
             player = context.player_manager.current_player
-            if player is None:
-                return
             if player.current_location is None:
                 return
             if context.enemy.current_location is None:
@@ -765,7 +910,7 @@ init -2 python in v1FNaSR:
             if distance >= 0:
                 location_id = self._move_module.get_next_location_id(distance)
             else:
-                location_id = self._move_module.get_previous_location_id(distance)
+                location_id = self._move_module.get_previous_location_id(-distance)
             if location_id is None:
                 return
 
@@ -777,8 +922,6 @@ init -2 python in v1FNaSR:
 
         def player_present(self, context, location):
             player = context.player_manager.current_player
-            if player is None:
-                return False
             if player.current_location is None:
                 return False
             if player.current_location.id != location.id:
@@ -846,16 +989,16 @@ init -2 python in v1FNaSR:
             super(EnemySilentAttackModule, self).update(context, dt)
 
         def _start_attack(self, context, attack_target):
-            data = self._silent_locations.get(attack_target.id, None)
+            self._attack_target_id = attack_target.id
 
-            if not attack_target.is_replaced_image and data is not None and data:
+            data = self._silent_locations.get(attack_target.id)
+
+            if not attack_target.is_replaced_image and data:
                 self._replace_image(context)
             else:
-                main_executor.submit(audio.play,resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
+                main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"],self._sound_channel)
 
             context.stop_moving.block(self)
-            self._attack_target_id = attack_target.id
-            # self._safety_time = 0.5
             self._attack(context)
             
         def _choose_silent_variant(self, variants):
@@ -940,8 +1083,8 @@ init -2 python in v1FNaSR:
 
     class EnemySignalButtonModule(EnemyModule):
         __slots__ = (
-            "_button_press_duration", "_signal_sound", "_signal_channel", "_key",
-            "_signal", "_show_button", "_player", "_move_module",
+            "_button", "_button_press_duration", "_signal_sound", "_signal_channel",
+            "_key", "_signal", "_show_button", "_player", "_move_module",
         )
 
         KEY = "v1_enemy_signal_button_module_%s"
@@ -967,6 +1110,8 @@ init -2 python in v1FNaSR:
 
             if not is_number(button_press_duration):
                 raise FNaSRTypeError("'button_press_duration' должен быть числом, получено: {}".format(type(button_press_duration)))
+            if button_press_duration < 1:
+                raise FNaSRValueError("'button_press_duration' должен быть положительным, получено: {}".format(button_press_duration))
             if not is_string(button_image):
                 raise FNaSRTypeError("'button_image' должен быть строкой, получено: {}".format(type(button_image)))
             if not is_string(signal_sound):
@@ -1128,8 +1273,8 @@ init -2 python in v1FNaSR:
 
             if not is_number(downtime):
                 raise FNaSRTypeError("'downtime' должен быть числом, получено: {}".format(type(downtime)))
-            if downtime < 0:
-                raise FNaSRValueError("'downtime' не может быть меньше нуля.")
+            if downtime < 1:
+                raise FNaSRValueError("'downtime' должен быть положительным, получено: {}".format(downtime))
 
             self._needs_clicks = needs_clicks
             self._downtime = float(downtime)
@@ -1194,8 +1339,6 @@ init -2 python in v1FNaSR:
                 return False
 
             player = context.player_manager.current_player
-            if player is None:
-                return False
 
             if player.current_location is None:
                 return False
@@ -1294,6 +1437,12 @@ init -2 python in v1FNaSR:
                 return
             self._is_block = True
             for el in self._block_list:
+                if el == PlayerElement.TABLET:
+                    if self._player.is_open_tablet:
+                        try:
+                            main_executor.submit(screen_manager.hide_screen, "tablet", player=self._player, fast_switch=False)
+                        except:
+                            self._player.close_tablet()
                 self._player.get_element(el).block(self)
 
         def unblock(self):
@@ -1310,6 +1459,9 @@ init -2 python in v1FNaSR:
             ]
 
 
+    class EnemySabotageGeneratorModule(EnemyModule):
+        def __init__(self, target_location_id):
+            pass
 
 
 
@@ -1320,7 +1472,13 @@ init -2 python in v1FNaSR:
 
 
 
+    EnemyMoveModule.conflicting_modules = (
+        EnemyMoveElementTriggerModule,
+    )
 
+    EnemyMoveElementTriggerModule.conflicting_modules = (
+        EnemyMoveModule,
+    )
 
 
     EnemyAttackModule.conflicting_modules = (

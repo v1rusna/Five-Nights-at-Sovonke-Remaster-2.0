@@ -20,7 +20,7 @@ init -1 python in v1FNaSR:
         DirectionConfig(8, "<северо-запад>",  "\u2196", 0.08, 0.18, 0.0, 0.0),
     )
 
-    class Tools(object):
+    class Tools(native_object):
         @staticmethod
         def safe_call(fn, *args, **kwargs):
             exceptions = kwargs.pop("exceptions", None)
@@ -73,7 +73,7 @@ init -1 python in v1FNaSR:
             require_system("night").finish(False)
             renpy.call("v1_load_night_label_FNaSR", night)
 
-    class TextTools(object):
+    class TextTools(native_object):
         _text_cache = dict()
         _textbutton_cache = dict()
 
@@ -113,7 +113,7 @@ init -1 python in v1FNaSR:
             return _t
 
     @main_thread_only
-    class MainMenuTools(object):
+    class MainMenuTools(native_object):
         _user_image = None
         _location = None
         _old_location = None

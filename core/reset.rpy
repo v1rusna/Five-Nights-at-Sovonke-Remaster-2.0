@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # core/reset.rpy
 init -10 python in v1FNaSR:
-    class ResetLogicCode(object):
-        """Коды операций плана сброса (вне общего пространства имён)."""
+    class ResetLogicCode(native_object):
         VALUE = 0    # присвоить по ссылке: атомы, неизменяемые кортежи, frozenset, чужие объекты
         LIST = 1     # список: восстановить содержимое на месте
         DICT = 2     # словарь: восстановить содержимое на месте
@@ -12,10 +11,10 @@ init -10 python in v1FNaSR:
         NO_ATTR = object()
 
 
-    class ResetLogic(object):
+    class ResetLogic(native_object):
         def __init__(self):
             super(ResetLogic, self).__init__()
-            state = object.__getattribute__(self, '__dict__')
+            state = native_object.__getattribute__(self, '__dict__')
             state['_reset_to_default'] = dict()
             state['_fast_reset'] = None
 
@@ -112,7 +111,7 @@ init -10 python in v1FNaSR:
         @staticmethod
         def _raw_get(obj, attr):
             try:
-                return object.__getattribute__(obj, attr)
+                return native_object.__getattribute__(obj, attr)
             except AttributeError:
                 return None
 
@@ -140,7 +139,7 @@ init -10 python in v1FNaSR:
             ops = []
             for attr, snap in default_dict.items():
                 is_raw = attr in raw
-                setter = object.__setattr__ if is_raw else setattr
+                setter = native_object.__setattr__ if is_raw else setattr
 
                 if isinstance(snap, ResetLogic):
                     ops.append((attr, OP_CHILD, snap, False, (), is_raw, setter))
@@ -223,15 +222,15 @@ init -10 python in v1FNaSR:
             return reset
 
         def _setattr(self, attr, val, use_object=False):
-            state = object.__getattribute__(self, '__dict__')
+            state = native_object.__getattribute__(self, '__dict__')
 
             default = state.get('_reset_to_default')
             if not isinstance(default, dict):
                 default = state['_reset_to_default'] = dict()
 
             if use_object:
-                object.__setattr__(self, attr, val)
-                current = object.__getattribute__(self, attr)
+                native_object.__setattr__(self, attr, val)
+                current = native_object.__getattribute__(self, attr)
             else:
                 setattr(self, attr, val)
                 current = getattr(self, attr)
@@ -249,7 +248,7 @@ init -10 python in v1FNaSR:
             state['_fast_reset'] = None
 
         def reset(self):
-            state = object.__getattribute__(self, '__dict__')
+            state = native_object.__getattribute__(self, '__dict__')
             if state.get('_reset_active'):
                 return
 

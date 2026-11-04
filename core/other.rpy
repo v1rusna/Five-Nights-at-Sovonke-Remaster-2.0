@@ -7,7 +7,7 @@ init -12 python in v1FNaSR:
     except ImportError:
         from collections import MutableSequence as _MutableSequence
 
-    class GlobalState(object):
+    class GlobalState(native_object):
         lock = _threading.RLock()
         _flags = dict()
 
@@ -55,7 +55,7 @@ init -12 python in v1FNaSR:
             with cls.lock:
                 return iter(tuple(iter_keys(cls._flags)))
 
-    class BaseAI(object):
+    class BaseAI(native_object):
         def __init__(self):
             super(BaseAI, self).__init__()
             self._current_location = None
@@ -80,14 +80,14 @@ init -12 python in v1FNaSR:
             self._current_location = location
             location.on_enter(self)
 
-    class _MissingType(object):
+    class _MissingType(native_object):
         __slots__ = ()
         
         _instance = None
 
         def __new__(cls):
             if cls._instance is None:
-                cls._instance = object.__new__(cls)
+                cls._instance = native_object.__new__(cls)
             return cls._instance
 
         def __repr__(self):
@@ -100,18 +100,18 @@ init -12 python in v1FNaSR:
 
     MISSING = _MissingType()
 
-    class InfoObject(object):
+    class InfoObject(native_object):
         __slots__ = ("_v1data",)
 
         def __init__(self, **kwargs):
-            object.__setattr__(self, "_v1data", {})
+            native_object.__setattr__(self, "_v1data", {})
             self.update(kwargs)
 
         def __setattr__(self, name, value):
             name = to_text(name)
 
             if name == "_v1data":
-                object.__setattr__(self, name, value)
+                native_object.__setattr__(self, name, value)
                 return
 
             self._v1data[name] = value
@@ -255,7 +255,7 @@ init -12 python in v1FNaSR:
         def __repr__(self):
             return "ElementContainer({})".format(self._elements)
 
-    class UIUpdater(object):
+    class UIUpdater(native_object):
         MIN_INTERVAL = 1.0 / 60.0
         MAX_INTERVAL = 1.0
         DEFAULT_INTERVAL = 1.0 / 10.0
@@ -323,7 +323,7 @@ init -12 python in v1FNaSR:
     def update_ui():
         UIUpdater.update_ui()
 
-    class MultiLock(object):
+    class MultiLock(native_object):
         __slots__ = ("_blockers", "_lock",)
 
         def __init__(self):

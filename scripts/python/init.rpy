@@ -278,9 +278,9 @@ init python in v1FNaSR:
                     {
                         "location_id": -9,
                         "name": "внутрь медпункта",
-                        "image": resources.images.bg["int_aidpost_no_light_night_7dl"],
+                        "image": resources.images.bg["int_aidpost_no_light_night_7dl_light"],
                         "door": Door(),
-                        "bulb": Bulb(resources.images.bg["int_aidpost_no_light_night_7dl_light"]),
+                        "bulb": Bulb(resources.images.bg["int_aidpost_no_light_night_7dl"]),
                         "loc_connections": [(2,5)],
                     },
                     None,
@@ -420,7 +420,7 @@ init python in v1FNaSR:
                     "color": "#B956FF",
                     "nights_start": None, # 2,
                     "modules": [
-                        lambda: EnemyMoveModule(factors=BASE_ENEMY_MOVING_FACTORS+(factor_not_watch,), speed=0.8),
+                        lambda: EnemyMoveModule(factors=BASE_ENEMY_MOVING_FACTORS+(FactorsMoveModule.factor_not_watch,), speed=0.8),
                         lambda: EnemyAggressiveModule(EnemyScreamer("un evil_smile pioneer")),
                         lambda: EnemySilentAttackModule(
                                     silent_locations={
@@ -501,8 +501,19 @@ init python in v1FNaSR:
                     "color": "#FFFF00",
                     "nights_start": None, # 3,
                     "modules": [
-                        lambda: EnemyMoveModule(-4, speed=5.0, inversion_condition_fn=bulb_inversion_condition_fn),
-                        lambda: EnemyAggressiveModule(EnemyScreamer("el angry pioneer"))
+                        lambda: EnemyMoveElementTriggerModule(
+                            start_location_id=-4,
+                            end_location_id=-4,
+                            speed=2.0,
+                            elements_triggers=[
+                                EnemyElementTrigger(
+                                    PlayerElement.BULB,
+                                    lambda module, context, location: not EnemyElementTrigger.bulb_condition_fn(module, context, location),
+                                    EnemyElementTrigger.bulb_handler_fn
+                                )
+                            ]
+                        ),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("el angry pioneer"), safety_time=0.1)
                     ]
                 },
             ]

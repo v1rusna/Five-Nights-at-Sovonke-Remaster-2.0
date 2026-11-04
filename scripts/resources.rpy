@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # scripts/resources.rpy
 init python in v1FNaSR:
-    class _InitImages(object):
+    class _InitImages(native_object):
         def init(self):
             self.recommendation = build_image(resources.images.other["recommendation"], width=1024, height=1024)
             self.ui_monitor_button = build_image(resources.images.other["FNaG_Monitor_Button"], width=537, height=47)

@@ -18,7 +18,7 @@ init -1 python in v1FNaSR:
         """Ночь ещё не открыта."""
 
 
-    class Night(object):
+    class Night(native_object):
         __slots__ = (
             "_id", "_title", "_start_location_id", "_end_of_shift",
             "_requires", "_start_callback", "_end_callback"
@@ -104,7 +104,7 @@ init -1 python in v1FNaSR:
             return "<Night {!r}>".format(self._id)
 
 
-    class NightSequence(object):
+    class NightSequence(native_object):
         __slots__ = ("_name", "_ordered_unlock", "_ids")
 
         def __init__(self, name, ordered_unlock=True):
@@ -167,7 +167,7 @@ init -1 python in v1FNaSR:
             self._ids.remove(night_id)
 
 
-    class NightSystem(object):
+    class NightSystem(native_object):
         __slots__ = ("_nights", "_sequences", "_completed", "_loaded", "_running",)
 
         def __init__(self):

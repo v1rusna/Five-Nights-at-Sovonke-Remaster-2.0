@@ -22,7 +22,7 @@ init -11 python in v1FNaSR:
         return inner
 
 
-    class _Registry(object):
+    class _Registry(native_object):
         def __init__(self, item_name, duplicate_error, missing_error):
             self._items = {}
             self._item_name = item_name

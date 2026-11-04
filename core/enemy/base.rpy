@@ -123,17 +123,15 @@ init -3 python in v1FNaSR:
             if type_module in self._types_modules:
                 raise FNaSRTypeError("Модуль типа '{}' уже добавлен.".format(type_module))
 
-            for cls_m in module.dependent_modules:
-                if cls_m not in self._types_modules:
-                    raise FNaSRValueError("Модуль '{!r}' зависит от модуля '{}' который не подключен.".format(module, cls_m))
+            missing = self.get_missing_dependencies(module)
 
-            for cls_m in module.conflicting_modules:
-                if cls_m in self._types_modules:
-                    raise FNaSRValueError("Модуль '{!r}' конфликтует с уже подключённым модулем '{}'.".format(module, cls_m))
+            if missing:
+                raise FNaSRValueError("Модуль '{!r}' зависит от неподключённых модулей: {}.".format(module, ", ".join(t.__name__ for t in missing)))
 
-            for m in self._modules:
-                if type_module in m.conflicting_modules:
-                    raise FNaSRValueError("Модуль '{!r}' конфликтует с уже подключённым модулем '{}'.".format(module, m))
+            conflicts = self.get_module_conflicts(module)
+
+            if conflicts:
+                raise FNaSRValueError("Модуль '{!r}' конфликтует с уже подключёнными модулями: {}.".format(module, ", ".join(repr(m) for m in conflicts)))
 
             module.on_include(self)
 
@@ -144,20 +142,90 @@ init -3 python in v1FNaSR:
             if module not in self._modules:
                 raise FNaSRValueError("Модуль '{}' не подключён к противнику.".format(repr(module)))
 
-            type_module = type(module)
+            remaining = [other for other in self._modules if other is not module]
 
-            dependents = [
-                other
-                for other in self._modules
-                if other is not module
-                and type_module in other.dependent_modules
-            ]
+            missing = []
 
-            if dependents:
-                raise FNaSRValueError("Нельзя удалить модуль '{}': от него зависят модули: {}.".format(repr(module), ", ".join(repr(other) for other in dependents)))
+            for dependent in remaining:
+                for required_type in dependent.dependent_modules:
+                    if not any(
+                        issubclass(type(other), required_type)
+                        for other in remaining
+                    ):
+                        missing.append((dependent, required_type))
+
+            if missing:
+                details = ", ".join(
+                    "{} требует {}".format(
+                        repr(dependent),
+                        required_type.__name__
+                    )
+                    for dependent, required_type in missing
+                )
+
+                raise FNaSRValueError("Нельзя удалить модуль '{}': после удаления останутся неудовлетворённые зависимости: {}.".format(repr(module), details))
 
             self._modules.remove(module)
-            self._types_modules.discard(type_module)
+            self._types_modules.discard(type(module))
+
+        def get_missing_dependencies(self, module):
+            if not isinstance(module, EnemyModule):
+                raise FNaSRTypeError("'module' должен быть наследником 'EnemyModule'.")
+
+            self._validate_module_declarations(module)
+
+            missing = []
+
+            for required_type in module.dependent_modules:
+                if not any(
+                    issubclass(registered_type, required_type)
+                    for registered_type in self._types_modules
+                ):
+                    missing.append(required_type)
+
+            return tuple(missing)
+
+        def get_module_conflicts(self, module):
+            if not isinstance(module, EnemyModule):
+                raise FNaSRTypeError("'module' должен быть наследником 'EnemyModule'.")
+
+            self._validate_module_declarations(module)
+
+            module_type = type(module)
+            conflicts = []
+
+            for registered in self._modules:
+                registered_type = type(registered)
+
+                conflict_a = any(
+                    issubclass(registered_type, conflict_type)
+                    for conflict_type in module.conflicting_modules
+                )
+
+                conflict_b = any(
+                    issubclass(module_type, conflict_type)
+                    for conflict_type in registered.conflicting_modules
+                )
+
+                if conflict_a or conflict_b:
+                    conflicts.append(registered)
+
+            return tuple(conflicts)
+
+        def can_add_module(self, module):
+            if not isinstance(module, EnemyModule):
+                return False
+
+            if type(module) is EnemyModule:
+                return False
+
+            if type(module) in self._types_modules:
+                return False
+
+            return (
+                not self.get_missing_dependencies(module)
+                and not self.get_module_conflicts(module)
+            )
 
         def has_module(self, module):
             return module in self._modules
@@ -190,6 +258,26 @@ init -3 python in v1FNaSR:
             except Exception:
                 log.error("Module '{}' error".format(repr(module)))
                 module.set_error()
+
+        def _validate_module_declarations(self, module):
+            dependencies = module.dependent_modules
+            conflicts = module.conflicting_modules
+
+            for attr, types in (
+                ("dependent_modules", dependencies),
+                ("conflicting_modules", conflicts),
+            ):
+                if not isinstance(types, (tuple, list, set, frozenset)):
+                    raise FNaSRTypeError("'{}.{}' должен быть коллекцией типов.".format(type(module).__name__, attr))
+
+                for required_type in types:
+                    if not isinstance(required_type, type) or not issubclass(required_type, EnemyModule):
+                        raise FNaSRTypeError("'{}.{}' содержит недопустимый тип: {!r}.".format(type(module).__name__, attr, required_type))
+
+            for dependency in dependencies:
+                for conflict in conflicts:
+                    if issubclass(dependency, conflict) or issubclass(conflict, dependency):
+                        raise FNaSRValueError("Модуль '{}' одновременно зависит от '{}' и конфликтует с ним.".format(type(module).__name__, dependency.__name__))
 
 
     class Enemy(BaseEnemy):
@@ -351,7 +439,7 @@ init -3 python in v1FNaSR:
             else:
                 self._replaced_sprite = None
 
-    class EnemyManager(object):
+    class EnemyManager(native_object):
         MAIN_GROUP = "FNaSR"
 
         def __init__(self):

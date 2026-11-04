@@ -3,7 +3,7 @@
 init -5 python in v1FNaSR:
     import threading as _threading
 
-    class AudioManager(object):
+    class AudioManager(native_object):
         __slots__ = ("_channels", "_last_played", "_lock", "_default_channel",)
 
         def __init__(self, default_channel="music"):
@@ -87,7 +87,7 @@ init -5 python in v1FNaSR:
             with self._lock:
                 return key in self._channels
 
-    class AmbienceManager(object):
+    class AmbienceManager(native_object):
         __slots__ = ("_active_channels", "_lock")
 
         def __init__(self):

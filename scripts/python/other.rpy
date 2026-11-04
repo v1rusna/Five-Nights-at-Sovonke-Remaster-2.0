@@ -4,7 +4,7 @@ init -1 python in v1FNaSR:
     import threading as _threading
     from itertools import chain as _chain
 
-    class _ImageStore(object):
+    class _ImageStore(native_object):
         def __init__(self):
             self._lock = _threading.RLock()
             self._items = list()
@@ -67,7 +67,7 @@ init -1 python in v1FNaSR:
                 del self._items[:]
 
 
-    class _VisibilityResolver(object):
+    class _VisibilityResolver(native_object):
         def __init__(self):
             self._em = None
             self._pm = None
@@ -95,8 +95,6 @@ init -1 python in v1FNaSR:
 
         def visible_enemies(self):
             player = self._get_player()
-            if player is None:
-                return tuple()
             current_location = player.current_location
             if current_location is None:
                 return tuple()
@@ -125,15 +123,13 @@ init -1 python in v1FNaSR:
 
         def visible_images(self, images):
             player = self._get_player()
-            if player is None:
-                return tuple()
             is_tablet = player.is_open_tablet
             return tuple(
                 (im, align) for im, align in images
                 if is_tablet != isinstance(im, Parallax)
             )
 
-    class _EnemyListRenderer(object):
+    class _EnemyListRenderer(native_object):
         def __init__(self, store, resolver):
             self._store = store
             self._resolver = resolver
@@ -151,7 +147,7 @@ init -1 python in v1FNaSR:
             return iter(self.build())
 
 
-    class EnemyVisualizer(object):
+    class EnemyVisualizer(native_object):
         _store = _ImageStore()
         _resolver = _VisibilityResolver()
         _renderer = _EnemyListRenderer(_store, _resolver)

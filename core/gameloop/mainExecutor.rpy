@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # core/gameloop/mainExecutor.rpy
-init python in v1FNaSR:
+init -6 python in v1FNaSR:
     import threading as _threading
     import collections as _collections
     import sys as _sys
@@ -36,7 +36,7 @@ init python in v1FNaSR:
             FNaSRException.__init__(self, "Задача прервана управляющим исключением Ren'Py: {}".format(type(original).__name__))
             self.original = original
 
-    class ControlExceptionRegistry(object):
+    class ControlExceptionRegistry(native_object):
         _FORBIDDEN_MODULES = ("builtins", "__builtin__", "exceptions")
 
         def __init__(self, base):
@@ -92,7 +92,7 @@ init python in v1FNaSR:
         control_exceptions.register(cls)
         return cls
 
-    class MainThreadExecutor(object):
+    class MainThreadExecutor(native_object):
         def __init__(self):
             self._queue = _collections.deque()
             self._lock = _threading.Lock()
@@ -144,7 +144,7 @@ init python in v1FNaSR:
                     future, fn, args, kwargs = self._queue.popleft()
                     future._set_exception(FNaSRExecutorClosedError("MainThreadExecutor был остановлен."))
 
-    class _Future(object):
+    class _Future(native_object):
         def __init__(self):
             self._event = _threading.Event()
             self._result = None
@@ -183,7 +183,7 @@ init python in v1FNaSR:
         def event(self, ev, x, y, st):
             return None
 
-    class PumpContext(object):
+    class PumpContext(native_object):
         def __init__(self):
             self._refs = 0
             self._lock = _threading.Lock()

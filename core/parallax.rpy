@@ -183,7 +183,7 @@ init python in v1FNaSR:
                 % (self.displayable, self.zoom, self.anchor, self.power)
             )
 
-    class ParallaxWrapper(object):
+    class ParallaxWrapper(native_object):
         """
         Обёртка над Ren'Py Displayable-классами (например ImageButton),
         позволяющая совместить параллакс-логику с поведением кнопки.

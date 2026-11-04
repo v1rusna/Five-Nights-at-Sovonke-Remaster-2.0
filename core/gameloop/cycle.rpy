@@ -5,18 +5,19 @@ init -5 python in v1FNaSR:
     import threading as _threading
     import traceback as _traceback
     import collections as _collections
+    import functools as _functools
 
     class FNaSRCycleError(FNaSRRuntimeError):
         pass
 
-    class CycleState(object):
+    class CycleState(native_object):
         STOPPED = "stopped"
         STARTING = "starting"
         RUNNING = "running"
         STOPPING = "stopping"
         FAILED = "failed"
 
-    class ErrorPolicy(object):
+    class ErrorPolicy(native_object):
         LOG_AND_CONTINUE = "log_and_continue"
         DISABLE_OBJECT = "disable_object"
         STOP_CYCLE = "stop_cycle"
@@ -55,7 +56,7 @@ init -5 python in v1FNaSR:
         def on_error(self, exc_info):
             pass
 
-    class GameCycle(object):
+    class GameCycle(native_object):
         def __init__(self, fps_controller, speed_cycle=1.0,
                     error_policy=ErrorPolicy.DISABLE_OBJECT,
                     max_consecutive_errors=1):
@@ -219,6 +220,8 @@ init -5 python in v1FNaSR:
                     if not self._run_finished:
                         raise FNaSRCycleError("Предыдущий запуск GameCycle ещё не завершён.")
 
+                ValidatorTools.validate()
+
                 self._state = CycleState.STARTING
                 self._stop_event.clear()
 
@@ -342,8 +345,8 @@ init -5 python in v1FNaSR:
                 with self._state_lock:
                     self._state = CycleState.STOPPING
 
-                for obj in list(self._objects):
-                    self._safe_call(obj, "reset")
+            for obj in list(self._objects):
+                self._safe_call(obj, "reset")
 
             self._freeze_event.clear()
 
@@ -391,10 +394,18 @@ init -5 python in v1FNaSR:
 
             new_value = self._speed_cycle - float(value)
 
-            if new_value <= 0.1:
+            if new_value <= 0.0:
                 return
 
             self._speed_cycle = new_value
+
+        def set_speed_cycle(self, value):
+            if not is_number(value):
+                raise FNaSRValueError("value должен быть числом, получено: {}".format(type(value)))
+            if value <= 0:
+                raise FNaSRValueError("'speed' должно быть положительным, получено".format(value))
+            
+            self._speed_cycle = float(value)
 
         def call_in_cycle(self, fn):
             if not callable(fn):
@@ -432,6 +443,7 @@ init python in v1FNaSR:
         DebugText(lambda context: "target fps: {}".format(context.cycle.fps_controller.target_fps)),
         DebugText(lambda context: "mode: {}".format("precise" if context.cycle.fps_controller.precise else "fast")),
         DebugText(lambda context: "dt: {}".format(context.cycle.fps_controller.dt)),
+        DebugText(lambda context: "dt * speed: {}".format(context.cycle.fps_controller.dt * context.cycle.speed_cycle)),
         DebugText(lambda context: "errors: {}".format(len(context.cycle.errors))),
         DebugText(lambda context: "frozen: {}".format(context.cycle.is_frozen)),
         DebugText(lambda context: "total obj: {}".format(len(context.cycle._objects))),
@@ -449,7 +461,7 @@ init python in v1FNaSR:
         ),
         DebugRow(
             DebugButton(lambda context: "-", lambda context: context.cycle.decrease_speed_cycle()),
-            DebugText(lambda context: "speed cycle: {}".format(context.cycle.speed_cycle)),
+            DebugButton(lambda context: "speed cycle: {}".format(context.cycle.speed_cycle), lambda context: context.cycle.set_speed_cycle(1.0)),
             DebugButton(lambda context: "+", lambda context: context.cycle.add_speed_cycle()),
         ),
         expanded=True,

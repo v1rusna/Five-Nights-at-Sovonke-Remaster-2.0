@@ -9,7 +9,7 @@ init python in v1FNaSR:
             super(DoorClose, self).__init__(location_id)
             self.location_id = location_id
 
-    class Door(object):
+    class Door(native_object):
         __slots__ = ("_open", "_door_button",)
 
         def __init__(self):

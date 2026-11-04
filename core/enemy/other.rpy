@@ -14,8 +14,8 @@ init -4 python in v1FNaSR:
                 raise FNaSRTypeError("'enemy' должен быть 'BaseEnemy', получено: {}".format(type(enemy)))
 
             super(EnemyContext, self).__init__()
-            object.__setattr__(self, "_enemy", _weakref.ref(enemy))
-            object.__setattr__(self, "_memory", set())
+            native_object.__setattr__(self, "_enemy", _weakref.ref(enemy))
+            native_object.__setattr__(self, "_memory", set())
 
         @property
         def enemy(self):
@@ -43,7 +43,7 @@ init -4 python in v1FNaSR:
             super(EnemyContext, self).__delattr__(name)
             self._memory.discard(name)
 
-    class PathGenerator(object):
+    class PathGenerator(native_object):
         _location_system = None
         _player_manager = None
 
@@ -230,7 +230,89 @@ init -4 python in v1FNaSR:
 
             return grouped
 
-    class EnemyScreamer(object):
+        @classmethod
+        def generate_nearest_element_path(cls, start_location_id, element_locations):
+            """
+            Строит кратчайший путь от текущей локации до ближайшего элемента.
+
+            element_locations — список ID локаций или объектов Location,
+            содержащих нужные элементы.
+
+            Возвращает список ID локаций или None, если путь не найден.
+            """
+            if element_locations is None:
+                return None
+
+            start_location_id = _normalize_id(start_location_id)
+
+            target_ids = set(
+                _normalize_id(getattr(location, "id", location))
+                for location in element_locations
+            )
+
+            if not target_ids:
+                return None
+
+            location_system = cls._get_location_system()
+
+            with _LOCATION_LOCK:
+                location_system.require_location(start_location_id)
+
+                graph = cls._snapshot_graph(location_system.locations)
+
+            target_ids.intersection_update(graph)
+
+            if not target_ids:
+                return None
+
+            return cls.find_nearest_path(
+                start_location_id,
+                target_ids,
+                graph
+            )
+
+        @staticmethod
+        def find_nearest_path(start_id, target_ids, graph):
+            """
+            BFS. Ищет кратчайший путь до любой локации из target_ids.
+
+            Возвращает список ID локаций или None, если путь не найден.
+            """
+            if start_id not in graph or not target_ids:
+                return None
+
+            if start_id in target_ids:
+                return [start_id]
+
+            previous = {start_id: None}
+            queue = _collections.deque([start_id])
+
+            while queue:
+                current = queue.popleft()
+
+                for next_id, _ in graph[current]:
+                    if next_id not in graph or next_id in previous:
+                        continue
+
+                    previous[next_id] = current
+
+                    # Нашли ближайшую целевую локацию.
+                    if next_id in target_ids:
+                        path = []
+                        node = next_id
+
+                        while node is not None:
+                            path.append(node)
+                            node = previous[node]
+
+                        path.reverse()
+                        return path
+
+                    queue.append(next_id)
+
+            return None
+
+    class EnemyScreamer(native_object):
         __slots__ = (
             "_sprite", "_sound_screamer", "_screamer_t",
             "_camera_t", "_bg_t", "_is_screen_t", "_is_black_fade",
@@ -342,7 +424,7 @@ init -4 python in v1FNaSR:
             renpy.block_rollback()
             renpy.pause(self._BLACKOUT_DURATION, hard=True)
 
-    class SilentImageVariant(object):
+    class SilentImageVariant(native_object):
         __slots__ = ("light_image", "dark_image", "chance",)
 
         def __init__(self, light_image, dark_image, chance=100):
@@ -376,7 +458,7 @@ init -4 python in v1FNaSR:
                 return cls._instance
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = object.__new__(cls)
+                    cls._instance = native_object.__new__(cls)
                 return cls._instance
 
         @classmethod
@@ -439,8 +521,82 @@ init -4 python in v1FNaSR:
                     for tablet in self._tm.tablets:
                         tablet.safe_discharge(2)
 
-init python:
-    v1FNaSR.audio.register_channel("screamer", "sound", loop=False)
-    v1FNaSR.audio.register_channel("signal", "sound", loop=True)
+    class EnemyElementTrigger(native_object):
+        def __init__(self, element_name, condition_fn, handler_fn):
+            if not is_string(element_name):
+                raise FNaSRTypeError("'element_name' должен быть строкой, получено: {}".format(type(element_name)))
+
+            if not callable(condition_fn):
+                raise FNaSRTypeError("'condition_fn' должен быть вызываемым, получено: {}".format(type(condition_fn)))
+
+            if not callable(handler_fn):
+                raise FNaSRTypeError("'handler_fn' должен быть вызываемым, получено: {}".format(type(handler_fn)))
+
+            self._element_name = element_name
+            self._condition_fn = condition_fn
+            self._handler_fn = handler_fn
+
+        @property
+        def name(self):
+            return self._element_name
+
+        def condition(self, module, context, location):
+            if location is None:
+                return False
+
+            return bool(self._condition_fn(module, context, location))
+
+        def handle(self, module, context, location):
+            if location is None:
+                return
+
+            result = self._handler_fn(module, context, location)
+            if self.condition(module, context, location):
+                raise FNaSRException("{}.handler был вызван но условие обработчика все ещё верно.".format(repr(self)))
+
+            return result
+
+        def __repr__(self):
+            return "{}({})".format(type(self).__name__, self._element_name)
+
+
+        @staticmethod
+        def bulb_condition_fn(module, context, location):
+            if location is None:
+                return False
+            if location.bulb is None:
+                return False
+            return location.bulb.is_on
+
+        @staticmethod
+        def bulb_handler_fn(module, context, location):
+            if location is None:
+                return
+            if location.bulb is None:
+                return
+            location.bulb.switch()
+
+
+        @staticmethod
+        def tablet_condition_fn(module, context, location):
+            if location is None:
+                return False
+            if location.tablet is None:
+                return False
+            return location.tablet.is_open
+
+        @staticmethod
+        def tablet_handler_fn(module, context, location):
+            if location is None:
+                return
+            if location.tablet is None:
+                return
+            player = context.player_manager.current_player
+            if player.is_open_tablet:
+                player.close_tablet()
+
+init python in v1FNaSR:
+    audio.register_channel("screamer", "sound", loop=False)
+    audio.register_channel("signal", "sound", loop=True)
 
 

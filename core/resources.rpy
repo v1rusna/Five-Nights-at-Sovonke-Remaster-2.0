@@ -3,7 +3,7 @@
 init python in v1FNaSR:
     import posixpath as _posixpath
 
-    class Folder(object):
+    class Folder(native_object):
         def __init__(self, name="", parent=None):
             self._name = name
             self._parent = parent
@@ -70,7 +70,7 @@ init python in v1FNaSR:
             renpy.log("------------------------------")
 
 
-    class Resources(object):
+    class Resources(native_object):
         """Менеджер ресурсов: изображения, звуки, шрифты."""
         
         def __init__(self, mod_path, images="images", sounds="sounds", fonts="fonts"):

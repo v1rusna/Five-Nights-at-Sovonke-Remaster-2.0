@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 # core/location/location.rpy
-
-# location.rpy
 init python in v1FNaSR:
     audio.register_channel("location_ambience", "ambience", loop=True)
 
@@ -153,7 +151,7 @@ init python in v1FNaSR:
         return "{%s}" % ", ".join("%d: %d" % pair for pair in sorted(iter_items(mapping)))
 
 
-    class _LocationConnections(object):
+    class _LocationConnections(native_object):
         """
         Контейнер связей локации с другими локациями.
 
@@ -362,13 +360,13 @@ init python in v1FNaSR:
             )
 
 
-    class Location(object):
+    class Location(native_object):
         __slots__ = (
             "_id", "_name", "_image", "_loc_connections",
             "_tablet", "_ambience", "_camera", "_loc_sys",
             "_parallax_image", "_door", "_bulb", "_on_enter_fn",
             "_camera_button", "_substituted_image",
-            "_substituted_dark_image",
+            "_substituted_dark_image", "__weakref__",
         )
 
         def __init__(self, location_id, name, image, loc_connections=None, ambience=None, door=None, bulb=None, on_enter_fn=None):
@@ -633,9 +631,10 @@ init python in v1FNaSR:
             )
 
 
-    class LocationSystem(object):
+    class LocationSystem(native_object):
         def __init__(self):
             self._locations = dict()
+            self._locations_with = dict([["tablet", set()], ["door", set()], ["bulb", set()]])
             self._lock = _LOCATION_LOCK
 
         @property
@@ -644,8 +643,12 @@ init python in v1FNaSR:
                 locations = dict(self._locations)
             return locations
 
+        def get_locations_with(self, element):
+            with self._lock:
+                ids = self._locations_with.get(element)
+                return frozenset() if ids is None else frozenset(ids)
+            
         def get_location(self, location_id):
-            # location_id = _normalize_id(location_id)
             with self._lock:
                 location = self._locations.get(location_id)
             return location
@@ -680,11 +683,39 @@ init python in v1FNaSR:
                 if old is not None:
                     if old._tablet is not None:
                         raise FNaSRException("В локации '{}' есть планшет, нельзя перезаписывать локации с планшетом".format(old.id))
+                    self._remove_with(old.id)
                     old._loc_sys = None
                     old._loc_connections._reset_auto()
 
                 location._loc_sys = self
                 self._locations[location.id] = location
+                self._add_with(location)
+
+        def _add_with(self, location, attributes=("tablet", "door", "bulb",)):
+            with self._lock:
+                for attr in attributes:
+                    if getattr(location, attr, None) is not None:
+                        self._locations_with.setdefault(attr, set()).add(location.id)
+
+        def _remove_with(self, location_id):
+            with self._lock:
+                for ids in iter_values(self._locations_with):
+                    ids.discard(location_id)
+
+        def _add_location_element(self, element, location_id):
+            with self._lock:
+                self._locations_with.setdefault(element, set()).add(location_id)
+
+        def _remove_location_element(self, element, location_id):
+            with self._lock:
+                ids = self._locations_with.get(element)
+                if ids is not None:
+                    ids.discard(location_id)
+
+        def _clear_location_index(self):
+            with self._lock:
+                for ids in iter_values(self._locations_with):
+                    ids.clear()
 
         def _restore_registry(self, backup, touched):
             with self._lock:
@@ -695,9 +726,11 @@ init python in v1FNaSR:
 
                 self._locations.clear()
                 self._locations.update(backup)
+                self._clear_location_index()
 
                 for location in iter_values(self._locations):
                     location._loc_sys = self
+                    self._add_with(location)
 
                 self.generate_connections()
 
@@ -761,13 +794,16 @@ init python in v1FNaSR:
                     for loc in iter_values(self._locations):
                         loc._loc_connections._purge_target(location_id)
 
+                    self._remove_with(removed.id)
                     self.generate_connections()
                 except Exception:
                     self._locations.clear()
                     self._locations.update(locations_backup)
+                    self._clear_location_index()
 
                     for loc_id, loc in iter_items(self._locations):
                         loc._loc_sys = self
+                        self._add_with(loc)
 
                         explicit, auto = connections_backup[loc_id]
                         loc._loc_connections._explicit.clear()

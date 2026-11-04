@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # core/compat.rpy
-init -6 python in v1FNaSR:
+init -15 python in v1FNaSR:
 
     import sys as _sys
 
@@ -17,6 +17,7 @@ init -6 python in v1FNaSR:
         import queue as Queue
 
     native_str = _builtins_module.str
+    native_object = _builtins_module.object
 
     if PY2:
         text_type = _builtins_module.unicode  # noqa: F821
@@ -37,6 +38,12 @@ def reraise(tp, value, tb=None):
             if getattr(value, "__traceback__", None) is not tb:
                 raise value.with_traceback(tb)
             raise value
+
+    try:
+        callable = callable
+    except NameError:
+        def callable(obj):
+            return hasattr(obj, "__call__")
 
     binary_type = bytes
 

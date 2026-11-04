@@ -7,7 +7,7 @@ init -1 python in v1FNaSR:
     audio.register_channel("heartbeat", "ambience", loop=True)
     audio.register_channel("breathing", "ambience", loop=True)
 
-    class PlayerElement(object):
+    class PlayerElement(native_object):
         TABLET = "tablet"
         DOOR = "door"
         BULB = "bulb"
@@ -261,7 +261,7 @@ init -1 python in v1FNaSR:
             for element in iter_values(self._element_enabled):
                 element.clear()
 
-    class PlayerSystem(object):
+    class PlayerSystem(native_object):
         def __init__(self):
             self._players = dict()
             self._current_player = None
@@ -286,7 +286,7 @@ init -1 python in v1FNaSR:
 
             self._players[id] = player
             if self._current_player is None:
-                self._current_player = player
+                self._switch(player)
 
             return player
 
@@ -313,10 +313,17 @@ init -1 python in v1FNaSR:
                     self._current_player = None
                     ambience_manager.stop_all()
 
-        def switch_player(self, id):
+        def switch_player(self, player_or_id):
             if is_initialized():
                 raise FNaSRException("You cannot change the player after the mod has been initialized.")
-            id = to_text(id)
+            self._switch(id)
+
+        def _switch(self, player_or_id):
+            if isinstance(player_or_id, Player):
+                id = player_or_id.id
+            else:
+                id = to_text(id)
+
             if id not in self._players:
                 raise FNaSRException("The character with ID '{}' does not exist".format(id))
 
@@ -362,9 +369,32 @@ init python in v1FNaSR:
     debug.add_element(_dsp1, group="Player")
     debug.add_element(_dsp2, group="Player")
 
+    def _player_check():
+        pm = get_system("player")
+        if pm is None:
+            return False
+        return pm.current_player is not None
+    def _correction_player():
+        pm = get_system("player")
+        if pm is None:
+            return
+        if pm.current_player is not None:
+            return
+        pm.create_player("main")
+        if pm.current_player is not None:
+            return
+        for player in pm:
+            pm._switch(player)
+            break
+        
+    Validator("player", "Данные игрока некорректны.", _player_check, _correction_player)
+
     del _ps
     del _dsp1
     del _dsp2
     del _switch_player_god_mode
+
+    del _player_check
+    del _correction_player
 
 

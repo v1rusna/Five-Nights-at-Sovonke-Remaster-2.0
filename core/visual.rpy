@@ -4,7 +4,7 @@ init python in v1FNaSR:
     import threading as _threading
 
     # EXPERIMENTAL
-    class Visual(object):
+    class Visual(native_object):
         __slots__ = ("_elements", "_lock",)
 
         def __init__(self):

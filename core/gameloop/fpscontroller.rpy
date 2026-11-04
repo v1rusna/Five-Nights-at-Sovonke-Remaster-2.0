@@ -31,7 +31,7 @@ init -6 python in v1FNaSR:
         return 1.0 / target_fps
 
     # Я писал FPSController для другого проекта, но попал сюда в немного измененном виде
-    class FPSController(object):
+    class FPSController(native_object):
         MIN_BUSY_WAIT_S = 0.0002
         SLEEP_MARGIN_S = 0.001
         SMALL_SLEEP_STEP_S = 0.0005

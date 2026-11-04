@@ -64,3 +64,44 @@ init -10 python in v1FNaSR:
             if full:
                 return _store["initialized"] and _store["base_initialized"]
             return _store["initialized"] or _store["base_initialized"]
+
+
+    # def __set_store(*args, **kwargs):
+    #     if not args:
+    #         raise FNaSRValueError("The path to _store cannot be empty.")
+    #     if "value" not in kwargs:
+    #         raise FNaSRValueError("No value is specified for _store.")
+    #     value = kwargs.pop("value")
+    #     if kwargs:
+    #         raise FNaSRTypeError("Unknown arguments: {}".format(kwargs))
+
+    #     path = []
+    #     with _store_lock:
+    #         current = _store
+    #         for key in args[:-1]:
+    #             if key not in current or not isinstance(current[key], dict):
+    #                 raise FNaSRKeyError("{}: key not found or is not a dictionary.".format(__store_path(path + [repr(key)])))
+    #             path.append("[{!r}]".format(key))
+    #             current = current[key]
+
+    #         current[args[-1]] = value
+
+    # def __get_store(*args):
+    #     if not args:
+    #         raise FNaSRValueError("The path to _store cannot be empty.")
+
+    #     path = []
+    #     with _store_lock:
+    #         current = _store
+    #         for key in args[:-1]:
+    #             if key not in current or not isinstance(current[key], dict):
+    #                 raise FNaSRKeyError("{}: key not found or is not a dictionary.".format(__store_path(path + [repr(key)])))
+    #             path.append("[{!r}]".format(key))
+    #             current = current[key]
+
+    #         try:
+    #             return current[args[-1]]
+    #         except KeyError:
+    #             raise FNaSRKeyError("{}: key not found.".format(__store_path(path + [repr(args[-1])])))
+
+

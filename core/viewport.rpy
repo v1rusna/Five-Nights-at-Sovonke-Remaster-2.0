@@ -18,7 +18,7 @@ init -1 python in v1FNaSR:
         pass
 
 
-    class Viewport(object):
+    class Viewport(native_object):
         __slots__ = (
             "virtual_width", "virtual_height",
             "host_width", "host_height",
@@ -92,7 +92,7 @@ init -1 python in v1FNaSR:
             )
 
 
-    class ViewportManager(object):
+    class ViewportManager(native_object):
         VIRTUAL_WIDTH = 1920
         VIRTUAL_HEIGHT = 1080
 

@@ -65,7 +65,7 @@ init -5 python in v1FNaSR:
     def _noop(*args, **kwargs):
         pass
 
-    class LogSystem(object):
+    class LogSystem(native_object):
         _conditions = {
             "==": _operator.eq,
             "!=": _operator.ne,
@@ -176,7 +176,7 @@ init -5 python in v1FNaSR:
 
 
 
-    class TimerStats(object):
+    class TimerStats(native_object):
         def __init__(self, name, window=300, budget=None):
             self.name = name
             self.budget = budget   # число (сек) или callable, возвращающий секунды
@@ -235,7 +235,7 @@ init -5 python in v1FNaSR:
                 load,
             )
 
-    class TimerRegistry(object):
+    class TimerRegistry(native_object):
         def __init__(self):
             self.enabled = True
             self._stats = {}
@@ -295,7 +295,7 @@ init -5 python in v1FNaSR:
             return decorate(fn)
         return decorate
 
-    class timer_block(object):
+    class timer_block(native_object):
         def __init__(self, name, budget=None, window=300, cpu=False):
             self._stats = timers.get(name, window, budget)
             self._clock = _thread_time if (cpu and _thread_time) else _timer
@@ -317,11 +317,11 @@ init -5 python in v1FNaSR:
             if disable_error:
                 element.set_error(e)
 
-    class DebugContext(object):
+    class DebugContext(native_object):
         __slots__ = ("_data",)
 
         def __init__(self):
-            object.__setattr__(self, "_data", {})
+            native_object.__setattr__(self, "_data", {})
 
         def set(self, k, v):
             self._data[k] = v
@@ -354,7 +354,7 @@ init -5 python in v1FNaSR:
 
         def __setattr__(self, name, value):
             if name == "_data":
-                object.__setattr__(self, name, value)
+                native_object.__setattr__(self, name, value)
             else:
                 self._data[name] = value
 
@@ -376,7 +376,7 @@ init -5 python in v1FNaSR:
         def __repr__(self):
             return "<{} len={} hex={}>".format(type(self).__name__, len(self._data), hex(id(self)))
 
-    class DebugElement(object):
+    class DebugElement(native_object):
         __slots__ = ("_enable", "_error", "_order", "_condition", "_context",)
 
         def __init__(self, order=0, condition=None):
@@ -807,7 +807,7 @@ init -5 python in v1FNaSR:
             active2, inactive2 = self._else_element.count_element_states()
             return active1 + active2, inactive1 + inactive2
 
-    class DebugGroup(object):
+    class DebugGroup(native_object):
         __slots__ = (
             "_name", "_title", "_order", "_elements",
             "_enable", "_header", "_sorted_elements",
@@ -934,7 +934,7 @@ init -5 python in v1FNaSR:
         def __len__(self):
             return len(self._elements)
 
-    class Debug(object):
+    class Debug(native_object):
         def __init__(self):
             self._groups = dict()
             self.create_group("General", order=-9999)

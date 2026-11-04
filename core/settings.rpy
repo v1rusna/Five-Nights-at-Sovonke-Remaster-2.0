@@ -12,7 +12,7 @@ init -5 python in v1FNaSR:
     class SettingError(FNaSRException):
         pass
 
-    class Settings(object):
+    class Settings(native_object):
         __slots__ = ("_settings", "_save_fns", "_load_fns", "_lock",)
 
         def __init__(self):
@@ -261,7 +261,7 @@ init -5 python in v1FNaSR:
 
         def __setattr__(self, attr, value):
             if attr in self.__slots__:
-                object.__setattr__(self, attr, value)
+                native_object.__setattr__(self, attr, value)
                 return
             with self._lock:
                 if attr not in self._settings:

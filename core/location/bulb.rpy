@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # core/location/bulb.rpy
-# bulb.rpy
 init -1 python in v1FNaSR:
-    class Bulb(object):
+    class Bulb(native_object):
         __slots__ = ("_is_on", "_dark_image",)
 
         def __init__(self, dark_image):
@@ -12,6 +11,22 @@ init -1 python in v1FNaSR:
         @property
         def is_on(self):
             return self._is_on
+
+        @is_on.setter
+        def is_on(self, value):
+            play_sound = True
+            if isinstance(value, (list, tuple)):
+                if not 1 <= len(value) <= 2:
+                    raise FNaSRValueError("'is_on' должен содержать 1 или 2 элемента, получено: {}".format(len(value)))
+                status = bool(value[0])
+                if len(value) == 2:
+                    play_sound = bool(value[1])
+            else:
+                status = bool(value)
+            if status:
+                self.switch_on(play_sound)
+            else:
+                self.switch_off(play_sound)
 
         @property
         def dark_image(self):

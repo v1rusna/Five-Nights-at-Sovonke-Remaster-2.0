@@ -6,7 +6,7 @@ init -5 python in v1FNaSR:
 
     typewriter_transform = renpy.store.Transform(subpixel=True, align=(0.5, 0.5))
 
-    class CharData(object):
+    class CharData(native_object):
         def __init__(self, char, pos, t_style, t_alpha=1.0, t_zoom=1.0):
             self.char = char
             self.t_style = t_style
