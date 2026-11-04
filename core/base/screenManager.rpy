@@ -67,7 +67,7 @@ init -5 python in v1FNaSR:
                 screen_data = self._registry.get(screen_key)
 
             if screen_data is None:
-                raise FNaSRRegisterError("Экран по ключу '{}' не найден".format(screen_key))
+                raise RegisterError("Экран по ключу '{}' не найден".format(screen_key))
 
             screen_names, callback = screen_data
 
@@ -79,7 +79,7 @@ init -5 python in v1FNaSR:
                 screen_data = self._registry.get(screen_key)
 
             if screen_data is None:
-                raise FNaSRRegisterError("Экран по ключу '{}' не найден".format(screen_key))
+                raise RegisterError("Экран по ключу '{}' не найден".format(screen_key))
 
             screen_names, callback = screen_data
             callback(screen_names, "hide", **kwargs)
@@ -98,23 +98,23 @@ init -5 python in v1FNaSR:
         @main_thread_only
         def replace_screen(self, original_screen_name, name_new_screen):
             if is_initialized():
-                raise FNaSRRegisterError("Нельзя заменять экраны после начала игры.")
+                raise RegisterError("Нельзя заменять экраны после начала игры.")
 
             with self._lock:
                 if original_screen_name in self._replacements:
-                    raise FNaSRRegisterError("Экран '{}' уже был заменен.".format(original_screen_name))
+                    raise RegisterError("Экран '{}' уже был заменен.".format(original_screen_name))
 
                 screens = renpy.display.screen.screens
 
                 try:
                     original_screen = screens[(original_screen_name, None)]
                 except KeyError:
-                    raise FNaSRRegisterError("Исходный экран '{}' не найден.".format(original_screen_name))
+                    raise RegisterError("Исходный экран '{}' не найден.".format(original_screen_name))
 
                 try:
                     replacement_screen = screens[(name_new_screen, None)]
                 except KeyError:
-                    raise FNaSRRegisterError("Экран-замена '{}' не найден.".format(name_new_screen))
+                    raise RegisterError("Экран-замена '{}' не найден.".format(name_new_screen))
 
                 screens[(original_screen_name, None)] = replacement_screen
 
@@ -123,13 +123,13 @@ init -5 python in v1FNaSR:
         @main_thread_only
         def restore_screen(self, original_screen_name):
             if is_initialized():
-                raise FNaSRRegisterError("Нельзя изменять экраны после начала игры.")
+                raise RegisterError("Нельзя изменять экраны после начала игры.")
 
             with self._lock:
                 data = self._replacements.get(original_screen_name)
 
                 if data is None:
-                    raise FNaSRRegisterError("Экран '{}' не был заменен.".format(original_screen_name))
+                    raise RegisterError("Экран '{}' не был заменен.".format(original_screen_name))
 
                 _, original_screen = data
 
@@ -139,7 +139,7 @@ init -5 python in v1FNaSR:
         @main_thread_only
         def restore_all_screens(self):
             if is_initialized():
-                raise FNaSRRegisterError("Нельзя изменять экраны после начала игры.")
+                raise RegisterError("Нельзя изменять экраны после начала игры.")
 
             with self._lock:
                 snapshot = dict(self._replacements)

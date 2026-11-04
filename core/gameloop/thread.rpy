@@ -100,10 +100,10 @@ init -7 python in v1FNaSR:
     update_key_cache = main_thread_only(update_key_cache)
 
     def _wrapped_fn():
-        _store["old"]["renpy_show"] = renpy.show
-        _store["old"]["renpy_hide"] = renpy.hide
-        _store["old"]["renpy_show_screen"] = renpy.show_screen
-        _store["old"]["renpy_hide_screen"] = renpy.hide_screen
+        _store["old"]["renpy.show"] = renpy.show
+        _store["old"]["renpy.hide"] = renpy.hide
+        _store["old"]["renpy.show_screen"] = renpy.show_screen
+        _store["old"]["renpy.hide_screen"] = renpy.hide_screen
 
         renpy.show = main_thread_only(renpy.show)
         renpy.hide = main_thread_only(renpy.hide)
@@ -111,10 +111,10 @@ init -7 python in v1FNaSR:
         renpy.hide_screen = main_thread_only(renpy.hide_screen)
 
     def _unwrapped_fn():
-        renpy.show =        _store["old"]["renpy_show"]
-        renpy.hide =        _store["old"]["renpy_hide"]
-        renpy.show_screen = _store["old"]["renpy_show_screen"]
-        renpy.hide_screen = _store["old"]["renpy_hide_screen"]
+        renpy.show =        _store["old"]["renpy.show"]
+        renpy.hide =        _store["old"]["renpy.hide"]
+        renpy.show_screen = _store["old"]["renpy.show_screen"]
+        renpy.hide_screen = _store["old"]["renpy.hide_screen"]
 
     add_start_fn(_wrapped_fn)
     add_quit_fn(_unwrapped_fn)

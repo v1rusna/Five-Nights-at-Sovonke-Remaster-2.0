@@ -33,7 +33,7 @@ init -5 python in v1FNaSR:
 
             with self._lock:
                 if not overwrite and name in self._channels:
-                    raise FNaSRRegisterError("Звуковой канал '{}' уже зарегистрирован".format(name))
+                    raise RegisterError("Звуковой канал '{}' уже зарегистрирован".format(name))
 
                 renpy.music.register_channel(renpy_name, mixer, **kwargs)
 

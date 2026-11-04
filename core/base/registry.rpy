@@ -31,7 +31,7 @@ init -11 python in v1FNaSR:
 
         def _check_edit(self):
             if not renpy.game.context().init_phase:
-                raise FNaSRRegisterError(
+                raise RegisterError(
                     "Редактирование {} возможно только во время "
                     "инициализации игры".format(self._item_name)
                 )
@@ -39,7 +39,7 @@ init -11 python in v1FNaSR:
         def _check_register(self, key, overwrite):
             self._check_edit()
             if not overwrite and key in self._items:
-                raise FNaSRRegisterError(self._duplicate_error.format(key))
+                raise RegisterError(self._duplicate_error.format(key))
 
         def register(self, key, value, overwrite=False):
             self._check_register(key, overwrite)
@@ -48,7 +48,7 @@ init -11 python in v1FNaSR:
         def delete(self, key):
             self._check_edit()
             if key not in self._items:
-                raise FNaSRRegisterError(
+                raise RegisterError(
                     self._missing_error.format(key)
                 )
 
@@ -83,7 +83,7 @@ init -11 python in v1FNaSR:
                 screen_names = (screen_names,)
 
             if not isinstance(screen_names, Iterable):
-                raise FNaSRRegisterError(self._not_iterable_error.format(type(screen_names)))
+                raise RegisterError(self._not_iterable_error.format(type(screen_names)))
 
             return tuple(screen_names)
 
@@ -116,7 +116,7 @@ init -11 python in v1FNaSR:
             self._check_edit()
 
             if key not in self._items:
-                raise FNaSRRegisterError(self._missing_error.format(key))
+                raise RegisterError(self._missing_error.format(key))
 
             screen_names, callback = self._items[key]
 

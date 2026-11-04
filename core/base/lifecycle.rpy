@@ -199,9 +199,8 @@ init -7 python in v1FNaSR:
                     pass
 
     def update_key_cache():
-        with _store_lock:
-            if "config_keymap" not in _store["old"]:
-                raise FNaSRException("Стандартный keymap не был сохранен.")
+        if "store.config.keymap" not in state_snapshot:
+            raise FNaSRException("Стандартный renpy.config.keymap не был сохранен.")
 
         keymap = renpy.store.config.keymap
         disabled_keymap = dict((name, []) for name in keymap)
@@ -242,33 +241,32 @@ init -7 python in v1FNaSR:
 
         with _store_lock:
             _store["base_initialized"] = True
-            _store["old"]["preferences_gl_powersave"] = renpy.store._preferences.gl_powersave
-            _store["old"]["preferences_gl_framerate"] = renpy.store._preferences.gl_framerate
-            _store["old"]["config_image_cache_size_mb"] = renpy.store.config.image_cache_size_mb
-            _store["old"]["config_allow_skipping"] = renpy.store.config.allow_skipping
-            _store["old"]["config_has_autosave"] = renpy.store.config.has_autosave
-            _store["old"]["config_rollback_enabled"] = renpy.store.config.rollback_enabled
-            _store["old"]["config_has_quicksave"] = renpy.store.config.has_quicksave
-            _store["old"]["config_window_title"] = renpy.store.config.window_title
-            _store["old"]["config_name"] = renpy.store.config.name
-            _store["old"]["config_version"] = renpy.store.config.version
-            _store["old"]["config_keymap"] = dict(
+
+        def config_keymap_copy(value):
+            return dict(
                 (name, list(keys))
-                for name, keys in renpy.store.config.keymap.items()
+                for name, keys in value.items()
             )
 
-        try:
-            renpy.store._errorhandling.ignore = False
-            renpy.store._errorhandling.rollback = False
-            renpy.store._errorhandling.reload = False
-            renpy.store._errorhandling.console = False
-        except Exception:
-            _error("Error path renpy.store._errorhandling")
+        with state_snapshot:
+            state_snapshot.safe_capture("store._preferences.gl_powersave")
+            state_snapshot.safe_capture("store._preferences.gl_framerate")
+            state_snapshot.safe_capture("store.config.image_cache_size_mb")
+            state_snapshot.safe_capture("store.config.allow_skipping")
+            state_snapshot.safe_capture("store.config.has_autosave")
+            state_snapshot.safe_capture("store.config.rollback_enabled")
+            state_snapshot.safe_capture("store.config.has_quicksave")
+            state_snapshot.safe_capture("store.config.window_title")
+            state_snapshot.safe_capture("store.config.name")
+            state_snapshot.safe_capture("store.config.version")
+            state_snapshot.safe_capture("store.config.keymap", copy_fn=config_keymap_copy)
 
-        try:
-            renpy.store._autosave = False
-        except:
-            pass
+            state_snapshot.safe_capture("store._errorhandling.ignore", False)
+            state_snapshot.safe_capture("store._errorhandling.rollback", False)
+            state_snapshot.safe_capture("store._errorhandling.reload", False)
+            state_snapshot.safe_capture("store._errorhandling.console", False)
+
+            state_snapshot.safe_capture("store._autosave", False)
 
         with _store_lock:
             snapshot = []
@@ -332,42 +330,21 @@ init -7 python in v1FNaSR:
         def _error(header):
             renpy.log("FNaSR | quit | {}\n{}".format(header, _traceback.format_exc()))
 
-        try:
-            renpy.store._autosave = True
-        except:
-            pass
-
         renpy.config.quit_callbacks.remove(quit_mod)
         stop_fn = _store.get("_game_cycle_system.stop")
         if stop_fn is not None:
             renpy.config.quit_callbacks.remove(stop_fn)
 
-        with _store_lock:
-            renpy.store._preferences.gl_powersave =  _store["old"]["preferences_gl_powersave"]
-            renpy.store._preferences.gl_framerate =  _store["old"]["preferences_gl_framerate"]
-            renpy.store.config.image_cache_size_mb = _store["old"]["config_image_cache_size_mb"]
-            renpy.store.config.allow_skipping =      _store["old"]["config_allow_skipping"]
-            renpy.store.config.has_autosave =        _store["old"]["config_has_autosave"]
-            renpy.store.config.has_quicksave =       _store["old"]["config_has_quicksave"]
-            renpy.store.config.rollback_enabled =    _store["old"]["config_rollback_enabled"]
-            renpy.store.config.window_title =        _store["old"]["config_window_title"]
-            renpy.store.config.name =                _store["old"]["config_name"]
-            renpy.store.config.version =             _store["old"]["config_version"]
-
-            renpy.store.config.keymap = dict(
+        def config_keymap_copy(value):
+            return dict(
                 (name, list(keys))
-                for name, keys in _store["old"]["config_keymap"].items()
+                for name, keys in value.items()
             )
 
+        restored, failed = state_snapshot.restore_all(copy_fn_map={"store.config.keymap": config_keymap_copy})
         renpy.display.behavior.clear_keymap_cache()
-
-        try:
-            renpy.store._errorhandling.ignore = True
-            renpy.store._errorhandling.rollback = True
-            renpy.store._errorhandling.reload = True
-            renpy.store._errorhandling.console = True
-        except Exception:
-            _error("Error path renpy.store._errorhandling")
+        if failed:
+            _error("Не удалось восстановить атрибуты Ren'Py: {}".format(", ".join(failed)))
 
         with _store_lock:
             snapshot = []

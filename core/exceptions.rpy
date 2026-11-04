@@ -34,5 +34,5 @@ init -10 python in v1FNaSR:
     class FNaSRNotFound(FNaSRRuntimeError):
         pass
 
-    class FNaSRRegisterError(FNaSRRuntimeError):
+    class RegisterError(FNaSRRuntimeError):
         pass
