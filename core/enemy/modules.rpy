@@ -96,18 +96,9 @@ init -2 python in v1FNaSR:
                 return 1.0
             if not player.is_open_tablet:
                 return 1.0
-            if player.current_location.tablet.selected in Tablet.get_visible_ids(player):
+            if module.current_location_id in Tablet.get_visible_ids(player):
                 return 0.0
             return 1.0
-
-        @staticmethod
-        def bulb_inversion_condition_fn(module, context):
-            player = context.player_manager.current_player
-            if player.current_location is None:
-                return True
-            if player.current_location.bulb is None:
-                return True
-            return player.current_location.bulb.is_on
 
     BASE_ENEMY_MOVING_START_FACTORS = (
         FactorsMoveModule.factor_difficulty,
@@ -172,9 +163,9 @@ init -2 python in v1FNaSR:
             super(EnemyMoveModule, self).__init__()
 
             if start_location_id is not None:
-                start_location_id = _normalize_id(start_location_id)
+                start_location_id = LocationTools.normalize_id(start_location_id)
             if end_location_id is not None:
-                end_location_id = _normalize_id(end_location_id)
+                end_location_id = LocationTools.normalize_id(end_location_id)
 
             if not is_number(speed):
                 raise FNaSRTypeError("'speed' должен быть числом получено: {}".format(type(speed)))
@@ -280,7 +271,7 @@ init -2 python in v1FNaSR:
             return tuple(path)
 
         def _replace_path(self, path):
-            self._path = path if path is not None else []
+            self._path = list(path) if path is not None else []
             self._cursor = 0
             self.on_path_replaced()
 
@@ -374,7 +365,7 @@ init -2 python in v1FNaSR:
 
                     if not context.move_wait_door_open:
                         path = self.generate_new_path(replaced_path=False) # TODO: сделать механику при которой противник идет обратно к точке спайна (или в рандомную отдаленную локацию), при этом если игрок поменял локацию противник уже шел обратно к игроку, ну либо шел до конца в спавну, либо комбинированный вариант, как второй но если игрок на соседней локации то противник начинал преследовать игрока
-                        if path is not None and self.move(context, context.location_system.require_location(path[-1])):
+                        if path is not None and self.move(context, context.location_system.require_location(path[0])):
                             self._replace_path(path)
 
                 context.enemy.set_align()
@@ -971,7 +962,7 @@ init -2 python in v1FNaSR:
                 if total_chance != 100:
                     raise FNaSRValueError("Сумма шансов изображений для локации {} должна равняться 100, получено: {}.".format(location_id, total_chance))
 
-                normalized[_normalize_id(location_id)] = tuple(variants)
+                normalized[LocationTools.normalize_id(location_id)] = tuple(variants)
 
             self._silent_locations = normalized
             self._setattr("_replaced", False)
@@ -1460,8 +1451,82 @@ init -2 python in v1FNaSR:
 
 
     class EnemySabotageGeneratorModule(EnemyModule):
-        def __init__(self, target_location_id):
-            pass
+        __slots__ = "_target_location_id", "_safety_time", "_blocked"
+
+        @staticmethod
+        def _validate_safety_time(safety_time):
+            if not is_number(safety_time):
+                raise FNaSRTypeError("'safety_time' должен быть числом, получено: {}".format(type(safety_time)))
+            if safety_time <= 0:
+                raise FNaSRValueError("'safety_time' должен быть положительным, получено: {}".format(safety_time))
+
+        def __init__(self, target_location_id, safety_time=3.0, **kwargs):
+            super(EnemySabotageGeneratorModule, self).__init__(**kwargs)
+
+            target_location_id = LocationTools.normalize_id(target_location_id)
+            self._validate_safety_time(safety_time)
+
+            self._target_location_id = target_location_id
+            self._setattr("_safety_time", float(safety_time))
+            self._setattr("_blocked", False)
+
+        @property
+        def target_location_id(self):
+            return self._target_location_id
+
+        @property
+        def safety_time(self):
+            return self._safety_time
+
+        @property
+        def is_blocked(self):
+            return self._blocked
+
+        @safety_time.setter
+        def safety_time(self, value):
+            self._validate_safety_time(value)
+            self._safety_time = float(value)
+
+        def on_include(self, enemy):
+            Generator.create_if_absent()
+            cycle = require_system("cycle")
+            generator = Generator()
+            if not cycle.is_registered(generator):
+                cycle.register(generator)
+
+        def update(self, context, dt):
+            if not self.is_located_target_location(context):
+                if self._blocked:
+                    self._blocked = False
+                    Generator.enable(self)
+                self._accumulated_time = 0.0
+                return
+
+            if self._blocked:
+                return
+
+            self._accumulated_time = min(self._accumulated_time + dt, self._safety_time)
+
+            if self._accumulated_time < self._safety_time:
+                return
+
+            self._accumulated_time = 0.0
+            self._blocked = True
+            Generator.disable(self)
+
+        def is_located_target_location(self, context):
+            current_location = context.enemy.current_location
+            if current_location is None:
+                return False
+            return current_location.id == self._target_location_id
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "target location: {}".format(self._target_location_id),
+                "safety time: {}/{}".format(self._accumulated_time, self._safety_time),
+                "blocked: {}".format(self._blocked)
+            ]
+            
 
 
 

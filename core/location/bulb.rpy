@@ -2,7 +2,7 @@
 # core/location/bulb.rpy
 init -1 python in v1FNaSR:
     class Bulb(native_object):
-        __slots__ = ("_is_on", "_dark_image",)
+        __slots__ = "_is_on", "_dark_image"
 
         def __init__(self, dark_image):
             self._is_on = True
@@ -37,22 +37,14 @@ init -1 python in v1FNaSR:
                 return
             self._is_on = True
             if play_sound:
-                main_executor.submit(
-                    audio.play,
-                    resources.sounds.sfx["switch_on"],
-                    "sound"
-                )
+                main_executor.submit(audio.play, resources.sounds.sfx["switch_on"], "sound")
 
         def switch_off(self, play_sound=True):
             if not self._is_on:
                 return
             self._is_on = False
             if play_sound:
-                main_executor.submit(
-                    audio.play,
-                    resources.sounds.sfx["switch_off"],
-                    "sound"
-                )
+                main_executor.submit(audio.play, resources.sounds.sfx["switch_off"], "sound")
 
         def switch(self, play_sound=True):
             if self._is_on:

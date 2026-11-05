@@ -86,13 +86,13 @@ init -4 python in v1FNaSR:
                 return cls.generate_spawn_path(end_location_id)
 
             location_system = cls._get_location_system()
-            start_location_id = _normalize_id(start_location_id)
+            start_location_id = LocationTools.normalize_id(start_location_id)
 
             if end_location_id is None:
                 player_manager = cls._get_player_manager()
                 end_location_id = player_manager.current_player.current_location.id
 
-            end_location_id = _normalize_id(end_location_id)
+            end_location_id = LocationTools.normalize_id(end_location_id)
 
             with _LOCATION_LOCK:
                 location_system.require_location(start_location_id)
@@ -126,7 +126,7 @@ init -4 python in v1FNaSR:
                 player_manager = cls._get_player_manager()
                 end_location_id = player_manager.current_player.current_location.id
 
-            end_location_id = _normalize_id(end_location_id)
+            end_location_id = LocationTools.normalize_id(end_location_id)
 
             with _LOCATION_LOCK:
                 location_system.require_location(end_location_id)
@@ -243,10 +243,10 @@ init -4 python in v1FNaSR:
             if element_locations is None:
                 return None
 
-            start_location_id = _normalize_id(start_location_id)
+            start_location_id = LocationTools.normalize_id(start_location_id)
 
             target_ids = set(
-                _normalize_id(getattr(location, "id", location))
+                LocationTools.normalize_id(getattr(location, "id", location))
                 for location in element_locations
             )
 
@@ -478,24 +478,27 @@ init -4 python in v1FNaSR:
                 return cls._instance is not None
 
         @classmethod
-        def disable(cls):
+        def disable(cls, blocker):
             with cls._lock:
                 generator = cls._instance
                 if generator is None:
                     return
-                generator._enable = False
+                generator._blockers.block(blocker)
                 if generator._player is not None:
+                    if generator._player.has_bulb and generator._player.current_location.bulb.is_on:
+                        generator._player.current_location.bulb.switch_off()
                     generator._player.get_element(PlayerElement.BULB).block("generator")
 
         @classmethod
-        def enable(cls):
+        def enable(cls, blocker):
             with cls._lock:
                 generator = cls._instance
                 if generator is None:
                     return
-                generator._enable = True
-                if generator._player is not None:
-                    generator._player.get_element(PlayerElement.BULB).unblock("generator")
+                generator._blockers.unblock(blocker)
+                if cls.is_enable():
+                    if generator._player is not None:
+                        generator._player.get_element(PlayerElement.BULB).unblock("generator")
 
         @classmethod
         def is_enable(cls):
@@ -503,12 +506,13 @@ init -4 python in v1FNaSR:
                 generator = cls._instance
                 if generator is None:
                     return False
-                return generator._enable
+                return not generator._blockers.blocked
 
         def __init__(self):
+            super(Generator, self).__init__()
             self._setattr("_tm", None)
             self._setattr("_player", None)
-            self._setattr("_enable", True)
+            self._blockers = MultiLock()
 
         def start(self):
             self._tm = require_system("tablet")
@@ -517,9 +521,13 @@ init -4 python in v1FNaSR:
         def update(self, dt):
             self._accumulated_time += dt
             while self.interval():
-                if not self._enable:
+                if not self._blockers.blocked:
                     for tablet in self._tm.tablets:
                         tablet.safe_discharge(2)
+
+        def reset(self):
+            super(Generator, self).reset()
+            self._blockers.clear()
 
     class EnemyElementTrigger(native_object):
         def __init__(self, element_name, condition_fn, handler_fn):

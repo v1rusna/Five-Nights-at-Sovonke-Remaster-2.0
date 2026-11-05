@@ -45,110 +45,96 @@ init python in v1FNaSR:
         if not is_strict_integer(direction):
             raise FNaSRTypeError("Направление должно быть 'int', а не '{}'.".format(type(direction)))
         if not DIRECTION_MIN <= direction <= DIRECTION_MAX:
-            raise FNaSRException(
-                "Направление должно быть в диапазоне {}..{}, получено {!r}.".format(
-                    DIRECTION_MIN, DIRECTION_MAX, direction
-                )
-            )
+            raise FNaSRException("Направление должно быть в диапазоне {}..{}, получено {!r}.".format(DIRECTION_MIN, DIRECTION_MAX, direction))
         return ((direction + _DIRECTION_HALF_TURN - 1) % DIRECTION_COUNT) + 1
 
 
-    # ------------------------------------------------------------------
-    # Нормализация и валидация связей
-    # ------------------------------------------------------------------
-    def _normalize_id(value):
-        if not is_strict_integer(value):
-            raise FNaSRTypeError("ID локации должен быть 'int' (не 'bool'), а не '{}': {!r}.".format(type(value), value))
-        return int(value)
+    class LocationTools(native_object):
+        @staticmethod
+        def normalize_id(value):
+            if not is_strict_integer(value):
+                raise FNaSRTypeError("ID локации должен быть 'int' (не 'bool'), а не '{}': {!r}.".format(type(value), value))
+            return int(value)
 
+        @staticmethod
+        def normalize_direction(value):
+            if not is_strict_integer(value):
+                raise FNaSRTypeError("Направление должно быть 'int' (не 'bool'), а не '{}': {!r}.".format(type(value), value))
+            value = int(value)
+            if not is_valid_direction(value):
+                raise FNaSRException("Направление должно быть в диапазоне {}..{}, получено {!r}.".format(DIRECTION_MIN, DIRECTION_MAX, value))
+            return value
 
-    def _normalize_direction(value):
-        if not is_strict_integer(value):
-            raise FNaSRTypeError(
-                "Направление должно быть 'int' (не 'bool'), а не '{}': {!r}.".format(type(value), value)
-            )
-        value = int(value)
-        if not is_valid_direction(value):
-            raise FNaSRException(
-                "Направление должно быть в диапазоне {}..{}, получено {!r}.".format(
-                    DIRECTION_MIN, DIRECTION_MAX, value
-                )
-            )
-        return value
+        @staticmethod
+        def normalize_pair(location_id, direction, owner_id=None):
+            """
+            Проверяет и приводит связь к виду (location_id, direction) из двух 'int'.
+            Если передан owner_id — связь локации с самой собой запрещена.
+            """
+            location_id = LocationTools.normalize_id(location_id)
+            direction = LocationTools.normalize_direction(direction)
+            if owner_id is not None and location_id == owner_id:
+                raise FNaSRException("Локация '{}' не может быть связана сама с собой.".format(owner_id))
+            return (location_id, direction)
 
-
-    def _normalize_pair(location_id, direction, owner_id=None):
-        """
-        Проверяет и приводит связь к виду (location_id, direction) из двух 'int'.
-        Если передан owner_id — связь локации с самой собой запрещена.
-        """
-        location_id = _normalize_id(location_id)
-        direction = _normalize_direction(direction)
-        if owner_id is not None and location_id == owner_id:
-            raise FNaSRException("Локация '{}' не может быть связана сама с собой.".format(owner_id))
-        return (location_id, direction)
-
-
-    def _split_item(item):
-        """Разбирает один элемент loc_connections: 'list'/'tuple' ровно из двух значений."""
-        if not isinstance(item, (list, tuple)):
-            raise FNaSRTypeError(
-                "Связь должна быть парой [[location_id, direction] ('list' или 'tuple'), "
-                "а не '{}'".format(type(item))
-            )
-        if len(item) != 2:
-            raise FNaSRException(
-                "Связь должна состоять ровно из двух элементов [[location_id, direction], "
-                "получено элементов: {} ({!r}).".format(len(item), item)
-            )
-        return item[0], item[1]
-
-
-    def _normalize_connections(connections, owner_id):
-        """
-        Приводит параметр 'loc_connections' к нормализованному dict {location_id: direction}.
-
-        Формат входа: [[location_id, direction], ...] (или кортежи) либо None.
-        Каждый location_id может встретиться не более одного раза — в том числе
-        с тем же самым направлением: дубль считается ошибкой данных.
-        """
-        if connections is None:
-            return {}
-        if isinstance(connections, bool):
-            raise FNaSRTypeError("Параметр 'connections' не может быть 'bool'.")
-        if is_string(connections):
-            raise FNaSRTypeError("Параметр 'connections' не может быть строкой.")
-        if isinstance(connections, dict):
-            raise FNaSRTypeError(
-                "Параметр 'connections' должен быть списком пар [[[[location_id, direction], ...], а не 'dict'."
-            )
-        if not isinstance(connections, Iterable):
-            raise FNaSRTypeError(
-                "Параметр 'connections' должен быть 'Iterable' пар или 'NoneType', "
-                "а не '{}'.".format(type(connections))
-            )
-
-        result = {}
-        for item in connections:
-            try:
-                raw_id, raw_direction = _split_item(item)
-            except Exception as e:
-                raise FNaSRException("Ошибка в локации '{}': {}".format(owner_id, e))
-            location_id, direction = _normalize_pair(raw_id, raw_direction, owner_id)
-            if location_id in result:
+        @staticmethod
+        def _split_item(item):
+            """Разбирает один элемент loc_connections: 'list'/'tuple' ровно из двух значений."""
+            if not isinstance(item, (list, tuple)):
+                raise FNaSRTypeError("Связь должна быть парой [[location_id, direction] ('list' или 'tuple'), а не '{}'".format(type(item)))
+            if len(item) != 2:
                 raise FNaSRException(
-                    "Локация '{}' указана в связях локации '{}' более одного раза "
-                    "(направления {} и {}): для одной локации допустима только одна связь.".format(
-                        location_id, owner_id, result[location_id], direction
-                    )
+                    "Связь должна состоять ровно из двух элементов [[location_id, direction], "
+                    "получено элементов: {} ({!r}).".format(len(item), item)
                 )
-            result[location_id] = direction
-        return result
+            return item[0], item[1]
 
+        @staticmethod
+        def normalize_connections(connections, owner_id):
+            """
+            Приводит параметр 'loc_connections' к нормализованному dict {location_id: direction}.
 
-    def _format_map(mapping):
-        """Детерминированное представление {id: direction} для repr"""
-        return "{%s}" % ", ".join("%d: %d" % pair for pair in sorted(iter_items(mapping)))
+            Формат входа: [[location_id, direction], ...] (или кортежи) либо None.
+            Каждый location_id может встретиться не более одного раза — в том числе
+            с тем же самым направлением: дубль считается ошибкой данных.
+            """
+            if connections is None:
+                return {}
+            if isinstance(connections, bool):
+                raise FNaSRTypeError("Параметр 'connections' не может быть 'bool'.")
+            if is_string(connections):
+                raise FNaSRTypeError("Параметр 'connections' не может быть строкой.")
+            if isinstance(connections, dict):
+                raise FNaSRTypeError(
+                    "Параметр 'connections' должен быть списком пар [[[[location_id, direction], ...], а не 'dict'."
+                )
+            if not isinstance(connections, Iterable):
+                raise FNaSRTypeError(
+                    "Параметр 'connections' должен быть 'Iterable' пар или 'NoneType', "
+                    "а не '{}'.".format(type(connections))
+                )
+
+            result = {}
+            for item in connections:
+                try:
+                    raw_id, raw_direction = LocationTools._split_item(item)
+                except Exception as e:
+                    raise FNaSRException("Ошибка в локации '{}': {}".format(owner_id, e))
+                location_id, direction = LocationTools.normalize_pair(raw_id, raw_direction, owner_id)
+                if location_id in result:
+                    raise FNaSRException(
+                        "Локация '{}' указана в связях локации '{}' более одного раза "
+                        "(направления {} и {}): для одной локации допустима только одна связь.".format(
+                            location_id, owner_id, result[location_id], direction
+                        )
+                    )
+                result[location_id] = direction
+            return result
+
+        @staticmethod
+        def format_map(mapping):
+            """Детерминированное представление {id: direction} для repr"""
+            return "{%s}" % ", ".join("%d: %d" % pair for pair in sorted(iter_items(mapping)))
 
 
     class _LocationConnections(native_object):
@@ -188,7 +174,7 @@ init python in v1FNaSR:
             if not isinstance(loc, Location):
                 raise FNaSRTypeError("'loc' должен быть 'Location', получено: {}".format(type(loc)))
             self._loc = loc
-            self._explicit = _normalize_connections(connections, loc.id)
+            self._explicit = LocationTools.normalize_connections(connections, loc.id)
             self._auto = {}
 
         @property
@@ -218,7 +204,7 @@ init python in v1FNaSR:
             return self._auto.get(location_id, default)
 
         def _add_auto(self, location_id, direction):
-            location_id, direction = _normalize_pair(location_id, direction, self._loc.id)
+            location_id, direction = LocationTools.normalize_pair(location_id, direction, self._loc.id)
 
             declared = self._explicit.get(location_id)
             if declared is not None:
@@ -313,10 +299,10 @@ init python in v1FNaSR:
                 loc_sys.generate_connections()
 
         def _validate_id(self, value):
-            return _normalize_id(value)
+            return LocationTools.normalize_id(value)
 
         def _validate_pair(self, location_id, direction):
-            return _normalize_pair(location_id, direction, self._loc.id)
+            return LocationTools.normalize_pair(location_id, direction, self._loc.id)
 
         def _merged(self):
             merged = dict(self._auto)
@@ -356,7 +342,7 @@ init python in v1FNaSR:
 
         def _repr(self):
             return "%s(explicit=%s, auto=%s)" % (
-                type(self), _format_map(self._explicit), _format_map(self._auto)
+                type(self), LocationTools.format_map(self._explicit), LocationTools.format_map(self._auto)
             )
 
 
@@ -370,7 +356,7 @@ init python in v1FNaSR:
         )
 
         def __init__(self, location_id, name, image, loc_connections=None, ambience=None, door=None, bulb=None, on_enter_fn=None):
-            location_id = _normalize_id(location_id)
+            location_id = LocationTools.normalize_id(location_id)
             normalized_ambience = list()
             if ambience is not None:
                 if not isinstance(ambience, (list, tuple)):
@@ -762,7 +748,7 @@ init python in v1FNaSR:
 
         @main_thread_only
         def unregister(self, location_id):
-            location_id = _normalize_id(location_id)
+            location_id = LocationTools.normalize_id(location_id)
 
             with self._lock:
                 location = self._locations.get(location_id)

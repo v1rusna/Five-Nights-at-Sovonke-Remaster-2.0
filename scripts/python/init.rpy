@@ -457,6 +457,7 @@ init python in v1FNaSR:
                     "nights_start": None, # 3,
                     "modules": [
                         lambda: EnemyMoveModule(end_location_id=15),
+                        lambda: EnemySabotageGeneratorModule(15),
                         lambda: EnemySignalButtonModule()
                     ]
                 },
