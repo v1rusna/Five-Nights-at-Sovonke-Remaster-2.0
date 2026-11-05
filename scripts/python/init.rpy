@@ -470,7 +470,7 @@ init python in v1FNaSR:
                     "modules": [
                         lambda: EnemyMoveModule(-5),
                         lambda: EnemyInteractiveModule(),
-                        lambda: EnemyLockdownModule({PlayerElement.TABLET, PlayerElement.BULB})
+                        lambda: EnemyAgitationModule()
                     ]
                 },
                 {

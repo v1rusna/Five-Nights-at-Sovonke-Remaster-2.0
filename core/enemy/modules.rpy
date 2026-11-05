@@ -4,6 +4,7 @@ init -2 python in v1FNaSR:
     import math as _math
 
     audio.register_channel("enemy_channel", "sound", loop=False)
+    audio.register_channel("enemy_agitation_channel", "sound", loop=False)
 
     class FactorsMoveModule:
         @staticmethod
@@ -50,7 +51,11 @@ init -2 python in v1FNaSR:
         @staticmethod
         def factor_external(module, context):
             value = context.get("moving_module_tempo_mult")
-            return 1.0 if value is None else value
+            if value is None:
+                return 1.0
+            if value < 0:
+                return 0.0
+            return value
         
         @staticmethod
         def factor_proximity(module, context):
@@ -1466,7 +1471,7 @@ init -2 python in v1FNaSR:
             target_location_id = LocationTools.normalize_id(target_location_id)
             self._validate_safety_time(safety_time)
 
-            self._target_location_id = target_location_id
+            self._setattr("_target_location_id", target_location_id)
             self._setattr("_safety_time", float(safety_time))
             self._setattr("_blocked", False)
 
@@ -1474,13 +1479,17 @@ init -2 python in v1FNaSR:
         def target_location_id(self):
             return self._target_location_id
 
-        @property
-        def safety_time(self):
-            return self._safety_time
+        @target_location_id.setter
+        def target_location_id(self, value):
+            self._target_location_id = LocationTools.normalize_id(value)
 
         @property
         def is_blocked(self):
             return self._blocked
+
+        @property
+        def safety_time(self):
+            return self._safety_time
 
         @safety_time.setter
         def safety_time(self, value):
@@ -1526,7 +1535,137 @@ init -2 python in v1FNaSR:
                 "safety time: {}/{}".format(self._accumulated_time, self._safety_time),
                 "blocked: {}".format(self._blocked)
             ]
+
+
+    class EnemyAgitationModule(EnemyModule):
+        __slots__ = "_coefficient", "_agitation", "_sound", "_sound_channel", "_player"
+
+        UPDATE_TIME = 0.1
+
+        @staticmethod
+        def _validate_ac(aggressiveness_coefficient):
+            if not is_number(aggressiveness_coefficient):
+                raise FNaSRTypeError("'aggressiveness_coefficient' должен быть числом, получено: {}".format(type(aggressiveness_coefficient)))
+            if aggressiveness_coefficient <= 0:
+                raise FNaSRValueError("'aggressiveness_coefficient' должен быть положительным, получено: {}".format(aggressiveness_coefficient))
+
+        def __init__(
+            self,
+            aggressiveness_coefficient=2.0,
+            sound=None,
+            sound_channel="enemy_agitation_channel",
+            **kwargs
+        ):
+            if sound is None:
+                sound = renpy.store.music_list["miku_song_voice"]
+            super(EnemyAgitationModule, self).__init__(**kwargs)
+
+            self._validate_ac(aggressiveness_coefficient)
+            if not is_string(sound):
+                raise FNaSRTypeError("'sound' должен быть строкой, получено: {}".format(type(sound)))
+            if not is_string(sound_channel):
+                raise FNaSRTypeError("'sound_channel' должен быть строкой, получено: {}".format(type(sound_channel)))
+
+            self._setattr("_coefficient", float(aggressiveness_coefficient))
+            self._setattr("_agitation", False)
+            self._setattr("_sound", sound)
+            self._setattr("_sound_channel", sound_channel)
+            self._setattr("_player", None)
+
+        @property
+        def aggressiveness_coefficient(self):
+            return self._coefficient
+
+        @aggressiveness_coefficient.setter
+        def aggressiveness_coefficient(self, value):
+            self._validate_ac(value)
+            self._coefficient = float(value)
+
+        @property
+        def is_agitation(self):
+            return self._agitation
+
+        @property
+        def sound_channel(self):
+            return self._sound_channel
+
+        def on_include(self, enemy):
+            context = enemy.context
             
+            if context.get("player_manager") is None:
+                context.remember("player_manager", require_system("player"))
+
+            if context.get("enemy_manager") is None:
+                context.remember("enemy_manager", require_system("enemy"))
+
+        def start(self, context):
+            self._player = context.player_manager.current_player
+
+        def update(self, context, dt):
+            self._accumulated_time += dt
+            while self.interval(self.UPDATE_TIME):
+                if self.is_sees_player(context):
+                    self.start_agitation(context)
+                else:
+                    self.stop_agitation(context)
+
+        def is_sees_player(self, context):
+            current_location = context.enemy.current_location
+            player_location = self._player.current_location
+            if current_location is None:
+                return False
+            if player_location is None:
+                return False
+            return current_location.id == player_location.id
+
+        def start_agitation(self, context):
+            if self._agitation:
+                return
+            for enemy in context.enemy_manager.iter_current_group:
+                if "moving_module_tempo_mult" in enemy.context:
+                    enemy.context.moving_module_tempo_mult += self._coefficient
+            self._agitation = True
+            main_executor.submit(audio.play, self._sound, self._sound_channel)
+
+        def start_agitation(self, context):
+            if self._agitation:
+                return
+
+            for enemy in context.enemy_manager.iter_current_group:
+                enemy_context = enemy.context
+                value = enemy_context.get("moving_module_tempo_mult")
+
+                if value is None:
+                    value = 1.0
+
+                enemy_context.moving_module_tempo_mult = value + self._coefficient
+
+            self._agitation = True
+            main_executor.submit(audio.play, self._sound, self._sound_channel, fadein=0.5)
+
+        def stop_agitation(self, context):
+            if not self._agitation:
+                return
+
+            for enemy in context.enemy_manager.iter_current_group:
+                enemy_context = enemy.context
+                value = enemy_context.get("moving_module_tempo_mult")
+
+                if value is None:
+                    value = 1.0
+
+                enemy_context.moving_module_tempo_mult = value - self._coefficient
+
+            self._agitation = False
+            main_executor.submit(audio.stop, self._sound_channel, fadeout=0.5)
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "coefficient: {}".format(self._coefficient),
+                "agitation: {}".format(self._agitation)
+            ]
+
+
 
 
 

@@ -475,10 +475,10 @@ init -3 python in v1FNaSR:
             if group == EnemyManager.MAIN_GROUP:
                 raise FNaSRValueError("Нельзя удалить группу '{}'.".format(EnemyManager.MAIN_GROUP))
 
-            if group == self._current_group:
-                raise FNaSRValueError("Нельзя удалить выбранную группу '{}'.".format(group))
-
             with self._lock:
+                if group == self._current_group:
+                    raise FNaSRValueError("Нельзя удалить выбранную группу '{}'.".format(group))
+
                 if group not in self._groups:
                     raise FNaSRValueError("Группа '{}' не существует.".format(group))
 
@@ -537,6 +537,9 @@ init -3 python in v1FNaSR:
             if not isinstance(enemy, Enemy):
                 raise FNaSRTypeError("'enemy' должен быть 'Enemy', получено: {}".format(type(enemy)))
 
+            if is_initialized():
+                raise FNaSRException("Нельзя менять группу после инициализации мода.")
+
             with self._lock:
                 if group not in self._groups:
                     raise FNaSRValueError("Группа '{}' не существует.".format(group))
@@ -559,6 +562,9 @@ init -3 python in v1FNaSR:
                 tag = enemy_or_tag
             else:
                 raise FNaSRTypeError("'enemy_or_tag' должен быть строкой или 'Enemy', получено: {}".format(type(enemy_or_tag)))
+
+            if is_initialized():
+                raise FNaSRException("Нельзя менять группу после инициализации мода.")
 
             with self._lock:
                 if tag not in self._enemy_tags:
@@ -593,3 +599,32 @@ init -3 python in v1FNaSR:
                 raise FNaSRTypeError("Имя группы должно быть строкой, получено: {}".format(type(group)))
 
     register_system("enemy", EnemyManager())
+
+init python in v1FNaSR:
+    def _enable_all(context):
+        for enemy in context.em.iter_current_group:
+            enemy.enabled = True
+    def _disable_all(context):
+        for enemy in context.em.iter_current_group:
+            enemy.enabled = False
+
+    df = DebugFold(
+        "=control panel=",
+        DebugButton(
+            lambda context: "enable all",
+            _enable_all
+        ),
+        DebugButton(
+            lambda context: "disable all",
+            _disable_all
+        ),
+        order=-1
+    )
+
+    df.context.em = require_system("enemy")
+
+    debug.add_element(df, group="Enemy")
+
+    del df
+    del _enable_all
+    del _disable_all
