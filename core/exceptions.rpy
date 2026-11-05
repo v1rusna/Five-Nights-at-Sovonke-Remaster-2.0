@@ -2,13 +2,18 @@
 # core/exceptions.rpy
 init -10 python in v1FNaSR:
     class FNaSRException(Exception):
-
         PREFIX = "FNaSR"
 
         def __init__(self, message=None):
             if message is None:
                 message = ":("
             super(FNaSRException, self).__init__("{} | {}".format(self.PREFIX, message))
+
+        def __str__(self):
+            message = self.args[0]
+            if isinstance(message, unicode):
+                return message.encode("utf-8")
+            return str(message)
 
     class FNaSRRuntimeError(FNaSRException, RuntimeError):
         pass
