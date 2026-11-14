@@ -153,5 +153,5 @@ init -11 python in v1FNaSR:
 
     def get_system_list():
         with _store_lock:
-            return _store["systems"].keys()
+            return tuple(_store["systems"].keys())
 

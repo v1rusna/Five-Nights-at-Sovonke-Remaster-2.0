@@ -155,12 +155,15 @@ init -2 python in v1FNaSR:
 
                 for module in enemy.modules:
                     if isinstance(module, EnemyMoveModule) and not module.ignore_player:
-                        module.generate_new_path(location.id)
+                        enemy._safe_call(module, "generate_new_path", location.id)
+                        break
+
 
         def __init__(self,
             start_location_id=None,
             end_location_id=None,
             ignore_player=False,
+            wait_door_open=False,
             speed=1.0,
             start_factors=BASE_ENEMY_MOVING_START_FACTORS,
             factors=BASE_ENEMY_MOVING_FACTORS,
@@ -172,10 +175,8 @@ init -2 python in v1FNaSR:
             if end_location_id is not None:
                 end_location_id = LocationTools.normalize_id(end_location_id)
 
-            if not is_number(speed):
-                raise FNaSRTypeError("'speed' должен быть числом получено: {}".format(type(speed)))
-            if speed < 0:
-                raise FNaSRValueError("'speed' не может быть меньше нуля, получено: {}".format(speed))
+            check.expect_type(speed, is_number, "speed", "числом")
+            check.expect_value(speed, lambda value: value >= 0, "speed", "больше или равным нулю")
 
             start_extra = list()
             if start_factors is not None:
@@ -204,6 +205,11 @@ init -2 python in v1FNaSR:
 
             self._start_factors = start_extra
             self._factors = extra
+            self._wait_door_open = bool(wait_door_open)
+
+        @property
+        def path(self):
+            return tuple(self._path)
 
         @property
         def current_location_id(self):
@@ -255,23 +261,38 @@ init -2 python in v1FNaSR:
         def ignore_player(self):
             return self._ignore_player
 
-        def generate_new_path(self, start_location_id=MISSING, end_location_id=MISSING, replaced_path=True):
+        def generate_new_path(
+            self,
+            start_location_id=MISSING,
+            end_location_id=MISSING,
+            replaced_path=True,
+            player_location_id=None,
+            attempts=10
+        ):
+            if not is_strict_integer(attempts):
+                raise FNaSRTypeError("'attempts' должен быть числом, получено: {}".format(type(attempts)))
+            if attempts < 1:
+                raise FNaSRValueError("'attempts' должен быть положительный, получено: {}".format(attempts))
+
             if start_location_id is MISSING:
                 start_location_id = self._start_location_id
 
             if end_location_id is MISSING:
                 end_location_id = self._end_location_id
 
-            path = PathGenerator.generate_path(
-                start_location_id,
-                end_location_id
-            )
+            for _ in range(attempts):
+                path = PathGenerator.generate_path(start_location_id, end_location_id)
+
+                if path is None:
+                    raise PathGenerateError(start_location_id, end_location_id)
+
+                if player_location_id != path[0]:
+                    break
+            else:
+                raise PathGenerateError(start_location_id, end_location_id)
 
             if replaced_path:
                 self._replace_path(path)
-
-            if path is None:
-                return None
 
             return tuple(path)
 
@@ -312,26 +333,17 @@ init -2 python in v1FNaSR:
                 context.remember("stop_moving", MultiLock())
 
         def start(self, context):
-            def get_path_or_raise():
-                path = self.generate_new_path()
-                if not path:
-                    raise FNaSRException("Не удалось построить путь для '{}'({})".format(context.enemy.name, context.enemy.tag))
-                return path
-
-            path = get_path_or_raise()
-
             player = context.player_manager.current_player
-            if self._start_location_id is None and player and player.current_location:
-                for _ in range(10):
-                    if path[0] != player.current_location.id:
-                        break
-
-                    path = get_path_or_raise()
-                else:
-                    raise FNaSRException("Не удалось построить путь, отличный от локации игрока, для '{}'".format(context.enemy.tag))
+            player_location = player.current_location if self._start_location_id is None else None
+            player_location_id = player_location.id if player_location is not None else None
+            
+            try:
+                path = self.generate_new_path(player_location_id=player_location_id)
+            except PathGenerateError as e:
+                raise FNaSRException("Не удалось построить путь, отличный от локации игрока, для '{}': {}".format(context.enemy.tag, e))
 
             if context.get("move_wait_door_open") is None:
-                context.move_wait_door_open = False
+                context.move_wait_door_open = self._wait_door_open
 
             for location_id in path:
                 context.location_system.require_location(location_id)
@@ -370,8 +382,12 @@ init -2 python in v1FNaSR:
 
                     if not context.move_wait_door_open:
                         path = self.generate_new_path(replaced_path=False) # TODO: сделать механику при которой противник идет обратно к точке спайна (или в рандомную отдаленную локацию), при этом если игрок поменял локацию противник уже шел обратно к игроку, ну либо шел до конца в спавну, либо комбинированный вариант, как второй но если игрок на соседней локации то противник начинал преследовать игрока
-                        if path is not None and self.move(context, context.location_system.require_location(path[0])):
+                        if self.move(context, context.location_system.require_location(path[0])):
                             self._replace_path(path)
+                        else:
+                            path = self.generate_new_path(None, replaced_path=False)
+                            if self.move(context, context.location_system.require_location(path[0])):
+                                self._replace_path(path)
 
                 context.enemy.set_align()
                 update_ui()
@@ -385,11 +401,12 @@ init -2 python in v1FNaSR:
 
         def move(self, context, location=None):
             if location is None:
-                if self.current_location_id is None:
+                current_location_id = self.current_location_id
+                if current_location_id is None:
                     return False
-                location = context.location_system.require_location(self.current_location_id)
+                location = context.location_system.require_location(current_location_id)
             try:
-                context.enemy.move(location)
+                context.enemy.move(location, ignore_door=context.get("move_module_ignore_door", False))
                 update_ui()
                 return True
             except DoorClose:
@@ -487,35 +504,47 @@ init -2 python in v1FNaSR:
                 "stop moving: {}".format(enemy_context.stop_moving.blocked)
             ]
 
+        def get_relative_location(self, context, distance):
+            distance = int(distance)
+
+            if distance >= 0:
+                location_id = self.get_next_location_id(distance)
+            else:
+                location_id = self.get_previous_location_id(-distance)
+            if location_id is None:
+                return
+
+            location = context.location_system.get_location(location_id)
+            if location is None:
+                return
+
+            return location
+
     class EnemyMoveElementTriggerModule(EnemyMoveModule):
         __slots__ = ("_triggers", "_target_trigger", "_check_time",)
 
-        def __init__(self, **kwargs):
+        def __init__(self, *args, **kwargs):
             kwargs["ignore_player"] = True
             check_time = kwargs.pop("check_time", 1.0)
             elements_triggers = kwargs.pop("elements_triggers", None)
             if elements_triggers is None:
                 elements_triggers = ()
-            super(EnemyMoveElementTriggerModule, self).__init__(**kwargs)
+            super(EnemyMoveElementTriggerModule, self).__init__(*args, **kwargs)
 
-            if not is_number(check_time):
-                raise FNaSRTypeError("'check_time' должен быть числом, получено: {}".format(type(check_time)))
-            if check_time < 0.1:
-                raise FNaSRValueError("'check_time' не может быть меньше 0.1, получено: {}".format(check_time))
+            check.expect_type(check_time, is_number, "check_time", "числом")
+            check.expect_value(check_time, lambda value: value >= 0.1, "speed", "больше или равным 0.1")
 
             triggers = []
             names = set()
 
             for i, trigger in enumerate(elements_triggers):
-                if not isinstance(trigger, EnemyElementTrigger):
-                    raise FNaSRTypeError("elements_triggers[{}] должен быть 'EnemyElementTrigger', получено: {}".format(i, type(trigger)))
+                check.expect_type(trigger, lambda value: isinstance(value, EnemyElementTrigger), "trigger", "'EnemyElementTrigger'")
 
                 if trigger.name in names:
                     raise FNaSRValueError("Триггер для элемента '{}' уже добавлен.".format(trigger.name))
 
                 names.add(trigger.name)
                 triggers.append(trigger)
-
 
             self._triggers = tuple(triggers)
             self._setattr("_target_trigger", None)
@@ -786,7 +815,7 @@ init -2 python in v1FNaSR:
             if self._handle_attack_target_id(context):
                 return
 
-            location = self.get_relative_location(context, 1)
+            location = self._move_module.get_relative_location(context, 1)
             if location is None:
                 return
             if location.door is None:
@@ -802,15 +831,13 @@ init -2 python in v1FNaSR:
                 return False
 
             player = context.player_manager.current_player
+            player_location = player.current_location
 
-            if player is not None:
-                player_location = player.current_location
-
-                if player_location is not None and player_location.id == self._attack_target_id:
-                    if context.enemy.tag not in player.under_attack:
-                        player.under_attack + context.enemy.tag
-                elif context.enemy.tag in player.under_attack:
-                    player.under_attack - context.enemy.tag
+            if player_location is not None and player_location.id == self._attack_target_id:
+                if context.enemy.tag not in player.under_attack:
+                    player.under_attack + context.enemy.tag
+            elif context.enemy.tag in player.under_attack:
+                player.under_attack - context.enemy.tag
 
             self._attack(context)
             return True
@@ -896,25 +923,6 @@ init -2 python in v1FNaSR:
 
             self._murder_countdown = None
             return True
-
-        def get_relative_location(self, context, distance):
-            if self._move_module is None:
-                return
-
-            distance = int(distance)
-
-            if distance >= 0:
-                location_id = self._move_module.get_next_location_id(distance)
-            else:
-                location_id = self._move_module.get_previous_location_id(-distance)
-            if location_id is None:
-                return
-
-            location = context.location_system.get_location(location_id)
-            if location is None:
-                return
-
-            return location
 
         def player_present(self, context, location):
             player = context.player_manager.current_player
@@ -1621,15 +1629,6 @@ init -2 python in v1FNaSR:
         def start_agitation(self, context):
             if self._agitation:
                 return
-            for enemy in context.enemy_manager.iter_current_group:
-                if "moving_module_tempo_mult" in enemy.context:
-                    enemy.context.moving_module_tempo_mult += self._coefficient
-            self._agitation = True
-            main_executor.submit(audio.play, self._sound, self._sound_channel)
-
-        def start_agitation(self, context):
-            if self._agitation:
-                return
 
             for enemy in context.enemy_manager.iter_current_group:
                 enemy_context = enemy.context
@@ -1666,6 +1665,79 @@ init -2 python in v1FNaSR:
             ]
 
 
+    class EnemyPanicModule(EnemyModule):
+        __slots__ = "_panic_add", "_scalable"
+
+        HANDLE_INTERVAL = 1.0
+
+        def __init__(self, panic_add=1, increment_scalable=False, **kwargs):
+            super(EnemyPanicModule, self).__init__(**kwargs)
+
+            check.expect_type(panic_add, is_strict_integer, "panic_add", "числом")
+
+            self._setattr("_panic_add", panic_add)
+            self._setattr("_scalable", bool(increment_scalable))
+
+        @property
+        def panic_add(self):
+            return self._panic_add
+
+        @property
+        def is_scalable(self):
+            return self._scalable
+
+        def on_include(self, enemy):
+            context = enemy.context
+
+            if "player_manager" not in context:
+                context.remember("player_manager", require_system("player"))
+
+        def update(self, context, dt):
+            self._accumulated_time += dt
+            while self.interval(self.HANDLE_INTERVAL):
+                self._handle(context)
+
+        def _handle(self, context):
+            player = context.player_manager.current_player
+            player_location = player.current_location
+            current_location = context.enemy.current_location
+
+            if player_location is None or current_location is None:
+                return
+
+            if player_location.id != current_location.id:
+                return
+
+            panic_add = player.magnitude_change_panic + self.calculate_panic_add(context)
+            player.panic += panic_add
+
+        def calculate_panic_add(self, context):
+            player = context.player_manager.current_player
+
+            if not self._scalable:
+                return self._panic_add
+
+            return int(round(self._panic_add * player.max_panic / float(Player.DEFAULT_MAX_PANIC)))
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "panic add: {}".format(self._panic_add),
+                "is scalable: {}".format(self._scalable),
+                "calculate panic: {}".format(self.calculate_panic_add(enemy_context)),
+                "handle interval: {}".format(self.HANDLE_INTERVAL)
+            ]
+
+
+    class EnemyIgnoreModule(EnemyModule):
+        dependent_modules = (EnemyMoveModule,)
+
+
+
+
+
+
+
+
 
 
 
@@ -1692,3 +1764,4 @@ init -2 python in v1FNaSR:
     EnemySilentAttackModule.conflicting_modules = (
         EnemyAttackModule,
     )
+

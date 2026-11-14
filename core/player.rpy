@@ -13,15 +13,23 @@ init -1 python in v1FNaSR:
         BULB = "bulb"
 
     class Player(GameObject, BaseAI):
-        def __init__(self, id, max_panic=15, magnitude_change_panic=1):
+        DEFAULT_MAX_PANIC = 15
+
+        def __init__(self, id, max_panic=None, magnitude_change_panic=1):
             super(Player, self).__init__()
 
-            max_panic = int(max_panic)
-            magnitude_change_panic = int(magnitude_change_panic)
+            if max_panic is None:
+                max_panic = Player.DEFAULT_MAX_PANIC
+
+            if not is_strict_integer(max_panic):
+                raise FNaSRTypeError("'max_panic' должен быть числом, получено: {}".format(type(max_panic)))
             if max_panic <= 0:
-                raise FNaSRValueError("'max_panic' cannot be less than or equal to zero")
-            if magnitude_change_panic < 0:
-                raise FNaSRValueError("'magnitude_change_panic' cannot be less than zero")
+                raise FNaSRValueError("'max_panic' должен быть положительным, получено: {}".format(max_panic))
+
+            if not is_strict_integer(magnitude_change_panic):
+                raise FNaSRTypeError("'magnitude_change_panic' должен быть числом, получено: {}".format(type(magnitude_change_panic)))
+            if magnitude_change_panic <= 0:
+                raise FNaSRValueError("'magnitude_change_panic' должен быть положительным, получено: {}".format(magnitude_change_panic))
 
             self._id = to_text(id)
 
@@ -67,8 +75,44 @@ init -1 python in v1FNaSR:
             return self._under_attack
 
         @property
+        def magnitude_change_panic(self):
+            return self._magnitude_change_panic
+
+        @property
         def panic(self):
             return self._panic
+
+        @panic.setter
+        def panic(self, value):
+            if not is_strict_integer(value):
+                raise FNaSRTypeError("'value' должен быть целым числом, получено: {}".format(type(value)))
+
+            self._set_panic(value)
+
+        def _set_panic(self, value):
+            value = min(max(value, 0), self._max_panic)
+            changed = value != self._panic
+
+            self._panic = value
+
+            if value >= self._max_panic / 2:
+                if not self._is_play_heartbeat:
+                    self._is_play_heartbeat = True
+                    main_executor.submit(audio.play, renpy.store.sfx_head_heartbeat, "heartbeat", fadein=2)
+            elif self._is_play_heartbeat:
+                self._is_play_heartbeat = False
+                main_executor.submit(audio.stop, "heartbeat", fadeout=2)
+
+            if value >= self._max_panic:
+                if not self._rollback:
+                    self._rollback = True
+                    main_executor.submit(audio.play, resources.sounds.sfx["panic_breathing_1"], "breathing", fadein=2)
+            elif self._rollback and value <= self._rollback_threshold:
+                self._rollback = False
+                main_executor.submit(audio.stop, "breathing", fadeout=2)
+
+            if changed:
+                update_ui()
 
         @property
         def max_panic(self):
@@ -191,69 +235,14 @@ init -1 python in v1FNaSR:
             while self.interval():
                 door = location.door
                 panic_step = self._magnitude_change_panic
-                panic_changed = False
 
                 if door is not None and not door.is_open:
-                    panic_changed = True
-                    self._panic += panic_step
-
-                    if not self._is_play_heartbeat and self._panic >= self._max_panic / 2:
-                        self._is_play_heartbeat = True
-                        main_executor.submit(
-                            audio.play,
-                            renpy.store.sfx_head_heartbeat,
-                            "heartbeat",
-                            fadein=2
-                        )
-
-                    if self._panic >= self._max_panic:
-                        if not self._rollback:
-                            self._rollback = True
-                            main_executor.submit(
-                                audio.play,
-                                resources.sounds.sfx["panic_breathing_1"],
-                                "breathing",
-                                fadein=2
-                            )
-
-                    if self._rollback:
-                        door.button.force_unclick()
-
+                    self.panic += panic_step
                 elif self._panic > 0:
-                    panic_changed = True
-                    self._panic -= panic_step
-
-                    if self._is_play_heartbeat and self._panic < self._max_panic / 2:
-                        self._is_play_heartbeat = False
-                        main_executor.submit(
-                            audio.stop,
-                            "heartbeat",
-                            fadeout=2
-                        )
-
-                    if self._rollback and self._panic <= self._rollback_threshold:
-                        self._rollback = False
-                        main_executor.submit(
-                            audio.stop,
-                            "breathing",
-                            fadeout=2
-                        )
-
-                self._panic = min(max(self._panic, 0), self._max_panic)
+                    self.panic -= panic_step
 
                 if self._rollback and door is not None and not door.is_open:
                     door.button.force_unclick()
-
-                if self._open_tablet:
-                    tablet = self._current_location.tablet
-
-                    if tablet.out_battery:
-                        if screen_manager.has_screen("tablet"):
-                            main_executor.submit(screen_manager.hide_screen, "tablet", player=self)
-                        self.close_tablet()
-
-                if panic_changed:
-                    update_ui()
 
         def reset(self):
             super(Player, self).reset()
@@ -274,12 +263,12 @@ init -1 python in v1FNaSR:
         def current_player(self):
             return self._current_player
 
-        def create_player(self, id, max_panic=15, register_in_cycle=True):
+        def create_player(self, id, max_panic=15, magnitude_change_panic=1, register_in_cycle=True):
             id = to_text(id)
             if id in self._players:
                 raise FNaSRException("A character with ID '{}' has already been created.".format(id))
             
-            player = Player(id, max_panic)
+            player = Player(id, max_panic, magnitude_change_panic)
 
             if register_in_cycle:
                 require_system("cycle").register(player)
@@ -316,13 +305,13 @@ init -1 python in v1FNaSR:
         def switch_player(self, player_or_id):
             if is_initialized():
                 raise FNaSRException("You cannot change the player after the mod has been initialized.")
-            self._switch(id)
+            self._switch(player_or_id)
 
         def _switch(self, player_or_id):
             if isinstance(player_or_id, Player):
                 id = player_or_id.id
             else:
-                id = to_text(id)
+                id = to_text(player_or_id)
 
             if id not in self._players:
                 raise FNaSRException("The character with ID '{}' does not exist".format(id))

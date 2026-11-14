@@ -133,7 +133,7 @@ init -5 python in v1FNaSR:
 
                 _, original_screen = data
 
-                renpy.display.screen.screens[(original_screen_name, None)] = original_scree
+                renpy.display.screen.screens[(original_screen_name, None)] = original_screen
                 del self._replacements[original_screen_name]
 
         @main_thread_only

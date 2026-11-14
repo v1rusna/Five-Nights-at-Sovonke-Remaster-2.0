@@ -169,7 +169,6 @@ init -4 python in v1FNaSR:
             if start_id == target_id:
                 return [start_id]
 
-            # Для каждой посещённой локации запоминаем предшественника.
             previous = {start_id: None}
             queue = _collections.deque([start_id])
 
@@ -603,6 +602,15 @@ init -4 python in v1FNaSR:
             if player.is_open_tablet:
                 player.close_tablet()
 
+
+    class PathGenerateError(FNaSRException):
+        def __init__(self, start_location_id, end_location_id):
+            self.start_location_id = start_location_id
+            self.end_location_id = end_location_id
+
+            msg = "{}-{}".format(start_location_id, end_location_id)
+            super(PathGenerateError, self).__init__(msg)
+    
 init python in v1FNaSR:
     audio.register_channel("screamer", "sound", loop=False)
     audio.register_channel("signal", "sound", loop=True)

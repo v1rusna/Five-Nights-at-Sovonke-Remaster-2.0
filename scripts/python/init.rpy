@@ -470,7 +470,8 @@ init python in v1FNaSR:
                     "modules": [
                         lambda: EnemyMoveModule(-5),
                         lambda: EnemyInteractiveModule(),
-                        lambda: EnemyAgitationModule()
+                        lambda: EnemyAgitationModule(),
+                        lambda: EnemyPanicModule()
                     ]
                 },
                 {
@@ -480,8 +481,9 @@ init python in v1FNaSR:
                     "color": "#FFD200",
                     "nights_start": None, # 4,
                     "modules": [
-                        lambda: EnemyMoveModule(),
-                        lambda: EnemyAggressiveModule(EnemyScreamer("sl angry pioneer"))
+                        lambda: EnemyMoveModule(12),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("sl angry pioneer")),
+                        lambda: EnemyAttackModule()
                     ]
                 },
                 {
@@ -515,6 +517,70 @@ init python in v1FNaSR:
                             ]
                         ),
                         lambda: EnemyAggressiveModule(EnemyScreamer("el angry pioneer"), safety_time=0.1)
+                    ]
+                },
+                {
+                    "tag": "mt",
+                    "name": "Ольга",
+                    "sprite": "mt angry pioneer",
+                    "color": "#00b627",
+                    "nights_start": None, # 5,
+                    "modules": [
+                        lambda: EnemyMoveModule(),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("mt angry pioneer", screamer_t=renpy.store.v1_olga_screamer_t_FNaSR))
+                    ]
+                },
+                {
+                    "tag": "uv", # TODO: может не брать логику из старого кода и придумать новую: она активна только когда игрок не в домике с дверью
+                    "name": "Юля",
+                    "sprite": "uv rage",
+                    "color": "#40d000",
+                    "nights_start": None, # 2,
+                    "modules": [
+                        lambda: EnemyMoveModule(wait_door_open=True),
+                        lambda: EnemyPanicModule(),
+                    ]
+                },
+                {
+                    "tag": "mz",
+                    "name": "Женя",
+                    "sprite": "mz angry glasses pioneer",
+                    "color": "#5481db",
+                    "nights_start": None, # 4,
+                    "modules": [
+                        
+                    ]
+                },
+                {
+                    "tag": "cs", # TODO: или виола будет бегать за игроком когда он не в домике
+                    "name": "Виола",
+                    "sprite": "cs normal",
+                    "color": "#8686e6",
+                    "nights_start": None, # 5,
+                    "modules": [
+                        lambda: EnemyMoveModule(),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("cs normal"))
+                    ]
+                },
+                {
+                    "tag": "pi",
+                    "name": "Пионер",
+                    "sprite": "pi normal",
+                    "color": "#e60000",
+                    "nights_start": None, # 5,
+                    "modules": [
+                        lambda: EnemyMoveModule(),
+                        lambda: EnemyAggressiveModule(EnemyScreamer("pi normal"))
+                    ]
+                },
+                {
+                    "tag": "ge",
+                    "name": "Генда",
+                    "sprite": resources.images.other["genda_ebat"],
+                    "color": "#494949",
+                    "nights_start": None, # 1,
+                    "modules": [
+                        
                     ]
                 },
             ]

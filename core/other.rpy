@@ -359,6 +359,35 @@ init -12 python in v1FNaSR:
             with self._lock:
                 self._blockers.clear()
 
+    class Check(native_object):
+        @staticmethod
+        def expect(value, predicate, name, expected, exc_type):
+            if not predicate(value):
+                raise exc_type("'{}' должен быть {}, получено: {} ({!r})".format(name, expected, type(value), value))
+
+        @classmethod
+        def many_expect(cls, *args):
+            for item in args:
+                if isinstance(item, (list, tuple)):
+                    cls.expect(*item)
+                elif isinstance(item, dict):
+                    cls.expect(**item)
+                else:
+                    raise FNaSRTypeError("The value must be a tuple, list, or dict; received: {}".format(type(item)))
+
+        @classmethod
+        def expect_type(cls, value, predicate, name, expected):
+            cls.expect(value, predicate, name, expected, FNaSRTypeError)
+
+        @classmethod
+        def expect_value(cls, value, predicate, name, expected):
+            cls.expect(value, predicate, name, expected, FNaSRValueError)
+
+        def __call__(self, *args, **kwargs):
+            self.expect(*args, **kwargs)
+
+    check = Check()
+
 init python in v1FNaSR:
     add_quit_fn(GlobalState.clear)
 
