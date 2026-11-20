@@ -423,6 +423,63 @@ init -4 python in v1FNaSR:
             renpy.block_rollback()
             renpy.pause(self._BLACKOUT_DURATION, hard=True)
 
+    class EnemyRandomScreamer(EnemyScreamer):
+        __slots__ = ("_screamer_list",)
+
+        def __init__(self, screamer_list, **kwargs):
+            super(EnemyRandomScreamer, self).__init__(**kwargs)
+            
+            check.expect_type(
+                screamer_list,
+                lambda value: isinstance(value, (list, tuple)),
+                "screamer_list",
+                "списком или кортежем"
+            )
+            check.expect_value(
+                screamer_list,
+                lambda value: len(value) >= 1,
+                "screamer_list",
+                "содержащим минимум один элемент"
+            )
+
+            total_chance = 0
+            variants = []
+
+            for index, data in enumerate(screamer_list):
+                name = "screamer_list[{}]".format(index)
+
+                check.expect_type(data, lambda value: isinstance(value, (list, tuple)), name, "списком или кортежем")
+                check.expect_value(data, lambda value: len(value) == 2, name, "состоящим из двух элементов")
+
+                screamer, chance = data
+
+                check.expect_type(screamer, lambda value: isinstance(value, EnemyScreamer), name + "[0]", "объектом EnemyScreamer")
+                check.expect_type(chance, is_strict_integer, name + "[1]", "целым числом")
+                check.expect_value(chance, lambda value: 0 <= value <= 100, name + "[1]", "значением от 0 до 100")
+
+                total_chance += chance
+                variants.append((screamer, chance))
+
+            check.expect_value(total_chance, lambda value: value == 100, "total_chance", "равным 100")
+
+            self._screamer_list = tuple(variants)
+
+        @main_thread_only
+        def __call__(self):
+            return self._choose_screamer()()
+
+        def _choose_screamer(self):
+            roll = renpy.random.random() * 100.0
+            cumulative_chance = 0
+
+            for screamer, chance in self._screamer_list:
+                cumulative_chance += chance
+
+                if roll < cumulative_chance:
+                    return screamer
+
+            raise FNaSRException("Не удалось выбрать случайный скример.") # Фактически недостижимо, но мало ли
+
     class SilentImageVariant(native_object):
         __slots__ = ("light_image", "dark_image", "chance",)
 

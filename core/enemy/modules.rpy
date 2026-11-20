@@ -1729,7 +1729,71 @@ init -2 python in v1FNaSR:
 
 
     class EnemyIgnoreModule(EnemyModule):
-        dependent_modules = (EnemyMoveModule,)
+        dependent_modules = EnemyMoveModule,
+
+        def __init__(self, ignore_seconds=3, **kwargs):
+            super(EnemyIgnoreModule, self).__init__(**kwargs)
+
+            check.expect_type(ignore_seconds, is_strict_integer, "ignore_seconds", "целым числом")
+            check.expect_value(ignore_seconds, lambda value: value > 0, "ignore_seconds", "положительным числом")
+
+            self._setattr("_ignore_seconds", ignore_seconds)
+            self._setattr("_move_module", None)
+            self._setattr("_player", None)
+
+        def on_include(self, enemy):
+            context = enemy.context
+
+            if "player_manager" not in context:
+                context.remember("player_manager", require_system("player"))
+
+            if "location_system" not in context:
+                context.remember("location_system", require_system("location"))
+
+        def start(self, context):
+            self._move_module = self.get_module(context.enemy, EnemyMoveModule)
+            self._player = context.player_manager.current_player
+
+        def update(self, context, dt):
+            player = self._player
+            player_location = player.current_location
+            current_location = context.enemy.current_location
+            if current_location is None or player_location is None:
+                return
+
+            if current_location.id != player_location.id or not player.is_open_tablet:
+                self._accumulated_time = 0.0
+                return
+            
+            self._accumulated_time += dt
+            if not self.interval(self._ignore_seconds):
+                return
+
+            self._accumulated_time = 0.0
+            player_location_id = player_location.id
+            move_module = self._move_module
+
+            if move_module.start_location_id is not None and player_location_id != move_module.start_location_id:
+                path = move_module.generate_new_path(
+                    replaced_path=False,
+                    player_location_id=player_location_id
+                )
+            else:
+                path = move_module.generate_new_path(
+                    start_location_id=None,
+                    replaced_path=False,
+                    player_location_id=player_location_id
+                )
+                move_module.generate_new_path(None, player_location_id=player_location_id)
+
+            if move_module.move(context, context.location_system.require_location(path[0])):
+                move_module._replace_path(path)
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "ignore: {}/{}".format(self._accumulated_time, self._ignore_seconds)
+            ]
+
 
 
 

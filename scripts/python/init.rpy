@@ -539,6 +539,7 @@ init python in v1FNaSR:
                     "modules": [
                         lambda: EnemyMoveModule(wait_door_open=True),
                         lambda: EnemyPanicModule(),
+                        lambda: EnemyIgnoreModule()
                     ]
                 },
                 {
