@@ -70,7 +70,7 @@ init -12 python in v1FNaSR:
             if self._current_location is location:
                 return
             if location.location_system is None:
-                raise FNaSRException("The location '{}' is not registered in any of the location systems")
+                raise FNaSRException("The location '{}' is not registered in any of the location systems".format(location.id))
             if not location.location_system.has_location(location.id):
                 raise FNaSRException("The location with ID '{}' refers to a LocationSystem in which it is not registered".format(location.id))
             if self._current_location is not None and not allow_migrate and self._current_location.location_system != location.location_system:
@@ -110,9 +110,8 @@ init -12 python in v1FNaSR:
         def __setattr__(self, name, value):
             name = to_text(name)
 
-            if name == "_v1data":
-                native_object.__setattr__(self, name, value)
-                return
+            if name.startswith("_"):
+                raise FNaSRAttributeError("Атрибут {0!r} не существует.".format(name))
 
             self._v1data[name] = value
 
@@ -202,59 +201,6 @@ init -12 python in v1FNaSR:
                 self._v1data
             )
 
-    class ElementContainer(_MutableSequence):
-        __slots__ = ("_elements",)
-
-        def __init__(self, initial=None):
-            self._elements = list(initial) if initial is not None else []
-
-        def insert(self, index, value):
-            self._elements.insert(index, value)
-
-        if PY2:
-            def clear(self):
-                del self._elements[:]
-
-        def _add(self, item):
-            if isinstance(item, (list, tuple)):
-                self._elements.extend(item)
-            else:
-                self._elements.append(item)
-            return self
-
-        def _sub(self, item):
-            items_to_remove = item if isinstance(item, (list, tuple)) else [item]
-            for x in items_to_remove:
-                while x in self._elements:
-                    self._elements.remove(x)
-            return self
-
-        def __add__(self, item):
-            self._add(item)
-
-        def __sub__(self, item):
-            self._sub(item)
-
-        def __isub__(self, item):
-            return self._sub(item)
-
-        def __getitem__(self, index):
-            if isinstance(index, slice):
-                return self.__class__(self._elements[index])
-            return self._elements[index]
-
-        def __setitem__(self, index, value):
-            self._elements[index] = value
-
-        def __delitem__(self, index):
-            del self._elements[index]
-
-        def __len__(self):
-            return len(self._elements)
-
-        def __repr__(self):
-            return "ElementContainer({})".format(self._elements)
-
     class UIUpdater(native_object):
         MIN_INTERVAL = 1.0 / 60.0
         MAX_INTERVAL = 1.0
@@ -271,7 +217,7 @@ init -12 python in v1FNaSR:
 
         @classmethod
         def set_interval(cls, new_interval):
-            if is_number(new_interval):
+            if not is_number(new_interval):
                 raise FNaSRTypeError("'new_interval' должен быть числом, получено: {}".format(type(new_interval)))
 
             new_interval = float(new_interval)
@@ -387,6 +333,46 @@ init -12 python in v1FNaSR:
             self.expect(*args, **kwargs)
 
     check = Check()
+
+    class Game(native_object):
+        def __init__(self):
+            self._pause_fn = (list(), list())
+            self._is_pause = False
+            self._lock = _threading.RLock()
+
+        @property
+        def is_pause(self):
+            return self._is_pause
+
+        def add_paused_fn(self, fn):
+            check.expect_type(fn, callable, "fn", "вызываемым")
+            with self._lock:
+                self._pause_fn[0].append(fn)
+
+        def add_unpaused_fn(self, fn):
+            check.expect_type(fn, callable, "fn", "вызываемым")
+            with self._lock:
+                self._pause_fn[1].append(fn)
+
+        def on_pause(self):
+            with self._lock:
+                if self._is_pause:
+                    return
+                self._is_pause = True
+                fns = tuple(self._pause_fn[0])
+            for fn in fns:
+                fn()
+
+        def on_unpause(self):
+            with self._lock:
+                if not self._is_pause:
+                    return
+                self._is_pause = False
+                fns = tuple(self._pause_fn[1])
+            for fn in fns:
+                fn()
+
+    game = Game()
 
 init python in v1FNaSR:
     add_quit_fn(GlobalState.clear)

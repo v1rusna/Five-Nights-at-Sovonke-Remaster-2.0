@@ -80,16 +80,12 @@ init -3 python in v1FNaSR:
             return "<{} error={} freezed={}>".format(type(self).__name__, self._error is not None, self._freeze)
 
     class BaseEnemy(GameObject, BaseAI):
-        def __init__(self, modules=None):
+        def __init__(self):
             super(BaseEnemy, self).__init__()
  
             self._modules = list()
             self._types_modules = set()
             self._context = EnemyContext(self)
-
-            if isinstance(modules, (list, tuple,)):
-                for module in modules:
-                    self.add_module(module)
 
         @property
         def context(self):
@@ -112,6 +108,8 @@ init -3 python in v1FNaSR:
             return tuple(errors)
 
         def add_module(self, module):
+            self._check_initialized()
+
             if not isinstance(module, EnemyModule):
                 raise FNaSRTypeError("'module' должен быть наследником 'EnemyModule', получено: {}".format(type(module)))
 
@@ -139,6 +137,8 @@ init -3 python in v1FNaSR:
             self._types_modules.add(type_module)
 
         def remove_module(self, module):
+            self._check_initialized()
+
             if module not in self._modules:
                 raise FNaSRValueError("Модуль '{}' не подключён к противнику.".format(repr(module)))
 
@@ -279,6 +279,11 @@ init -3 python in v1FNaSR:
                     if issubclass(dependency, conflict) or issubclass(conflict, dependency):
                         raise FNaSRValueError("Модуль '{}' одновременно зависит от '{}' и конфликтует с ним.".format(type(module).__name__, dependency.__name__))
 
+        @staticmethod
+        def _check_initialized():
+            if is_initialized():
+                raise FNaSRException("Нельзя изменять модули противника после инициализации FNaSR.") 
+
 
     class Enemy(BaseEnemy):
         POSITIONS = 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
@@ -287,9 +292,8 @@ init -3 python in v1FNaSR:
         def recolor_sprite(sprite):
             return renpy.store.Transform(sprite, matrixcolor=renpy.store.SaturationMatrix(0.4))
 
-        def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None, invisible=False, **kwargs):
-            modules = kwargs.pop("modules", None)
-            super(Enemy, self).__init__(**kwargs)
+        def __init__(self, tag, name, sprite, color=None, nights_start=None, special_night=None, invisible=False, modules=None):
+            super(Enemy, self).__init__()
 
             if not is_string(tag):
                 raise FNaSRTypeError("'tag' должен быть строкой, получено: {}".format(type(tag)))

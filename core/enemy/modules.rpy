@@ -2,10 +2,13 @@
 # core/enemy/modules.rpy
 init -2 python in v1FNaSR:
     import math as _math
+    import random as _random
+    import weakref as _weakref
 
     audio.register_channel("enemy_channel", "sound", loop=False)
     audio.register_channel("enemy_footsteps_channel", "sound", loop=False)
     audio.register_channel("enemy_agitation_channel", "sound", loop=False)
+    audio.register_channel("enemy_call_phone_channel", "sound", loop=False)
 
     class FactorsMoveModule:
         @staticmethod
@@ -89,7 +92,7 @@ init -2 python in v1FNaSR:
         @staticmethod
         def factor_crowd(module, context):
             player = context.player_manager.current_player
-            return 1.5 if player.under_attack else 1.0
+            return 0.5 if player.under_attack else 1.0
 
         @staticmethod
         def factor_time(module, context):
@@ -354,7 +357,7 @@ init -2 python in v1FNaSR:
                 static *= fn(self, context)
             self._static = static
             self._idle = 0.0
-            self._mood = renpy.random.uniform(0.85, 1.2)
+            self._mood = _random.uniform(0.85, 1.2)
 
             if path:
                 self.move(context)
@@ -440,7 +443,7 @@ init -2 python in v1FNaSR:
 
             rate = min(rate, 1.0 / self.MIN_INTERVAL)
 
-            return renpy.random.random() < 1.0 - _math.exp(-rate * dt)
+            return _random.random() < 1.0 - _math.exp(-rate * dt)
 
         def get_next_location_id(self, offset=1):
             len_path = len(self._path)
@@ -644,7 +647,7 @@ init -2 python in v1FNaSR:
             ]
 
 
-    class EnemyAggressiveModule(EnemyModule):
+    class EnemyAggressiveModule(EnemyModule): # TODO: Наверное стоит отделить способность убивать от этого модуля
         __slots__ = ("_enemy_screamer", "_safety_time", "_current_safety_time",)
 
         conflicting_modules = tuple()
@@ -951,9 +954,9 @@ init -2 python in v1FNaSR:
 
             if player_location is not None and player_location.id == self._attack_target_id:
                 if context.enemy.tag not in player.under_attack:
-                    player.under_attack + context.enemy.tag
+                    player.under_attack.append(context.enemy.tag)
             elif context.enemy.tag in player.under_attack:
-                player.under_attack - context.enemy.tag
+                player.under_attack.remove(context.enemy.tag)
 
             self._attack(context)
             return True
@@ -1006,14 +1009,14 @@ init -2 python in v1FNaSR:
             self._finish_attack(context)
 
             if context.enemy.tag == "us":
-                if renpy.random.random() < 0.01:
+                if _random.random() < 0.01:
                     random_s = (
                         renpy.store.sfx_hell_crickets_1,
                         renpy.store.sfx_hell_crickets_2,
                         renpy.store.sfx_hell_crickets_3,
                     )
 
-                    main_executor.submit(audio.play, renpy.random.choice(random_s), self._sound_channel, loop=False, fadeout=1, fadein=2)
+                    main_executor.submit(audio.play, _random.choice(random_s), self._sound_channel, loop=False, fadeout=1, fadein=2)
 
         def _finish_attack(self, context):
             # self.reset_safety_time()
@@ -1022,10 +1025,10 @@ init -2 python in v1FNaSR:
             self._murder_countdown = None
             context.stop_moving.unblock(self)
             if context.enemy.tag in player.under_attack:
-                player.under_attack - context.enemy.tag
+                player.under_attack.remove(context.enemy.tag)
 
         def _get_time_murder(self):
-            return renpy.random.randint(self._r_t_m[0], self._r_t_m[1])
+            return _random.randint(self._r_t_m[0], self._r_t_m[1])
 
         def _is_murder_time(self):
             if self._murder_countdown is None:
@@ -1124,7 +1127,7 @@ init -2 python in v1FNaSR:
             if not variants:
                 return None
 
-            roll = renpy.random.random() * 100.0
+            roll = _random.random() * 100.0
             cumulative_chance = 0
 
             for variant in variants:
@@ -1141,7 +1144,7 @@ init -2 python in v1FNaSR:
 
         def _loss_attack(self, context):
             super(EnemySilentAttackModule, self)._loss_attack(context)
-            if renpy.random.random() < 0.1:
+            if _random.random() < 0.1:
                 main_executor.submit(audio.play, renpy.store.sfx_knock_glass, self._sound_channel)
 
         def _finish_attack(self, context):
@@ -1264,7 +1267,7 @@ init -2 python in v1FNaSR:
             self._key = None
 
             self._button = HoldingMouseImageButton(
-                idle=build_transform(button_image, width=xsize, height=ysize),
+                idle=build_transform(button_image, width=int(xysize[0]), height=int(xysize[1])),
                 click_action=renpy.store.Function(self._handle_button, True),
                 unclick_action=renpy.store.Function(self._handle_button, False),
                 allow_alternate=True,
@@ -1997,7 +2000,7 @@ init -2 python in v1FNaSR:
             if footsteps_audio is None:
                 footsteps_audio = resources.sounds.sfx["enemy_deep_steps"]
 
-            check.expect_type(check_interval, is_number, "check_interval", "целым числом")
+            check.expect_type(check_interval, is_number, "check_interval", "числом")
             check.expect_value(check_interval, lambda value: value >= 0.1, "check_interval", "больше или равным 0.1")
             check.expect_type(steps_left, is_strict_integer, "steps_left", "целым числом")
             check.expect_value(steps_left, lambda value: value >= 0, "steps_left", "не отрицательным")
@@ -2046,6 +2049,292 @@ init -2 python in v1FNaSR:
                 "is play: {}".format(self._is_play)
             ]
                 
+
+    class EnemyCallAggressiveModule(EnemyModule):
+        __slots__ = (
+            "_enemy_screamer", "_button_image", "_button", "_key",
+            "_interval", "_change", "_call_time", "_current_call_time",
+            "_is_call", "_delayed_call", "_target_location_id", "_player",
+            "_call_phone_sound", "_answer_phone_sound", "_call_phone_channel",
+            "_is_show_button", "_cooldown", "_current_cooldown", "_button_transform",
+            "_context"
+        )
+
+        KEY = "v1_enemy_call_aggressive_module_%s"
+        MIN_CHANGE = 0.001
+
+        def __init__(
+            self,
+            enemy_screamer,
+            interval=5.0,
+            change=0.1,
+            call_time=12.0,
+            cooldown=10,
+            image_button=None,
+            alpha_button=0.2,
+            size_button=(290//3, 60//3),
+            call_phone_sound=None,
+            answer_phone_sound=None,
+            call_phone_channel="enemy_call_phone_channel",
+            **kwargs
+        ):
+            super(EnemyCallAggressiveModule, self).__init__(**kwargs)
+
+            if image_button is None:
+                image_button = resources.images.other["call_button"]
+            if call_phone_sound is None:
+                call_phone_sound = resources.sounds.sfx["call"]
+            if answer_phone_sound is None:
+                answer_phone_sound = resources.sounds.sfx["answer_phone"]
+
+
+            check.expect_type(enemy_screamer, lambda value: isinstance(value, EnemyScreamer), "enemy_screamer", "'EnemyScreamer'")
+            check.expect_type(interval, is_number, "interval", "числом")
+            check.expect_value(interval, lambda value: value >= 0.1, "interval", "больше или равным 0.1")
+            check.expect_type(change, is_number, "change", "числом")
+            check.expect_value(change, lambda value: value >= self.MIN_CHANGE and value <= 1.0, "change", "в диапазоне от {} до 1.0".format(self.MIN_CHANGE))
+            check.expect_type(call_time, is_number, "call_time", "числом")
+            check.expect_value(call_time, lambda value: value >= 0.1, "call_time", "больше или равным 0.1")
+            check.expect_type(cooldown, is_strict_integer, "cooldown", "целым числом")
+            check.expect_value(cooldown, lambda value: value >= 0, "cooldown", "больше или равным нулю")
+            check.expect_type(alpha_button, is_number, "alpha_button", "числом")
+            check.expect_value(alpha_button, lambda value: value >= 0.0 and value <= 1.0, "alpha_button", "в диапазоне от 0.0 до 1.0")
+            check.expect_type(size_button, lambda value: isinstance(value, (list, tuple,)), "size_button", "списком или кортежем")
+            check.expect_value(size_button, lambda value: len(value) == 2, "size_button", "ровно из двух элементов")
+            for i in range(2):
+                v = size_button[i]
+                check.expect_type(v, is_strict_integer, "size_button[{}]".format(i), "целым числом")
+                check.expect_value(v, lambda value: value >= 1, "size_button[{}]".format(i), "положительным")
+
+            check.expect_type(call_phone_sound, is_string, "call_phone_sound", "строкой")
+            check.expect_type(answer_phone_sound, is_string, "answer_phone_sound", "строкой")
+            check.expect_type(call_phone_channel, is_string, "call_phone_channel", "строкой")
+
+            self._key = self.KEY
+            self._button_image = build_transform(image_button, alpha=alpha_button, width=int(size_button[0]), height=int(size_button[1]))
+            self._button = renpy.display.behavior.ImageButton(
+                idle_image=self._button_image,
+                clicked=renpy.store.Function(self.answer_phone)
+            )
+            self._button_transform = renpy.display.transform.Transform(
+                child=self._button,
+                xpos=_random.randint(0, renpy.config.screen_width),
+                ypos=_random.randint(0, renpy.config.screen_height)
+            )
+
+            self._enemy_screamer = enemy_screamer
+
+            self._setattr("_interval", float(interval))
+            self._setattr("_change", float(change))
+            self._setattr("_call_time", float(call_time))
+            self._setattr("_current_call_time", 0.0)
+            self._setattr("_is_call", False)
+            self._setattr("_delayed_call", False)
+            self._setattr("_target_location_id", None)
+            self._setattr("_player", None)
+            self._setattr("_call_phone_sound", call_phone_sound)
+            self._setattr("_answer_phone_sound", answer_phone_sound)
+            self._setattr("_call_phone_channel", call_phone_channel)
+            self._setattr("_is_show_button", False)
+            self._setattr("_cooldown", cooldown)
+            self._setattr("_current_cooldown", float(cooldown))
+            self._setattr("_context", None)
+
+            game.add_paused_fn(self._paused)
+            game.add_unpaused_fn(self._unpaused)
+
+        @property
+        def call_time(self):
+            return self._call_time
+
+        @property
+        def is_call(self):
+            return self._is_call
+
+        @property
+        def delayed_call(self):
+            return self._delayed_call
+
+        @property
+        def target_location_id(self):
+            return self._target_location_id
+
+        @property
+        def call_phone_channel(self):
+            return self._call_phone_channel
+
+        def on_include(self, enemy):
+            self._key = self._key % enemy.tag
+            context = enemy.context
+
+            if "player_manager" not in context:
+                context.remember("player_manager", require_system("player"))
+
+            if "cycle" not in context:
+                context.remember("cycle", require_system("cycle"))
+
+        def start(self, context):
+            self._context = _weakref.ref(context)
+            self._player = context.player_manager.current_player
+            if "is_player_dead" not in context:
+                context.is_player_dead = False
+
+        def update(self, context, dt):
+            if context.is_player_dead:
+                return
+
+            if self._is_call:
+                self.sync_state(context)
+                self._handle(context, dt)
+                return
+
+            player = self._player
+            
+            if player.current_location is None:
+                return
+
+            if not player.has_tablet and not player.has_bulb:
+                return
+
+            if self._current_cooldown >= 0:
+                self._current_cooldown = max(0.0, self._current_cooldown - dt)
+                return
+
+            if self._delayed_call:
+                if player.is_moving:
+                    return
+                self.call_phone()
+                self.sync_state(context)
+                return
+
+            self._accumulated_time += dt
+            while self.interval(self._interval):
+                if self.change():
+                    if player.is_moving:
+                        self._delayed_call = True
+                        return
+                    self.call_phone()
+                    self.sync_state(context)
+                    return
+
+        def change(self):
+            return _random.random() <= self._change
+
+        def call_phone(self):
+            if self._is_call:
+                return
+
+            self._is_call = True
+            self._accumulated_time = 0.0
+            self._delayed_call = False
+            self._target_location_id = self._player.current_location.id
+
+            main_executor.submit(audio.play, self._call_phone_sound, self._call_phone_channel, loop=True)
+            main_executor.submit(self._set_button_pos)
+
+        def answer_phone(self):
+            if not self._is_call:
+                return
+
+            self._is_call = False
+            self._target_location_id = None
+            self._current_call_time = 0.0
+            self._current_cooldown = self._cooldown
+
+            main_executor.submit(audio.play, self._answer_phone_sound, self._call_phone_channel, loop=False)
+            self._hide_button()
+
+        def sync_state(self, context):
+            if not self._is_call:
+                self._hide_button()
+                return
+
+            player = self._player
+            
+            if player.current_location is None:
+                self._hide_button()
+                return
+
+            if player.current_location.id != self._target_location_id:
+                self._hide_button()
+                return
+
+            self._show_button()
+
+        def _show_button(self):
+            if self._is_show_button:
+                return
+            self._is_show_button = True
+            main_executor.submit(visual.show, self._key, what=self._button_transform, layer="screens")
+
+        def _hide_button(self):
+            if not self._is_show_button:
+                return
+            self._is_show_button = False
+            main_executor.submit(visual.hide, self._key, layer="screens")
+
+        def _handle(self, context, dt):
+            if not self._is_call:
+                return
+
+            self._current_call_time += dt
+            if self._current_call_time >= self._call_time:
+                self._kill_player(context, self._player)
+
+        def _kill_player(self, context, player): # TODO: Может быть заменить на вызов указанной функции, вместо убийства игрока
+            if player.try_kill():
+                main_executor.submit(audio.stop, self._call_phone_channel)
+                self._hide_button()
+                GlobalState.set_if_absent("OpponentKilledPlayer", (context.enemy.tag, self._enemy_screamer, require_system("time").get_time(),))
+                context.is_player_dead = True
+                context.cycle.request_transition("v1_night_screamer_label_FNaSR")
+            else:
+                self.answer_phone()
+
+        def _set_button_pos(self, xpos=None, ypos=None):
+            sw = renpy.config.screen_width
+            sh = renpy.config.screen_height
+
+            if xpos is None:
+                xpos = _random.randint(int(sw * 0.1), int(sw * 0.9))
+            if ypos is None:
+                ypos = _random.randint(int(sh * 0.1), int(sh * 0.9))
+
+            self._button_transform.xpos = xpos
+            self._button_transform.ypos = ypos
+            self._button_transform.update()
+
+        def get_debug_list_texts(self, enemy_context):
+            info = [
+                "interval: {}/{}".format(self._accumulated_time, self._interval),
+                "change: {}".format(self._change),
+                "cooldown: {}/{}".format(self._current_cooldown, self._cooldown),
+                "is call: {}".format(self._is_call),
+                "delayed call: {}".format(self._delayed_call),
+                "show button: {}".format(self._is_show_button),
+            ]
+            if self._is_call:
+                info.append("call time: {}/{}".format(self._current_call_time, self._call_time))
+                info.append("target id: {}".format(self._target_location_id))
+
+            return info
+
+        def _paused(self):
+            if not self._is_call:
+                return
+
+            main_executor.submit(audio.stop, self._call_phone_channel)
+            main_executor.submit(visual.hide, self._key, layer="screens")
+
+        def _unpause(self):
+            if not self._is_call:
+                return
+
+            main_executor.submit(audio.play, self._call_phone_sound, self._call_phone_channel, loop=True)
+            if self._context is not None:
+                context = self._context()
+                if context is not None:
+                    self.sync_state(context)
 
 
 

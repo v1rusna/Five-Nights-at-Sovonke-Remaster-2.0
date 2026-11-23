@@ -11,6 +11,7 @@ init -1 python in v1FNaSR:
         TABLET = "tablet"
         DOOR = "door"
         BULB = "bulb"
+        MOVING = "moving"
 
     class Player(GameObject, BaseAI):
         DEFAULT_MAX_PANIC = 15
@@ -35,7 +36,7 @@ init -1 python in v1FNaSR:
 
             self._setattr("_open_tablet", False)
             self._setattr("_is_moving", False)
-            self._under_attack = ElementContainer()
+            self._under_attack = list()
 
             self._setattr("_panic", 0)
             self._setattr("_max_panic", max_panic)
@@ -50,6 +51,7 @@ init -1 python in v1FNaSR:
                 PlayerElement.TABLET: MultiLock(),
                 PlayerElement.DOOR: MultiLock(),
                 PlayerElement.BULB: MultiLock(),
+                PlayerElement.MOVING: MultiLock(),
             }
 
         @property
@@ -252,7 +254,7 @@ init -1 python in v1FNaSR:
 
         def reset(self):
             super(Player, self).reset()
-            self._under_attack.clear()
+            del self._under_attack.[:]
             for element in iter_values(self._element_enabled):
                 element.clear()
 

@@ -162,8 +162,8 @@ screen V1GameMenuSelectorFNaSR:
 
     key ["K_ESCAPE", "mouseup_3"] action hide_gms
 
-    on "show" action Function(cycle.freeze)
-    on "hide" action Function(cycle.unfreeze)
+    on "show" action (Function(cycle.freeze), Function(v1FNaSR.game.on_pause))
+    on "hide" action (Function(cycle.unfreeze), Function(v1FNaSR.game.on_unpause))
 
     add "black" alpha 0.5
 

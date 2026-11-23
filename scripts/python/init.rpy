@@ -385,6 +385,7 @@ init python in v1FNaSR:
                 )
 
             ns.register_night("night_6", title="6th Night", requires="night_5")
+            ns.register_night("extra_shift", title="Ещё одна смена!", requires="night_5")
             ns.register_night("custom", title="Custom Night", requires="night_6")
 
         def handle_exception(self, exc):
@@ -531,8 +532,7 @@ init python in v1FNaSR:
                     "nights_start": None, # 5,
                     "invisible": True,
                     "modules": [
-                        lambda: EnemyMoveModule(),
-                        lambda: EnemyAggressiveModule(EnemyScreamer("mt angry pioneer", screamer_t=renpy.store.v1_olga_screamer_t_FNaSR))
+                        lambda: EnemyCallAggressiveModule(EnemyScreamer("mt angry pioneer", screamer_t=renpy.store.v1_olga_screamer_t_FNaSR))
                     ]
                 },
                 {

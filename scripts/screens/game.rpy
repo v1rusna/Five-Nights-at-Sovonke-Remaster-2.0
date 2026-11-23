@@ -29,10 +29,10 @@ screen V1MainGameInterfaceFNaSR:
     use V1ShowEnemyFNaSR()
     use V1InfoNightScreenFNaSR(player, ns)
 
-    if not player.is_open_tablet and not player.is_moving and not player.under_attack:
+    if not player.is_open_tablet and not player.is_moving and not player.get_element(v1FNaSR.PlayerElement.MOVING).blocked:
         key move_start_keys action (Function(player.set_moving, True), Function(v1FNaSR.screen_manager.show_screen, "move"))
         if player.has_door:
-            key move_start_keys action Function(player.current_location.door.button.force_unclick)
+            key move_start_keys action (Function(player.set_moving, True), Function(v1FNaSR.screen_manager.show_screen, "move"), Function(player.current_location.door.button.force_unclick))
         add v1FNaSR.DistanceButton(
             TextButton(
                 "Переместиться",
@@ -218,27 +218,28 @@ screen V1MoveScreenFNaSR:
             location_system
         )
 
-    key move_stop_keys action (
-        Function(player.set_moving, False),
-        Function(v1FNaSR.screen_manager.hide_screen, "move")
-    )
-    add v1FNaSR.DistanceButton(
-        TextButton(
-            "Остановится",
-            style="v1_move_location_button_FNaSR",
-            text_style="v1_text_24_mod_button_FNaSR",
-            clicked=(
-                Function(player.set_moving, False),
-                Function(v1FNaSR.screen_manager.hide_screen, "move")
-            )
-        ),
-        radius=200.0,
-        opaque_radius=20.0,
-        falloff=1.0
-    ) align (0.5, 0.5)
+    if not player.get_element(v1FNaSR.PlayerElement.MOVING).blocked:
+        key move_stop_keys action (
+            Function(player.set_moving, False),
+            Function(v1FNaSR.screen_manager.hide_screen, "move")
+        )
+        add v1FNaSR.DistanceButton(
+            TextButton(
+                "Остановится",
+                style="v1_move_location_button_FNaSR",
+                text_style="v1_text_24_mod_button_FNaSR",
+                clicked=(
+                    Function(player.set_moving, False),
+                    Function(v1FNaSR.screen_manager.hide_screen, "move")
+                )
+            ),
+            radius=200.0,
+            opaque_radius=20.0,
+            falloff=1.0
+        ) align (0.5, 0.5)
 
-    for config, locations in active_directions:
-        use V1MoveDirectionFNaSR(config, locations, player)
+        for config, locations in active_directions:
+            use V1MoveDirectionFNaSR(config, locations, player)
 
 screen V1MovingAnotherLocationFNaSR(player, move_to, speed=1.0):
     default cycle = v1FNaSR.require_system("cycle")
