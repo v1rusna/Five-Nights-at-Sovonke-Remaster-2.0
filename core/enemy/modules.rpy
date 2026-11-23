@@ -4,6 +4,7 @@ init -2 python in v1FNaSR:
     import math as _math
 
     audio.register_channel("enemy_channel", "sound", loop=False)
+    audio.register_channel("enemy_footsteps_channel", "sound", loop=False)
     audio.register_channel("enemy_agitation_channel", "sound", loop=False)
 
     class FactorsMoveModule:
@@ -707,18 +708,22 @@ init -2 python in v1FNaSR:
         def update(self, context, dt):
             if context.is_player_dead:
                 return
+
             player = context.player_manager.current_player
             if player.current_location is None:
                 return
+
             if context.enemy.current_location is None:
                 return
-            if player.current_location.id == context.enemy.current_location.id:
-                self._current_safety_time += dt
-                if self._current_safety_time >= self.get_current_safety_time():
-                    self._current_safety_time = 0.0
-                    self._kill_player(context, player)
-            else:
+
+            if player.current_location.id != context.enemy.current_location.id:
                 self._current_safety_time = 0.0
+                return
+
+            self._current_safety_time += dt
+            if self._current_safety_time >= self.get_current_safety_time():
+                self._current_safety_time = 0.0
+                self._kill_player(context, player)
 
         def _kill_player(self, context, player):
             if player.try_kill():
@@ -733,6 +738,117 @@ init -2 python in v1FNaSR:
             return [
                 "net safety time: {}".format(self._safety_time),
                 "safety time: {}/{}".format(self._current_safety_time, self.get_current_safety_time()),
+            ]
+
+    class EnemyBulbAggressiveModule(EnemyAggressiveModule):
+        __slots__ = "_inverted", "_symmetric_drain", "_interaction_time", "_current_interaction_time", "_move_module"
+
+        dependent_modules = EnemyMoveModule,
+        conflicting_modules = EnemyAggressiveModule,
+
+        def __init__(self, *args, **kwargs):
+            inverted = bool(kwargs.pop("inverted", False))
+            symmetric_drain = bool(kwargs.pop("symmetric_drain", False))
+            bulb_interaction_time = kwargs.pop("bulb_interaction_time", 3.0)
+
+            super(EnemyBulbAggressiveModule, self).__init__(*args, **kwargs)
+
+            check.expect_type(bulb_interaction_time, is_number, "bulb_interaction_time", "числом")
+            check.expect_value(bulb_interaction_time, lambda value: value >= 0.1, "bulb_interaction_time", "больше или равным 0.1")
+
+            self._setattr("_inverted", inverted)
+            self._setattr("_symmetric_drain", symmetric_drain)
+            self._setattr("_interaction_time", float(bulb_interaction_time))
+            self._setattr("_current_interaction_time", 0.0)
+            self._setattr("_move_module", None)
+
+        @property
+        def inverted(self):
+            return self._inverted
+
+        @property
+        def symmetric_drain(self):
+            return self._symmetric_drain
+
+        @property
+        def interaction_time(self):
+            return self._interaction_time
+
+        def on_include(self, enemy):
+            super(EnemyBulbAggressiveModule, self).on_include(enemy)
+            context = enemy.context
+
+            if context.get("location_system") is None:
+                context.remember("location_system", require_system("location"))
+
+        def start(self, context):
+            super(EnemyBulbAggressiveModule, self).start(context)
+            self._move_module = self.get_module(context.enemy, EnemyMoveModule)
+            context.move_wait_door_open = True
+
+        def update(self, context, dt):
+            if context.is_player_dead:
+                return
+
+            player = context.player_manager.current_player
+            if player.current_location is None or context.enemy.current_location is None:
+                return
+
+            if player.current_location.id != context.enemy.current_location.id:
+                self._current_safety_time = 0.0
+                self._current_interaction_time = 0.0
+                return
+
+            is_lamp_active = not player.has_bulb or player.current_location.bulb.is_on
+            should_gain_time = not is_lamp_active if self._inverted else is_lamp_active
+
+            if should_gain_time:
+                self._current_safety_time += dt
+            else:
+                drain = dt * 0.5 if self._symmetric_drain else dt
+                self._current_safety_time -= drain
+                #self._current_safety_time = max(0.0, self._current_safety_time - drain)
+
+            if self._current_safety_time <= 0:
+                self._current_interaction_time += dt
+                if self._current_interaction_time >= self._interaction_time:
+                    self._loss_attack(context)
+                    return
+            else:
+                self._current_interaction_time = 0.0
+
+            if self._current_safety_time >= self.get_current_safety_time():
+                self._current_safety_time = 0.0
+                self._current_interaction_time = 0.0
+                self._kill_player(context, player)
+
+        def _loss_attack(self, context):
+            self._current_interaction_time = 0.0
+            self._current_safety_time = 0.0
+
+            player_location_id = context.player_manager.current_player.current_location.id
+            move_module = self._move_module
+
+            if move_module.start_location_id is not None and player_location_id != move_module.start_location_id:
+                path = move_module.generate_new_path(
+                    replaced_path=False,
+                    player_location_id=player_location_id
+                )
+            else:
+                path = move_module.generate_new_path(
+                    start_location_id=None,
+                    replaced_path=False,
+                    player_location_id=player_location_id
+                )
+
+            if move_module.move(context, context.location_system.require_location(path[0])):
+                move_module._replace_path(path)
+
+        def get_debug_list_texts(self, enemy_context):
+            return super(EnemyBulbAggressiveModule, self).get_debug_list_texts(enemy_context) + [
+                "inverted: {}".format(self._inverted),
+                "symmetric: {}".format(self._symmetric_drain),
+                "interaction time: {}/{}".format(self._current_interaction_time, self._interaction_time)
             ]
 
 
@@ -843,7 +959,6 @@ init -2 python in v1FNaSR:
             return True
 
         def _start_attack(self, context, attack_target):
-            main_executor.submit(audio.play, resources.sounds.sfx["enemy_deep_steps"], self._sound_channel)
             context.stop_moving.block(self)
             self._attack_target_id = attack_target.id
             # self._safety_time = 0.5
@@ -1026,7 +1141,7 @@ init -2 python in v1FNaSR:
 
         def _loss_attack(self, context):
             super(EnemySilentAttackModule, self)._loss_attack(context)
-            if renpy.random.random() < 0.01:
+            if renpy.random.random() < 0.1:
                 main_executor.submit(audio.play, renpy.store.sfx_knock_glass, self._sound_channel)
 
         def _finish_attack(self, context):
@@ -1729,6 +1844,8 @@ init -2 python in v1FNaSR:
 
 
     class EnemyIgnoreModule(EnemyModule):
+        __slots__ = "_ignore_seconds", "_move_module", "_player"
+
         dependent_modules = EnemyMoveModule,
 
         def __init__(self, ignore_seconds=3, **kwargs):
@@ -1740,6 +1857,10 @@ init -2 python in v1FNaSR:
             self._setattr("_ignore_seconds", ignore_seconds)
             self._setattr("_move_module", None)
             self._setattr("_player", None)
+
+        @property
+        def ignore_seconds(self):
+            return self._ignore_seconds
 
         def on_include(self, enemy):
             context = enemy.context
@@ -1784,7 +1905,6 @@ init -2 python in v1FNaSR:
                     replaced_path=False,
                     player_location_id=player_location_id
                 )
-                move_module.generate_new_path(None, player_location_id=player_location_id)
 
             if move_module.move(context, context.location_system.require_location(path[0])):
                 move_module._replace_path(path)
@@ -1793,8 +1913,139 @@ init -2 python in v1FNaSR:
             return [
                 "ignore: {}/{}".format(self._accumulated_time, self._ignore_seconds)
             ]
+    
+
+    class EnemyBulbScareModule(EnemyModule):
+        __slots__ = "_inverted", "_time_scared", "_move_module", "_player"
+
+        dependent_modules = EnemyMoveModule,
+
+        def __init__(self, time_scared=3, inverted=False, **kwargs):
+            super(EnemyBulbScareModule, self).__init__(**kwargs)
+
+            check.expect_type(time_scared, is_strict_integer, "time_scared", "целым числом")
+            check.expect_value(time_scared, lambda value: value > 0, "time_scared", "положительным числом")
+
+            self._setattr("_inverted", bool(inverted))
+            self._setattr("_time_scared", int(time_scared))
+            self._setattr("_move_module", None)
+            self._setattr("_player", None)
+
+        @property
+        def inverted(self):
+            return self._inverted
+
+        @property
+        def time_scared(self):
+            return self._time_scared
+
+        def on_include(self, enemy):
+            context = enemy.context
+
+            if "player_manager" not in context:
+                context.remember("player_manager", require_system("player"))
+
+        def start(self, context):
+            self._move_module = self.get_module(context.enemy, EnemyMoveModule)
+            self._player = context.player_manager.current_player
+
+        def update(self, context, dt):
+            player = self._player
+            player_location = player.current_location
+            current_location = context.enemy.current_location
+
+            if player_location is None or current_location is None:
+                self._accumulated_time = 0.0
+                return
+            if player_location.id != current_location.id or not player.has_bulb:
+                self._accumulated_time = 0.0
+                return
+
+            increasing = player_location.bulb.is_on != self._inverted
+            self._accumulated_time += dt if increasing else -dt
+            self._accumulated_time = min(max(self._accumulated_time, 0.0), self._time_scared)
+
+            if self._accumulated_time >= self._time_scared:
+                self._accumulated_time = 0.0
+                player_location_id = player_location.id
+                move_module = self._move_module
+
+                if move_module.start_location_id is not None and player_location_id != move_module.start_location_id:
+                    path = move_module.generate_new_path(
+                        replaced_path=False,
+                        player_location_id=player_location_id
+                    )
+                else:
+                    path = move_module.generate_new_path(
+                        start_location_id=None,
+                        replaced_path=False,
+                        player_location_id=player_location_id
+                    )
+
+                if move_module.move(context, context.location_system.require_location(path[0])):
+                    move_module._replace_path(path)
 
 
+    class EnemySoundFootstepsModule(EnemyModule):
+        __slots__ = "_check_interval", "_steps_left", "_footsteps_audio", "_channel", "_move_module", "_is_play"
+
+        dependent_modules = EnemyMoveModule,
+
+        def __init__(self, check_interval=0.1, steps_left=1, footsteps_audio=None, channel="enemy_footsteps_channel", **kwargs):
+            super(EnemySoundFootstepsModule, self).__init__(**kwargs)
+
+            if footsteps_audio is None:
+                footsteps_audio = resources.sounds.sfx["enemy_deep_steps"]
+
+            check.expect_type(check_interval, is_number, "check_interval", "целым числом")
+            check.expect_value(check_interval, lambda value: value >= 0.1, "check_interval", "больше или равным 0.1")
+            check.expect_type(steps_left, is_strict_integer, "steps_left", "целым числом")
+            check.expect_value(steps_left, lambda value: value >= 0, "steps_left", "не отрицательным")
+            check.expect_type(footsteps_audio, is_string, "footsteps_audio", "строкой")
+            check.expect_type(channel, is_string, "channel", "строкой")
+
+            self._setattr("_check_interval", check_interval)
+            self._setattr("_steps_left", steps_left)
+            self._setattr("_footsteps_audio", footsteps_audio)
+            self._setattr("_channel", channel)
+            self._setattr("_move_module", None)
+            self._setattr("_is_play", None)
+
+        @property
+        def check_interval(self):
+            return self._check_interval
+
+        @property
+        def steps_left(self):
+            return self._steps_left
+
+        @property
+        def footsteps_audio(self):
+            return self._footsteps_audio
+
+        @property
+        def channel(self):
+            return self._channel
+
+        def start(self, context):
+            self._move_module = self.get_module(context.enemy, EnemyMoveModule)
+
+        def update(self, context, dt):
+            self._accumulated_time += dt
+            while self.interval(self._check_interval):
+                if self._move_module.steps_left == self._steps_left:
+                    if not self._is_play:
+                        self._is_play = True
+                        main_executor.submit(audio.play, self._footsteps_audio, self._channel)
+                else:
+                    self._is_play = False
+
+        def get_debug_list_texts(self, enemy_context):
+            return [
+                "steps left: {}=={}".format(self._move_module.steps_left, self._steps_left),
+                "is play: {}".format(self._is_play)
+            ]
+                
 
 
 
@@ -1826,6 +2077,6 @@ init -2 python in v1FNaSR:
     )
 
     EnemySilentAttackModule.conflicting_modules = (
-        EnemyAttackModule,
+        EnemyAttackModule, EnemySoundFootstepsModule,
     )
 

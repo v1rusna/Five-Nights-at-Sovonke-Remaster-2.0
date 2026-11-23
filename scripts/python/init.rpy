@@ -411,6 +411,7 @@ init python in v1FNaSR:
                         lambda: EnemyMoveModule(-3),
                         lambda: EnemyAggressiveModule(EnemyScreamer("us angry pioneer")),
                         lambda: EnemyAttackModule(),
+                        lambda: EnemySoundFootstepsModule(),
                     ]
                 },
                 {
@@ -471,7 +472,8 @@ init python in v1FNaSR:
                         lambda: EnemyMoveModule(-5),
                         lambda: EnemyInteractiveModule(),
                         lambda: EnemyAgitationModule(),
-                        lambda: EnemyPanicModule()
+                        lambda: EnemyPanicModule(),
+                        lambda: EnemySoundFootstepsModule(steps_left=0),
                     ]
                 },
                 {
@@ -483,7 +485,8 @@ init python in v1FNaSR:
                     "modules": [
                         lambda: EnemyMoveModule(12),
                         lambda: EnemyAggressiveModule(EnemyScreamer("sl angry pioneer")),
-                        lambda: EnemyAttackModule()
+                        lambda: EnemyAttackModule(),
+                        lambda: EnemySoundFootstepsModule(),
                     ]
                 },
                 {
@@ -494,7 +497,8 @@ init python in v1FNaSR:
                     "nights_start": None, # 3,
                     "modules": [
                         lambda: EnemyMoveModule(-4),
-                        lambda: EnemyAggressiveModule(EnemyScreamer("sh rage"))
+                        lambda: EnemyBulbAggressiveModule(EnemyScreamer("sh rage")),
+                        lambda: EnemySoundFootstepsModule(steps_left=0),
                     ]
                 },
                 {
@@ -525,6 +529,7 @@ init python in v1FNaSR:
                     "sprite": "mt angry pioneer",
                     "color": "#00b627",
                     "nights_start": None, # 5,
+                    "invisible": True,
                     "modules": [
                         lambda: EnemyMoveModule(),
                         lambda: EnemyAggressiveModule(EnemyScreamer("mt angry pioneer", screamer_t=renpy.store.v1_olga_screamer_t_FNaSR))
@@ -548,6 +553,7 @@ init python in v1FNaSR:
                     "sprite": "mz angry glasses pioneer",
                     "color": "#5481db",
                     "nights_start": None, # 4,
+                    "invisible": True,
                     "modules": [
                         
                     ]
@@ -560,7 +566,8 @@ init python in v1FNaSR:
                     "nights_start": None, # 5,
                     "modules": [
                         lambda: EnemyMoveModule(),
-                        lambda: EnemyAggressiveModule(EnemyScreamer("cs normal"))
+                        lambda: EnemyAggressiveModule(EnemyScreamer("cs normal")),
+                        lambda: EnemySoundFootstepsModule(),
                     ]
                 },
                 {
@@ -571,7 +578,8 @@ init python in v1FNaSR:
                     "nights_start": None, # 5,
                     "modules": [
                         lambda: EnemyMoveModule(),
-                        lambda: EnemyAggressiveModule(EnemyScreamer("pi normal"))
+                        lambda: EnemyAggressiveModule(EnemyScreamer("pi normal")),
+                        lambda: EnemySoundFootstepsModule(),
                     ]
                 },
                 {
@@ -580,6 +588,7 @@ init python in v1FNaSR:
                     "sprite": resources.images.other["genda_ebat"],
                     "color": "#494949",
                     "nights_start": None, # 1,
+                    "invisible": True,
                     "modules": [
                         
                     ]

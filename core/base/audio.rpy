@@ -4,11 +4,12 @@ init -5 python in v1FNaSR:
     import threading as _threading
 
     class AudioManager(native_object):
-        __slots__ = ("_channels", "_last_played", "_lock", "_default_channel",)
+        __slots__ = ("_channels", "_last_played", "_also_channels", "_lock", "_default_channel")
 
         def __init__(self, default_channel="music"):
             self._channels = dict()
             self._last_played = dict()
+            self._also_channels = set()
             self._lock = _threading.RLock()
 
             self._default_channel = self._normalize_name(default_channel)
@@ -55,24 +56,41 @@ init -5 python in v1FNaSR:
         @main_thread_only
         def play(self, filename, channel=None, **kwargs):
             key = self._channel_key(channel)
-            renpy_name = self.get_channel(key)
+
+            with self._lock:
+                renpy_name = self._channels.get(key, key)
 
             renpy.music.play(filename, renpy_name, **kwargs)
 
             with self._lock:
+                if key not in self._channels:
+                    self._also_channels.add(key)
+
                 self._last_played[key] = filename
 
         @main_thread_only
         def stop(self, channel=None, **kwargs):
-            renpy_name = self.get_channel(channel)
+            key = self._channel_key(channel)
+
+            with self._lock:
+                renpy_name = self._channels.get(key, key)
+
             renpy.music.stop(renpy_name, **kwargs)
+
+            with self._lock:
+                self._also_channels.discard(key)
 
         @main_thread_only
         def stop_all(self, fadeout=0.0):
             with self._lock:
                 channels = tuple(self._channels.values())
+                also_channels = tuple(self._also_channels)
+                self._also_channels.clear()
 
             for channel in channels:
+                renpy.music.stop(channel, fadeout=fadeout)
+
+            for channel in also_channels:
                 renpy.music.stop(channel, fadeout=fadeout)
 
         def get_last_played(self, channel=None):
@@ -187,6 +205,26 @@ init -5 python in v1FNaSR:
         def get_active_channels(self):
             with self._lock:
                 return dict(self._active_channels)
+
+    class AudioPool(object):
+        def __init__(self, channels):
+            self.channels = tuple(channels)
+            self._next = 0
+
+        def play(self, filename, **kwargs):
+            count = len(self.channels)
+
+            for offset in range(count):
+                index = (self._next + offset) % count
+                channel = self.channels[index]
+
+                if not renpy.music.is_playing(channel):
+                    self._next = (index + 1) % count
+
+                    renpy.music.play(filename, channel=channel, **kwargs)
+                    return channel
+
+            return None
 
     audio = AudioManager()
     ambience_manager = AmbienceManager()

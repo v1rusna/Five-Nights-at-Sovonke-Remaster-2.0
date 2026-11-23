@@ -244,6 +244,12 @@ init -1 python in v1FNaSR:
                 if self._rollback and door is not None and not door.is_open:
                     door.button.force_unclick()
 
+            if self._open_tablet:
+                if self._current_location.tablet.out_battery:
+                    if screen_manager.has_screen("tablet"):
+                        main_executor.submit(screen_manager.hide_screen, "tablet", player=self)
+                    self.close_tablet()
+
         def reset(self):
             super(Player, self).reset()
             self._under_attack.clear()
