@@ -376,6 +376,7 @@ init python in v1FNaSR:
 
         def __call__(self):
             ns = require_system("night")
+            ns.register_night("tutorial", "Обучение", sequence=MAIN_SEQUENCE)
             for i in range(1, self._nights+1):
                 ns.register_night(
                     "night_{}".format(i),
@@ -387,6 +388,8 @@ init python in v1FNaSR:
             ns.register_night("night_6", title="6th Night", requires="night_5")
             ns.register_night("extra_shift", title="Ещё одна смена!", requires="night_5")
             ns.register_night("custom", title="Custom Night", requires="night_6")
+
+            ns.mark_completed("tutorial")
 
         def handle_exception(self, exc):
             log.write("NightCreateHook | %s", exc)

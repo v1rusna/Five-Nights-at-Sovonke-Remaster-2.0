@@ -27,6 +27,8 @@ screen V1MainGameInterfaceFNaSR:
     add player.get_sees_image()
     
     use V1ShowEnemyFNaSR()
+    if player.is_open_tablet and player.current_location.tablet.selected == player.current_location.id:
+        add v1FNaSR.InitImages.security_guard xalign 0.5
     use V1InfoNightScreenFNaSR(player, ns)
 
     if not player.is_open_tablet and not player.is_moving and not player.get_element(v1FNaSR.PlayerElement.MOVING).blocked:

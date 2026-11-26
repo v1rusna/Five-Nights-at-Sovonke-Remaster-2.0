@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # scripts/screens/menu.rpy
-screen V1MainMenuFrameFNaSR(time="23:57", show_elements=True):
+screen V1MainMenuFrameFNaSR(time="23:57", show_enemy_chance=30):
     default mm = v1FNaSR.MainMenuTools
     default tt = v1FNaSR.TextTools
 
     add mm.get_bg()
 
-    if mm.is_enemy_show() and show_elements:
+    if mm.is_enemy_show(show_enemy_chance):
         add mm.get_enemy() xalign .9
 
     add v1FNaSR.InitImages.door_hold_vignette
@@ -39,17 +39,44 @@ screen V1MainMenuFNaSR:
     if target is None:
         $ target = ns.find_last_unlocked_night(v1FNaSR.MAIN_SEQUENCE)
 
+    if persistent.v1_suggest_tutorial_FNaSR:
+        default start_act = (Hide('V1MainMenuFNaSR'), Jump('v1_play_FNaSR'))
+    else:
+        default start_act = Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuSuggestTutorialFNaSR")
+
     key "mouseup_3" action NullAction()
     key "K_ESCAPE" action NullAction()
 
     use V1MainMenuFrameFNaSR()
 
     vbox align(0.15, 0.5) spacing 15:
-        add tt.textbutton("Начать({})".format(target.title), (Hide('V1MainMenuFNaSR'), Jump('v1_play_FNaSR')))
+        add tt.textbutton("Начать({})".format(target.title), start_act)
         add tt.textbutton("Выбор ночи", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuChoiceNightFNaSR"))
         add tt.textbutton("Достижения", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuAchievementsFNaSR"))
         add tt.textbutton("Настройки", Function(mm.screen_switching, "V1MainMenuFNaSR", "V1MainMenuSettingsFNaSR"))
         add tt.textbutton("Выйти", (Hide('V1MainMenuFNaSR'), Jump('v1_quit_mm_FNaSR')))
+
+screen V1MainMenuSuggestTutorialFNaSR:
+    tag v1menuFNaSR
+
+    default mm = v1FNaSR.MainMenuTools
+    default tt = v1FNaSR.TextTools
+
+    key "mouseup_3" action NullAction()
+    key "K_ESCAPE" action NullAction()
+
+    use V1MainMenuFrameFNaSR(show_enemy_chance=100)
+
+    vbox align(0.5, 0.5):
+        add tt.text("Хотите пройти обучение?") xalign 0.5
+        text ""
+        add tt.text("Некоторые механики могу быть неочевидны или непонятны", g_power=0.0375) xalign 0.5
+        add tt.text("поэтому прохождения обучения рекомендовано для комфортной игры", g_power=0.0375) xalign 0.5
+        add tt.text("в случаи отказа вы сможете найти обучение в списке ночей", g_power=0.0375) xalign 0.5
+        text ""
+        hbox xalign 0.5 spacing 10:
+            add tt.textbutton("Пропустить", (SetField(persistent, "v1_suggest_tutorial_FNaSR", True), Hide('V1MainMenuSuggestTutorialFNaSR'), Jump('v1_play_FNaSR')))
+            add tt.textbutton("Пройти обучение", (Hide('V1MainMenuSuggestTutorialFNaSR'), Call('v1_play_FNaSR', night="tutorial")))
 
 screen V1MainMenuChoiceNightFNaSR(sequence=v1FNaSR.MAIN_SEQUENCE):
     tag v1menuFNaSR
@@ -128,6 +155,12 @@ screen V1MainMenuSettingsFNaSR:
     default mm = v1FNaSR.MainMenuTools
     default tt = v1FNaSR.TextTools
 
+    $ setting_history = "показывать" if v1FNaSR.settings.view_story else "пропускать"
+    $ setting_situations = "показывать" if v1FNaSR.settings.view_situations else "не показывать"
+
+    default bar_null = Frame(v1FNaSR.resources.images.other["bar_null"],36,36)
+    default bar_full = Frame(v1FNaSR.resources.images.other["bar_full"],36,36)
+
     use V1MainMenuFrameFNaSR()
 
     key "mouseup_3" action Function(mm.screen_switching, "V1MainMenuSettingsFNaSR", "V1MainMenuFNaSR")
@@ -135,13 +168,80 @@ screen V1MainMenuSettingsFNaSR:
 
     add tt.text("Настройки", size=22) align(0.5, 0.14)
 
-    vbox align(0.5, 0.5):
-        add tt.text("В разработке") xalign 0.5
-        add tt.textbutton("Назад", Function(mm.screen_switching, "V1MainMenuSettingsFNaSR", "V1MainMenuFNaSR"), xalign=0.5)
+    vbox align(0.5, 0.5) spacing 10:
+        for volume_type, label in (("music volume", "Музыка"), ("sound volume", "Звуки"), ("voice volume", "Эмбиент")):
+            add tt.text(label) xalign 0.5
+            bar:
+                value Preference(volume_type)
+                left_bar bar_full
+                right_bar bar_null
+                thumb None
+                hover_thumb None
+                xmaximum 0.25
+                ymaximum 36
+                xalign 0.5
+
+        add tt.textbutton("Сюжет: {}".format(setting_history), SetField(v1FNaSR.settings, "view_story", not v1FNaSR.settings.view_story), xalign=0.5)
+        add tt.textbutton("Игровые ситуации: {}".format(setting_situations), SetField(v1FNaSR.settings, "view_situations", not v1FNaSR.settings.view_situations), xalign=0.5)
+
+        text ""
+
+        add tt.textbutton("Настройка сложности", NullAction(), xalign=0.5)
+        add tt.textbutton("Настройка клавиш", NullAction(), xalign=0.5)
+        add tt.textbutton(
+            "Сбросить прогресс ночей",
+            Function(mm.screen_switching, "V1MainMenuSettingsFNaSR", "V1ConfirmationScreenFNaSR",
+                label="      Вы действительно\nхотите сбросить прогресс?", # Да можно использовать text_align 0.5, но нет, нельзя, мне лень!
+                yes_action=(Function(v1FNaSR.settings.reset_setting, "nights_gone"), Function(mm.screen_switching, "V1ConfirmationScreenFNaSR", "V1MainMenuSettingsFNaSR")),
+                no_action=Function(mm.screen_switching, "V1ConfirmationScreenFNaSR", "V1MainMenuSettingsFNaSR"),
+                use_menu_frame=True
+            ),
+            xalign=0.5
+        )
+        
+        text ""
+        
+        add tt.textbutton("Нaзaд", (Function(v1FNaSR.settings.save), Function(mm.screen_switching, "V1MainMenuSettingsFNaSR", "V1MainMenuFNaSR")), xalign=0.5)
 
 
 
 
+screen V1ConfirmationScreenFNaSR(label, yes_action, no_action, time_freeze=True, screen_call=None, use_menu_frame=False):
+    modal True
+    zorder 10
+
+    default cycle = v1FNaSR.require_system("cycle")
+    default mm = v1FNaSR.MainMenuTools
+    default tt = v1FNaSR.TextTools
+    default yes_act = mm.normalize_action(yes_action, Hide("V1ConfirmationScreenFNaSR"))
+    default no_act  = mm.normalize_action(no_action,  Hide("V1ConfirmationScreenFNaSR"))
+
+    if use_menu_frame:
+        use V1MainMenuFrameFNaSR(show_enemy_chance=0)
+    else:
+        add tt.text("Пять Ночей в Совёнке Remaster", size=24, g_power=0.0575) align(0.5, 0.1)
+
+    if time_freeze:
+        on "show" action (Function(cycle.freeze), Function(v1FNaSR.game.on_pause))
+        on "hide" action (Function(cycle.unfreeze), Function(v1FNaSR.game.on_unpause))
+    if screen_call is not None:
+        on "show" action Hide(screen_call)
+        on "hide" action Show(screen_call)
+
+    key "K_ESCAPE" action no_action
+
+    vbox:
+        align (0.5, 0.5)
+        spacing 15
+
+        add tt.text(label) xalign 0.5
+
+        hbox:
+            xalign 0.5
+            spacing 30
+            
+            add tt.textbutton("     <-[[ Да ]->     ", yes_act)
+            add tt.textbutton("     <-[[ Нет ]->     ", no_act)
 
 
 screen V1GameMenuSelectorFNaSR:

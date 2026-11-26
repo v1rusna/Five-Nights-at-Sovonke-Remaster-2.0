@@ -32,7 +32,8 @@ init -1 python in v1FNaSR:
             end_of_shift=6,
             requires=(),
             start_callback=None,
-            end_callback=None
+            end_callback=None,
+            history_label=None,
         ):
             _check_text_id(night_id, "night_id")
 
@@ -64,6 +65,12 @@ init -1 python in v1FNaSR:
             if end_callback is not None and not callable(end_callback):
                 raise FNaSRTypeError("end_callback должен быть вызываемым, передано: {}.".format(type(end_callback)))
 
+            if not is_string(history_label):
+                raise FNaSRTypeError("'history_label' должен быть строкой, передано: {}".format(type(history_label)))
+
+            if not renpy.has_label(history_label):
+                raise FNaSRTypeError("Указанный 'history_label' не существует: {}.".format(history_label))
+
             self._id = night_id
             self._title = title
             self._start_location_id = start_location_id
@@ -71,6 +78,7 @@ init -1 python in v1FNaSR:
             self._requires = requires
             self._start_callback = start_callback
             self._end_callback = end_callback
+            self._history_label = history_label
 
         @property
         def id(self):
@@ -91,6 +99,10 @@ init -1 python in v1FNaSR:
         @property
         def requires(self):
             return self._requires
+
+        @property
+        def history_label(self):
+            return self._history_label
 
         def call_start(self):
             if self._start_callback is not None:

@@ -165,9 +165,10 @@ init -1 python in v1FNaSR:
             return cls._show_enemy
 
         @classmethod
-        def is_enemy_show(cls):
+        def is_enemy_show(cls, chance=30):
+            chance = max(0, min(100, chance))
             if cls._is_enemy_show is None:
-                cls._is_enemy_show = renpy.random.random() > 0.7
+                cls._is_enemy_show = (renpy.random.random() * 100) <= chance
             return cls._is_enemy_show
 
         @classmethod
@@ -189,5 +190,16 @@ init -1 python in v1FNaSR:
             cls._old_location = None
             cls._show_enemy = None
 
+        @staticmethod
+        def _to_tuple(value):
+            if value is None:
+                return ()
+            if isinstance(value, (list, tuple)):
+                return tuple(value)
+            return (value,)
+
+        @classmethod
+        def normalize_action(cls, action, add_action):
+            return cls._to_tuple(action) + cls._to_tuple(add_action)
 
 

@@ -132,7 +132,7 @@ init python in v1FNaSR:
             self._setattr("_error_timers", dict())
             self._setattr("_total_hours", 0)
             self._setattr("_hour_time", 89)
-            self._setattr("_speed_cycle", 1.0)
+            self._setattr("_is_enable", True)
 
         @property
         def clock(self):
@@ -144,7 +144,7 @@ init python in v1FNaSR:
 
         @property
         def progress(self):
-            return self._accumulated_time / self.hour_time
+            return self._accumulated_time / self._hour_time
 
         @property
         def timers(self):
@@ -156,7 +156,15 @@ init python in v1FNaSR:
 
         @property
         def hour_time(self):
-            return float(self._hour_time * self._speed_cycle)
+            return self._hour_time
+
+        @property
+        def is_game_time_enabled(self):
+            return self._is_enable
+
+        @is_game_time_enabled.property
+        def is_game_time_enabled(self, value):
+            self._is_enable = bool(value)
 
         @hour_time.setter
         def hour_time(self, value):
@@ -179,14 +187,14 @@ init python in v1FNaSR:
             final_hour = (hour + int(extra_hours)) % 24
 
             self._clock.set_hour(final_hour)
-            self._accumulated_time = (float(remaining_minutes) / 60.0) * self.hour_time
+            self._accumulated_time = (float(remaining_minutes) / 60.0) * self._hour_time
         
         def get_time(self):
             minutes = self.get_minutes()
             return "{:02d}:{:02d}".format(self._clock.hour, minutes)
 
         def get_minutes(self, step=1):
-            minutes = self._accumulated_time * 60 / self.hour_time
+            minutes = self._accumulated_time * 60 / self._hour_time
             if step > 1:
                 minutes = int(minutes // step * step)
             return int(minutes)
@@ -221,16 +229,13 @@ init python in v1FNaSR:
             self._error_timers.clear()
 
         def update(self, dt):
-            new_status = False
-            hour_time = self.hour_time
-            self._accumulated_time += dt
+            if self._is_enable:
+                self._accumulated_time += dt
 
-            while self.interval(hour_time):
-                self._clock.next_hour()
-                self._total_hours += 1
-                new_status = True
+                while self.interval(self._hour_time):
+                    self._clock.next_hour()
+                    self._total_hours += 1
 
-                if new_status:
                     update_ui()
 
             for timer in tuple(self._timers):

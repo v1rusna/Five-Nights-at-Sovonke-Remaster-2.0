@@ -293,6 +293,8 @@ init python in v1FNaSR:
             return
         require_system("night").import_progress(new_value)
 
+    settings.create_setting("view_story", True)
+    settings.create_setting("view_situations", True)
     settings.create_setting("game_difficulty", 2)
     settings.create_setting("nights_gone", list(), _change_nights_gone)
     settings.create_setting("key_map", dict((["tablet", ["K_SPACE"]], ["bulb", ["K_z"]], ["door", ["K_x"]], ["move_start", ["K_w"]], ["move_stop", ["K_s"]],)))

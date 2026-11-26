@@ -254,7 +254,7 @@ init -1 python in v1FNaSR:
 
         def reset(self):
             super(Player, self).reset()
-            del self._under_attack.[:]
+            del self._under_attack[:]
             for element in iter_values(self._element_enabled):
                 element.clear()
 

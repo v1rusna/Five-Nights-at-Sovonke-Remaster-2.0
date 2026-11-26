@@ -76,6 +76,9 @@ label v1_load_night_label_FNaSR(night=None, ignore_lock=False, sequence=v1FNaSR.
 
             ns.load(target, ignore_lock)
 
+        if ns.loaded.history_label:
+            renpy.jump(ns.loaded.history_label)
+
         ns.start()
 
     jump v1_game_FNaSR

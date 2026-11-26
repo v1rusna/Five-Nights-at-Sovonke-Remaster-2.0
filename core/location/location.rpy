@@ -605,7 +605,7 @@ init python in v1FNaSR:
             self.clear_substituted_image(all=True)
 
         def __repr__(self):
-            return "<store.v1FNaSR.Location id=%r name=%r tablet=%r door=%r bulb=%r camera=%r connections=%r hex=%s>" % (
+            return "<store.v1FNaSR.Location id=%r name=%r tablet=%r door=%r bulb=%r camera=%r connections=%r>" % (
                 self._id,
                 self._name,
                 self._tablet,
@@ -613,7 +613,6 @@ init python in v1FNaSR:
                 self._bulb,
                 self._camera,
                 self._loc_connections.to_list(),
-                hex(id(self))
             )
 
 

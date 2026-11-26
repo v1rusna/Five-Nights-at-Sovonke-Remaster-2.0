@@ -35,6 +35,7 @@ init python in v1FNaSR:
             self.door_hold_vignette = build_image(resources.images.other["door_hold_vignette"], width=1920, height=1080)
             self.tablet_button = build_image(resources.images.other["FNaG_Monitor_Button"], width=537, height=47)
             self.lightning = build_image(resources.images.other["lightning"], width=25, height=32)
+            self.security_guard = build_image(resources.images.sprites["hyli_smotrish"], width=900, height=1080)
 
     InitImages = _InitImages()
 
