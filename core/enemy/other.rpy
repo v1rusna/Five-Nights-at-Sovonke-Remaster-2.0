@@ -507,6 +507,7 @@ init -4 python in v1FNaSR:
 
     class Generator(GameObject):
         _instance = None
+        _initialized = False
         _lock = _threading.RLock()
 
         def __new__(cls):
@@ -515,7 +516,7 @@ init -4 python in v1FNaSR:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = native_object.__new__(cls)
-                return cls._instance
+            return cls._instance
 
         @classmethod
         def create_if_absent(cls):
@@ -524,7 +525,7 @@ init -4 python in v1FNaSR:
             with cls._lock:
                 if cls._instance is None:
                     cycle = require_system("cycle")
-                    generator = Generator()
+                    generator = cls()
                     if not cycle.is_registered(generator):
                         cycle.register(generator)
 
@@ -565,10 +566,17 @@ init -4 python in v1FNaSR:
                 return not generator._blockers.blocked
 
         def __init__(self):
-            super(Generator, self).__init__()
-            self._setattr("_tm", None)
-            self._setattr("_player", None)
-            self._blockers = MultiLock()
+            if Generator._initialized:
+                return
+            with Generator._lock:
+                if Generator._initialized:
+                    return
+
+                super(Generator, self).__init__()
+                self._setattr("_tm", None)
+                self._setattr("_player", None)
+                self._blockers = MultiLock()
+                Generator._initialized = True
 
         def start(self):
             self._tm = require_system("tablet")

@@ -6,21 +6,27 @@ init python in v1FNaSR:
 
     class TutorialObject(GameObject):
         __slots__ = (
-            "_pm", "_em", "_ts", "_ls"
+            "_pm", "_em", "_ts", "_ls",
             "_stage", "_current_time", "_target_time",
             "_flags",
+            "_initialized",
         )
 
         is_tutorial = False
 
         _instance = None
+        _initialized = False
 
         def __new__(cls):
             if cls._instance is None:
                 cls._instance = native_object.__new__(cls)
+                cls._initialized = False
             return cls._instance
 
         def __init__(self):
+            if TutorialObject._initialized:
+                return
+
             super(TutorialObject, self).__init__()
             self._setattr("_stage", 1)
             self._setattr("_current_time", 0.0)
@@ -32,7 +38,10 @@ init python in v1FNaSR:
 
             self._stage_table = {
                 1: self._stage_1,
+                2: lambda dt: None
             }
+
+            TutorialObject._initialized = True
 
         def start(self):
             loaded = require_system("night").loaded
@@ -40,7 +49,7 @@ init python in v1FNaSR:
                 self.update = _noop_update
                 return
 
-            self.is_tutorial = True
+            TutorialObject.is_tutorial = True
             self.update = self._tutorial_update
             self._pm = require_system("player")
             self._em = require_system("enemy")
@@ -49,9 +58,10 @@ init python in v1FNaSR:
 
             for enemy in self._em.iter_current_group:
                 enemy.enabled = False
-                enemy.is_invisible = False
+                enemy.is_invisible = True
 
             self._ts.hour_time = 1800
+            self.update(0.0)
 
         def _tutorial_update(self, dt):
             self._stage_table[self._stage](dt)
@@ -59,7 +69,7 @@ init python in v1FNaSR:
         def reset(self):
             super(TutorialObject, self).reset()
             self.update = _noop_update
-            self.is_tutorial = False
+            TutorialObject.is_tutorial = False
 
         def _timer(self, dt):
             if self._target_time is None:
@@ -81,16 +91,29 @@ init python in v1FNaSR:
         def _stage_1(self, dt):
             if self._ts.clock.hour >= 2:
                 self._ts.is_game_time_enabled = False
-            if self._timer(dt):
-                self._next_stage()
-                main_executor.submit(visual.hide, "black")
-                return
 
-            player = self._pm.current_player
-            player.move(self._ls.require_location(12))
-            main_executor.submit(audio.play, resources.sounds.sfx["walking"], "walk", fadeout=0.5, loop=False)
-            main_executor.submit(visual.show, "black", at_list=[renpy.store.v1_tutorial_hide_black])
-            self._target_time = 1.0
+            stage = self._flags.get("stage",0)
+
+            if stage == 0:
+                player = self._pm.current_player
+                player.move(self._ls.require_location(12))
+                player.get_element(PlayerElement.MOVING).block(self)
+                main_executor.submit(audio.play, resources.sounds.sfx["walking"], "walk", fadeout=0.5, loop=False)
+                self._target_time = 2.5
+                self._flags["stage"] = 1
+                update_ui()
+            elif stage == 1:
+                self._current_time += dt
+                if self._current_time >= self._target_time:
+                    tutorial_text_blocks[1].start()
+                    self._current_time = 0.0
+                    self._target_time = 18.0
+                    self._flags["stage"] = 2
+            elif stage == 2:
+                self._current_time += dt
+                if self._current_time >= self._target_time:
+                    self._pm.current_player.get_element(PlayerElement.MOVING).unblock(self)
+                    self._next_stage()
 
     require_system("cycle").register(TutorialObject())
 

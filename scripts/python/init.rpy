@@ -4,9 +4,21 @@ init python in v1FNaSR:
     class LocationCreateHook(BaseHook):
         def init(self):
             def _on_enter_escape(self, entity):
+                cycle = require_system("cycle")
+                if cycle.state != CycleState.RUNNING:
+                    return
                 if isinstance(entity, Player):
+                    if TutorialObject.is_tutorial:
+                        t_obj = TutorialObject()
+                        tutorial_text_blocks[-1].start()
+                        entity.get_element(PlayerElement.MOVING).block(t_obj)
+                        entity.set_moving(False)
+                        require_system("time").timer(lambda: main_executor.submit(screen_manager.hide_screen, "move"), 1)
+                        require_system("time").timer(lambda: entity.move(require_system("location").require_location(12)), 9)
+                        require_system("time").timer(lambda: entity.get_element(PlayerElement.MOVING).unblock(t_obj), 9)
+                        return
                     require_system("night").finish(False)
-                    require_system("cycle").request_transition("v1_quit_FNaSR")
+                    cycle.request_transition("v1_quit_FNaSR")
 
             self._locations = [
                 # Локации с камерой.

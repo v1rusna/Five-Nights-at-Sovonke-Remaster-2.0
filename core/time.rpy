@@ -140,7 +140,11 @@ init python in v1FNaSR:
 
         @property
         def error_timers(self):
-            return list(self._error_timers.items())
+            return tuple(self._error_timers.items())
+
+        @property
+        def expired_timers(self):
+            return tuple([timer for timer in self._timers if timer.is_worked])
 
         @property
         def progress(self):
@@ -245,7 +249,9 @@ init python in v1FNaSR:
                 try:
                     timer.update(dt)
                 except Exception:
-                    self._error_timers[timer] = _traceback.format_exc()
+                    exc = _traceback.format_exc()
+                    self._error_timers[timer] = exc
+                    log.error("GameTime | timer error", exc)
 
     register_system("time", GameTime())
     _cycle = get_system("cycle")
@@ -257,6 +263,7 @@ init python in v1FNaSR:
     _dst = DebugSection(
         DebugText(lambda context: "Время: {}".format(context.gt.get_time()), style="v1_text_16_style_FNaSR"),
         DebugText(lambda context: "Таймеров: {}".format(len(context.gt.timers))),
+        DebugText(lambda context: "Отработавших таймеров: {}".format(len(context.gt.expired_timers))),
         DebugText(lambda context: "Сломанных таймеров: {}".format(len(context.gt.error_timers))),
         DebugText(lambda context: "Прогресс часа: {:.1f}".format(context.gt.progress)),
         DebugText(lambda context: "Всего часов: {}".format(context.gt.total_hours)),
