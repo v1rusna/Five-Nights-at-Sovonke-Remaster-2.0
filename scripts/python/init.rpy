@@ -389,8 +389,6 @@ init python in v1FNaSR:
             ns.register_night("extra_shift", title="Ещё одна смена!", requires="night_5")
             ns.register_night("custom", title="Custom Night", requires="night_6")
 
-            ns.mark_completed("tutorial")
-
         def handle_exception(self, exc):
             log.write("NightCreateHook | %s", exc)
             ns = get_system("night")
@@ -671,9 +669,15 @@ init python in v1FNaSR:
     def _init_other():
         require_system("player").create_player("main")
 
+    def _syka():
+        ns = require_system("night")
+        if ns.has_night("tutorial"):
+            ns.mark_completed("tutorial")
+
     add_start_fn(LocationCreateHook(), once=True)
     add_start_fn(NightCreateHook(), once=True)
     add_start_fn(EnemyCreateHook(), once=True)
     add_start_fn(_init_other, once=True)
+    add_start_fn(_syka, order=1, once=True)
 
     del _init_other

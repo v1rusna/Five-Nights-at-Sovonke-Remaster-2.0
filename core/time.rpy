@@ -162,7 +162,7 @@ init python in v1FNaSR:
         def is_game_time_enabled(self):
             return self._is_enable
 
-        @is_game_time_enabled.property
+        @is_game_time_enabled.setter
         def is_game_time_enabled(self, value):
             self._is_enable = bool(value)
 

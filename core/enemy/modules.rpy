@@ -2326,7 +2326,7 @@ init -2 python in v1FNaSR:
             main_executor.submit(audio.stop, self._call_phone_channel)
             main_executor.submit(visual.hide, self._key, layer="screens")
 
-        def _unpause(self):
+        def _unpaused(self):
             if not self._is_call:
                 return
 

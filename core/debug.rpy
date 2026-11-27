@@ -318,7 +318,7 @@ init -5 python in v1FNaSR:
                 element.set_error(e)
 
     class DebugContext(native_object):
-        __slots__ = ("_data",)
+        __slots__ = ("_data", "__weakref__",)
 
         def __init__(self):
             native_object.__setattr__(self, "_data", {})

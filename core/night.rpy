@@ -21,7 +21,7 @@ init -1 python in v1FNaSR:
     class Night(native_object):
         __slots__ = (
             "_id", "_title", "_start_location_id", "_end_of_shift",
-            "_requires", "_start_callback", "_end_callback"
+            "_requires", "_start_callback", "_end_callback", "_history_label",
         )
 
         def __init__(
@@ -65,11 +65,12 @@ init -1 python in v1FNaSR:
             if end_callback is not None and not callable(end_callback):
                 raise FNaSRTypeError("end_callback должен быть вызываемым, передано: {}.".format(type(end_callback)))
 
-            if not is_string(history_label):
-                raise FNaSRTypeError("'history_label' должен быть строкой, передано: {}".format(type(history_label)))
+            if history_label is not None:
+                if not is_string(history_label):
+                    raise FNaSRTypeError("'history_label' должен быть строкой, передано: {}".format(type(history_label)))
 
-            if not renpy.has_label(history_label):
-                raise FNaSRTypeError("Указанный 'history_label' не существует: {}.".format(history_label))
+                if not renpy.has_label(history_label):
+                    raise FNaSRTypeError("Указанный 'history_label' не существует: {}.".format(history_label))
 
             self._id = night_id
             self._title = title
